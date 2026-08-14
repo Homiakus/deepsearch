@@ -60,7 +60,155 @@ CLI, REST и MCP должны быть только тремя адаптера�
 | P2 | Dashboard показывает вымышленные метрики | `scraper/ui/dashboard.py`: статические 6.4%, 3 jobs, 48.2 pages/s; Start Crawl вызывает `alert` | интерфейс демонстрирует состояние, которого система не знает |
 | P2 | MCP-конфигурация запускает установщики как серверы | `.mcp/config.json`: `pip install`, `npm install -g`, сторонние `npx`/`uvx`; endpoints не существуют | неработающие конфиги и ненужный supply-chain риск |
 
-## 4. Целевая архитектура без нового оверинжиниринга
+## 4. PHASE 1 — ALGORITHM FRAGILITY MAP
+
+Этот раздел превращает общий аудит хрупкости в репозиторий-специфичную программу. Он не даёт права сразу переписывать алгоритм: сначала фиксируются фактический контракт и минимальный контрпример, затем выбирается наименьший достаточный уровень вмешательства. Направления DS-01…DS-26 остаются целевыми, но изменение поведения внутри них проходит evidence gate из DS-27…DS-34.
+
+Статусы доказательств:
+
+- `HYPOTHESIS` — риск виден статически, но нарушение ещё не воспроизведено и не доказано инвариантом;
+- `EVIDENCE` — найден конкретный путь исполнения или расхождение контрактов, следующая проверка определена;
+- `CONFIRMED` — есть минимальный воспроизводимый контрпример либо доказуемое нарушение контракта/инварианта;
+- `REJECTED` — проверка опровергла гипотезу; результат сохраняется, чтобы не исследовать её повторно.
+
+У каждой FRAG-записи отдельно указывается impact priority: `P0` — возможна потеря/повреждение данных либо нарушение security boundary; `P1` — неправильное решение/результат; `P2` — crash или нестабильность; `P3` — контролируемая деградация; `P4` — maintainability risk. Поле «Приоритет» у DS-пунктов задаёт порядок исполнения работ и не подменяет impact priority конкретного дефекта.
+
+### 4.1 Инвентаризация алгоритмов
+
+| Алгоритм | Файл/символ | Назначение | Вход → выход | Состояние и зависимости | Критичность |
+| --- | --- | --- | --- | --- | --- |
+| Research orchestration | `scraper/pipeline/search_pipeline.py::DeepSearchPipeline.execute` | discovery, crawl, extraction, media, export | `DeepSearchPipelineOptions` → archive/result | очередь URL, temp dirs, сеть, PDF, filesystem | critical |
+| Acquisition escalation | `scraper/acquisition/engine.py::AdaptiveAcquisitionEngine.acquire_page` | выбор Cache/HTTP/API/Browser/Visual | URL, mode, cache → `CapturedArtifact` | HTTPFetcher, BrowserPool, settings | critical |
+| HTTP и SSRF policy | `scraper/acquisition/http_fetcher.py::HTTPFetcher.validate_url_security/fetch` | безопасная загрузка с redirect/size limits | URL, headers, proxy → `HTTPResponse` | DNS, сеть, redirects, clock | critical |
+| Browser acquisition | `scraper/acquisition/browser_pool.py::BrowserPoolManager.fetch_page` | JS rendering и network capture | URL, flags → `BrowserResponse` | Playwright process/context/routes | critical |
+| Page classification | `scraper/acquisition/page_classifier.py::classify_page`, `control/planner.py::CostPlanner` | scoring и выбор следующей стратегии | HTML/status/network log → scores/strategy | thresholds из settings | high |
+| Crawl frontier | `scraper/control/scheduler.py::RequestFrontier` | priority queue, lease, retry, dedup | команды над `CrawlRequest` → request/state/stats | mutable queue/maps, lock, wall clock | critical |
+| Resource budget | `scraper/control/budget.py::BudgetTracker.record_page` | ограничения страниц, bytes, depth, browser, deadline | usage event → state или exception | counters, lock, wall clock | critical |
+| Host rate limiting | `scraper/control/rate_limiter.py::TokenBucket/HostRateLimiter` | token bucket, adaptive RPS, backoff | host/result/attempt → wait/backoff | monotonic clock, random, shared host stats | high |
+| URL normalization | `scraper/normalization/canonicalizer.py::canonicalize_url` | canonical key для scope и dedup | raw/canonical URL → canonical URL | tracking parameter policy | critical |
+| Exact/near deduplication | `scraper/normalization/deduplicator.py::Deduplicator` | URL/content/SimHash dedup | URL/bytes/text → duplicate flag | mutable hash sets, optional BLAKE3 | high |
+| Seed discovery | `scraper/discovery/seed_finder.py::discover_diverse_seeds` | классификация запроса и сбор seeds | query/category/domain/sources → URLs | несколько внешних API, hard-coded keywords | high |
+| Media ranking | `scraper/discovery/media_finder.py::score_and_rank_images` | lexical/authority/dimension scoring | candidates/query/limits → ranked subset | weights, rounding, stable input order | high |
+| Media download | `scraper/acquisition/media_downloader.py::download_media_file` | загрузка, limit, hash, filename | URL/output/limits → metadata/file | network, memory, filesystem, Pillow | critical |
+| Archive construction | `scraper/storage/archive_exporter.py::ArchiveExporter` | chunking, manifest, JSONL, ZIP | artifacts/extractions/media → directory/ZIP | filesystem, ordering, timestamps | high |
+
+### 4.2 Ранжирование для прогрессивного углубления
+
+Для `RiskScore₀` каждый множитель `Criticality × InputVariability × StateComplexity × HiddenAssumptions × FailureImpact × LackOfTests` предварительно оценён от 1 до 4. В таблице они обозначены `C/I/S/A/F/T`. Это приоритизация следующей проверки, а не доказательство дефекта. `FI₀` — статическая оценка Fragility Index по шкале раздела 4.3; она пересчитывается после PASS 5 и после hardening.
+
+| Ранг | Алгоритм | C/I/S/A/F/T | RiskScore₀ | FI₀ | Почему выбран в первую десятку |
+| --- | --- | --- | ---: | ---: | --- |
+| 1 | `DeepSearchPipeline.execute` | 4/4/4/4/4/4 | 4096 | 47 | объединяет все внешние зависимости, подавляет ошибки и создаёт persistent output |
+| 2 | `HTTPFetcher.fetch` | 4/4/3/4/4/4 | 3072 | 46 | security boundary зависит от DNS, redirects и размера потока |
+| 3 | `download_media_file` | 4/4/3/4/4/4 | 3072 | 45 | отдельный сетевой путь обходит общий policy и пишет на диск |
+| 4 | `RequestFrontier` | 4/3/4/4/4/4 | 3072 | 46 | корректность зависит от последовательности команд, lease и времени |
+| 5 | `AdaptiveAcquisitionEngine.acquire_page` | 4/4/3/4/4/4 | 3072 | 42 | малое изменение score/status переключает дорогую стратегию и fallback semantics |
+| 6 | `BudgetTracker.record_page` | 4/3/4/3/4/4 | 2304 | 49 | лимит должен быть атомарным, но одновременно изменяет несколько счётчиков и deadline |
+| 7 | `Deduplicator` | 3/4/4/4/3/4 | 2304 | 44 | stateful решение, environment-dependent hash и потенциальный `O(N²)` SimHash scan |
+| 8 | `canonicalize_url` | 4/4/2/4/4/3 | 1536 | 40 | одно преобразование определяет scope, dedup и сетевую идентичность ресурса |
+| 9 | `ArchiveExporter` | 3/4/3/3/3/4 | 1296 | 38 | формирует пользовательский persistent artifact и заявленные RAG-инварианты |
+| 10 | `classify_page`/`CostPlanner` | 3/4/2/4/3/4 | 1152 | 35 | строковые эвристики и пороги резко меняют выбранную acquisition strategy |
+
+### 4.3 Fragility Index и heatmap
+
+Расчёт ведётся в audit report с оценками 0–4 для каждого слагаемого:
+
+```text
+Fragility Index =
+  BoundarySensitivity × 2 + HiddenAssumptions × 2 +
+  OrderDependence × 2 + StateDependence × 2 + TimingDependence +
+  NumericSensitivity + FailureAmplification × 2 + MissingInvariants +
+  MissingProperties + PoorErrorRecovery + ComplexityCliff
+```
+
+Интерпретация: `0–10` — устойчивый, `11–20` — умеренная хрупкость, `21–30` — высокая, `31+` — критическая. Высокий индекс требует доказательной проверки, но сам по себе не является основанием для архитектурного рефакторинга.
+
+| Алгоритм | Boundary | Order | State | Time | Numeric/threshold | Failure |
+| --- | --- | --- | --- | --- | --- | --- |
+| Pipeline | 🟠 | 🟠 | 🔴 | 🟠 | 🟢 | 🔴 |
+| HTTP/SSRF | 🔴 | 🟢 | 🟠 | 🟠 | 🟢 | 🔴 |
+| Media downloader | 🔴 | 🟠 | 🟠 | 🟠 | 🟢 | 🔴 |
+| Request frontier | 🔴 | 🔴 | 🔴 | 🔴 | 🟠 | 🔴 |
+| Acquisition escalation | 🔴 | 🟢 | 🟠 | 🟠 | 🔴 | 🔴 |
+| Budget tracker | 🔴 | 🟠 | 🔴 | 🔴 | 🟠 | 🔴 |
+| Deduplicator | 🟠 | 🔴 | 🔴 | 🟢 | 🟠 | 🟠 |
+| URL canonicalizer | 🔴 | 🔴 | 🟢 | 🟢 | 🟢 | 🔴 |
+| Archive exporter | 🟠 | 🟠 | 🟠 | 🟢 | 🟠 | 🟠 |
+| Page classifier | 🔴 | 🟠 | 🟢 | 🟢 | 🔴 | 🟠 |
+
+### 4.4 Предполагаемые контракты критичной десятки
+
+| Алгоритм | Предполагаемый фактический контракт, который нужно утвердить | Первые гипотезы хрупкости |
+| --- | --- | --- |
+| Pipeline | каждый input URL имеет outcome; partial/failure отличимы от empty success; cancellation и ошибка не оставляют частичный архив/temp state | broad exceptions скрывают причины; последовательность media/PDF усиливает один сбой; output зависит от порядка discovery |
+| HTTP/SSRF | каждый фактический socket target, включая redirects, разрешён policy; bytes никогда не превышают limit; client lifecycle закрыт | initial DNS check не защищает redirect/rebinding; синхронный DNS блокирует event loop |
+| Media downloader | применяет тот же URL policy; запись атомарна; имя уникально; limit действует до накопления тела | SSRF bypass, full-body buffering, filename collision, silent `None` |
+| Frontier | один canonical URL имеет не более одной активной queue entry; переходы state допустимы; retry идемпотентен; lease зависит от injected monotonic clock | double retry дублирует request; crashed `FETCHING` не возвращается; tie зависит от arrival order |
+| Acquisition | ровно одна объяснимая stable strategy; non-2xx не становится success; fallback отражён как degradation | L2 недостижим из L1; пустой cache меняет ветку; browser failure возвращает любой HTTP status как artifact |
+| Budget | проверка и commit usage атомарны; rejected event имеет явно выбранную семантику; deadline проверяется до дорогой работы | exception возникает после изменения counters; wall-clock jump меняет решение; отрицательные usage не валидируются |
+| Deduplicator | одинаковая политика hash во всех окружениях; duplicate decision детерминирован; threshold валиден; стоимость ограничена | BLAKE3/SHA-256 зависит от install; empty text не дедуплицируется; linear SimHash scan создаёт cliff |
+| Canonicalizer | идемпотентен и не объединяет URL, которые могут адресовать разные ресурсы; reserved characters сохраняют семантику | `%2F` превращается в `/`; query order и `ref/source` могут быть значимыми; userinfo lowercased |
+| Archive exporter | `max_words` — реальная верхняя граница; manifest равен файлам; ZIP детерминирован при фиксированных данных; write failure не оставляет валидный-looking result | длинный paragraph превышает chunk limit; collisions перезаписывают media; vector metadata заявляет отсутствующие vectors |
+| Classifier/planner | score находится в `[0,1]`; незначимый текст не переключает strategy; thresholds и tie cases имеют явную политику | substring `react` даёт false positive; 15→16 scripts создаёт cliff; L2/API thresholds не соответствуют доступным данным |
+
+### 4.5 Реестр первых гипотез
+
+| ID | HYPOTHESIS | EVIDENCE | COUNTEREXAMPLE | STATUS |
+| --- | --- | --- | --- | --- |
+| H-001 | dependency failure превращается в empty success | `execute` ловит `Exception` вокруг страницы и не возвращает errors | fake acquisition бросает `TimeoutError`; результат: 0 pages, 0 manifest documents, поля errors нет | `CONFIRMED` → FRAG-011 |
+| H-002 | canonicalization объединяет разные path resources | `urllib.parse.unquote` выполняется до сборки canonical URL | `a%2Fb` становится `a/b` | `CONFIRMED` → FRAG-001 |
+| H-003 | обычное слово может переключить HTTP на Browser | framework определяется substring-поиском `react` | `<p>reaction</p>` даёт `React`, `js_dependency_score=0.8` | `CONFIRMED` → FRAG-002 |
+| H-004 | равный media score делает выбор зависимым от provider order | sort имеет только `relevance_score`, явного tie-break нет | при `max_count=1`: `[A,B] → A`, `[B,A] → B` | `CONFIRMED` → FRAG-003 |
+| H-005 | retry одного request можно поставить в очередь дважды | `retry_request` без проверки добавляет тот же object | два retry, затем два lease возвращают один и тот же ID | `CONFIRMED` → FRAG-004 |
+| H-006 | отклонённый budget event частично изменяет state | counters меняются до проверки deadline/последующих limits | expired deadline после вызова оставляет pages=1, bytes=10 | `CONFIRMED behaviour`; контракт неоднозначен → FRAG-005 |
+| H-007 | chunker нарушает заявленный word bound | oversized paragraph не делится | 251 слово при `max_words=250` дают один chunk из 251 слова | `CONFIRMED` → FRAG-006 |
+| H-008 | нулевая скорость rate limiter аварийна | отсутствует validation, выполняется division by rate | `TokenBucket(0,0).acquire()` → `ZeroDivisionError` | `CONFIRMED robustness gap` → FRAG-007 |
+| H-009 | разные media URL могут перезаписать один файл | target строится только из prefix и basename | два `.../report.pdf` дают `doc_report.pdf` | `CONFIRMED` → FRAG-008 |
+| H-010 | противоречивые min/max нарушают max contract | `max(min_count, min(len, max_count))` | `min=8,max=3,10 candidates` возвращает 8 | `CONFIRMED robustness gap` → FRAG-009 |
+| H-011 | redirect/rebinding обходят SSRF policy | validation вызывается только для initial URL, `follow_redirects=True` | controlled resolver/redirect test ещё не добавлен | `CONFIRMED` control-flow violation; regression pending → FRAG-010 |
+| H-012 | content hash меняется от состава окружения | optional import BLAKE3 с SHA-256 fallback | одинаковые bytes в двух dependency profiles | `EVIDENCE`; требуется differential test |
+| H-013 | L2 API acquisition недостижим из L1 | `detected_apis` строится только из `network_requests`, которых L1 classifier не получает | fake HTTP HTML с API links/network absence | `CONFIRMED` control-flow proof; regression pending |
+| H-014 | BrowserPool limits не ограничивают concurrency | `max_browsers`/`contexts_per_browser` сохраняются, но не участвуют в acquire | concurrent fake-context test pending | `EVIDENCE` |
+| H-015 | seed/category selection чувствителен к случайным substrings и языку | hard-coded subject keywords и последовательные provider branches | query pairs с изменением одного token pending | `HYPOTHESIS` |
+
+### 4.6 Начальный corpus минимальных контрпримеров
+
+| ID | Impact / Severity / Confidence | Класс | Минимальный вход/сценарий | Ожидаемый контракт | Фактическое поведение | Regression test |
+| --- | --- | --- | --- | --- | --- | --- |
+| FRAG-001 | P1 / high / high | `FRAG-PARSING`, `FRAG-CONTRACT` | `canonicalize_url("https://example.com/a%2Fb")` | encoded reserved separator не сливается с `/` | возвращается `https://example.com/a/b` | `tests/unit/test_canonicalizer.py::test_preserves_encoded_path_separator` |
+| FRAG-002 | P1 / high / high | `FRAG-HEURISTIC`, `FRAG-BOUNDARY` | HTML `<p>reaction</p>` | prose не считается React marker | `React`, JS score `0.8` | `tests/unit/test_page_classifier.py::test_framework_detection_requires_marker` |
+| FRAG-003 | P1 / medium / high | `FRAG-ORDER`, `FRAG-HEURISTIC` | два изображения с одинаковым score, `max_count=1` | tie разрешается явным стабильным ключом | `[A,B]` выбирает A, `[B,A]` выбирает B | `tests/unit/test_media_selection.py::test_equal_score_has_deterministic_tie_break` |
+| FRAG-004 | P1 / high / high | `FRAG-STATE`, `FRAG-RETRY` | `lease → retry → retry → lease → lease` | один request не выдаётся двум workers | оба lease возвращают один ID | `tests/unit/test_scheduler.py::test_retry_is_idempotent` |
+| FRAG-005 | P1 / high / medium | `FRAG-STATE`, `FRAG-TIME`, `FRAG-CONTRACT` | usage event после deadline | reject до mutation либо документированная consumed-semantics | exception после pages=1/bytes=10 | `tests/unit/test_budget.py::test_expired_deadline_is_atomic` |
+| FRAG-006 | P3 / medium / high | `FRAG-BOUNDARY`, `FRAG-INVARIANT` | один paragraph из 251 слова, limit 250 | каждый chunk `<=250` | один chunk содержит 251 слово | `tests/unit/test_search_pipeline.py::test_archive_chunk_hard_limit` |
+| FRAG-007 | P2 / medium / high | `FRAG-NUMERIC`, `FRAG-RECOVERY` | `TokenBucket(rate=0, capacity=0)` | config validation или безопасное disabled state | `ZeroDivisionError` | `tests/unit/test_rate_limiter.py::test_non_positive_rate_rejected` |
+| FRAG-008 | P0 / high / high | `FRAG-STATE`, `FRAG-DEPENDENCY` | два URL с basename `report.pdf` | разные sources не перезаписываются | оба target — `doc_report.pdf` | `tests/unit/test_media_downloader.py::test_distinct_urls_have_distinct_targets` |
+| FRAG-009 | P2 / medium / high | `FRAG-BOUNDARY`, `FRAG-CONTRACT` | `min_count=8`, `max_count=3` | invalid range отвергается до ranking | возвращается 8, max нарушен | `tests/unit/test_media_selection.py::test_rejects_inverted_limits` |
+| FRAG-010 | P0 / critical / high | `FRAG-DEPENDENCY`, `FRAG-RECOVERY` | public URL redirects на loopback/private | каждый hop блокируется до соединения | redirect target повторно не валидируется | `tests/unit/test_ssrf.py::test_redirect_target_revalidated` |
+| FRAG-011 | P1 / high / high | `FRAG-RECOVERY`, `FRAG-CONTRACT` | единственная страница, acquisition timeout | explicit failed/partial outcome с причиной | успешный result с 0 pages и без errors | `tests/unit/test_search_pipeline.py::test_single_failure_is_not_empty_success` |
+
+Контрпримеры FRAG-001…FRAG-009 и FRAG-011 воспроизведены на коммите аудита короткими детерминированными probes. FRAG-010 доказан по control flow, но до изменения HTTP-клиента обязан получить hermetic redirect test. До появления regression test этот corpus является доказательством и планом фиксации, а не заявлением об исправлении.
+
+### 4.7 Progressive Deepening и правило остановки
+
+| PASS | Что исследуем | Артефакт/выход | Когда углубляемся |
+| --- | --- | --- | --- |
+| 1 — Discovery | inventory, RiskScore₀, top-10 | разделы 4.1–4.3 | алгоритм входит в верхний risk band |
+| 2 — Contracts | docs/types/code/tests, assumptions, invariants | contract/assumption register | контракт расходится или неоднозначен |
+| 3 — Static | boundaries, order, state, time, constants, error paths, complexity | hypotheses со способом проверки | есть конкретный достижимый путь риска |
+| 4 — Existing tests | покрытые equivalence classes и error paths | test gap matrix | класс риска реально не покрыт |
+| 5 — Counterexamples | минимальный input/sequence/fault | FRAG record и deterministic reproducer | контрпример подтверждён либо invariant доказуемо нарушен |
+| 6 — Generative | property, metamorphic, differential, parser fuzz | shrinking corpus и сохранённые seeds | генератор способен исследовать новый класс входов |
+| 7 — Fault injection | network, filesystem, dependency, cancellation | state-after-failure assertions | внешний сбой имеет высокий blast radius |
+| 8 — Mutation | boundary/operators в critical algorithms | surviving mutant register | тесты зелёные, но поведение ещё слабо специфицировано |
+| 9 — Hardening | LEVEL 0…5, минимальное вмешательство | fix + regression + ADR только для LEVEL 4–5 | доказательство указывает на конкретный класс хрупкости |
+| 10 — Regression | весь corpus, properties, state models, budgets | пересчитанный FI и закрытый FRAG | фикс расширил область устойчивости без нового divergence |
+
+Ветка исследования останавливается, если контракт однозначен, критичные инварианты закреплены, relevant mutants уничтожаются, property/stateful tests не находят новых минимальных примеров и следующая проверка имеет низкую ожидаемую ценность. Для каждого hardening change выбирается минимальный уровень: `LEVEL 0 test`, `LEVEL 1 validation/invariant`, `LEVEL 2 local fix`, `LEVEL 3 algorithm`, `LEVEL 4 contract`, `LEVEL 5 architecture`. LEVEL 4–5 запрещены без отдельного доказательства, почему LEVEL 0–3 недостаточны.
+
+Каждая новая запись в `docs/architecture/AUDIT_REPORT.md` обязана содержать: `FRAG-ID`, severity/confidence, location/symbol, contract, observed behaviour, hidden assumption, trigger, minimal reproducer, expected/actual, root cause, blast radius, existing/missing test, минимальный recommended level и verification. Неподтверждённые записи остаются `HYPOTHESIS`, а не включаются в количество дефектов.
+
+## 5. Целевая архитектура без нового оверинжиниринга
 
 | Слой | Ответственность | Правило |
 | --- | --- | --- |
@@ -78,7 +226,7 @@ CLI, REST и MCP должны быть только тремя адаптера�
 5. Не создавать отдельный orchestration path для CLI, REST и MCP.
 6. Не сохранять большие временные файлы вне управляемого каталога запуска.
 
-## 5. План работ
+## 6. План работ
 
 ### DS-01 — Зафиксировать честную карту возможностей
 
@@ -392,18 +540,179 @@ CLI, REST и MCP должны быть только тремя адаптера�
 
 **Готово когда:** документацию можно использовать как исполняемую инструкцию установки и проверки.
 
-## 6. Порядок выполнения
+### DS-27 — Утвердить контракты, инварианты и реестр предположений top-10
+
+**Приоритет:** P0
+
+**Основание:** RiskScore₀/FI₀ из разделов 4.2–4.4; текущие docstrings описывают возможности, но не определяют границы, error semantics, идемпотентность и состояние после сбоя.
+
+**Что делаем:** для критичной десятки сопоставляем документацию, типы, реализацию и существующие тесты. Для каждого алгоритма фиксируем допустимые типы/диапазоны/размеры/порядок, выходные гарантии, side effects, повторный вызов, cancellation, time source и состояние после exception. Каждое скрытое предположение получает ID `A-001…`, severity, проверку и ссылку на тест. Не меняем алгоритм на этом шаге.
+
+**Где делаем:** существующий `docs/architecture/AUDIT_REPORT.md`, docstrings и типы соответствующих top-10 symbols; traceability-ссылки остаются в этом плане. Новые manager/interface классы не создаём.
+
+**Почему:** без утверждённого контракта невозможно отличить bug, fragility, robustness gap и допустимую threshold discontinuity.
+
+**Класс хрупкости:** `FRAG-CONTRACT`, `FRAG-INVARIANT`, `FRAG-STATE`, `FRAG-TIME`.
+
+**Как проверить:** у каждого из десяти алгоритмов заполнены input/output/error/state/time/idempotency contracts; каждое расхождение docs/types/code/tests имеет статус; ни одна P0/P1 рекомендация не ссылается только на сложность или FI.
+
+**Regression test:** characterization tests закрепляют только подтверждённое корректное поведение; сомнительное поведение остаётся hypothesis/counterexample и не цементируется как контракт.
+
+**Готово когда:** на 15 вопросов главного критерия аудита из пользовательской методики можно ответить для каждого top-10 алгоритма.
+
+### DS-28 — Превратить начальный counterexample corpus в постоянные regression tests
+
+**Приоритет:** P0
+
+**Основание:** воспроизведённые FRAG-001…FRAG-009 и FRAG-011; control-flow proof FRAG-010.
+
+**Что делаем:** переносим каждый минимальный reproducer из раздела 4.6 в ближайший существующий unit test и исправляем только соответствующий класс хрупкости на LEVEL 1–2. Не оставляем долгоживущие non-strict `xfail` и не объединяем несколько поведенческих исправлений в один коммит. Для FRAG-005 сначала утверждаем atomic или consumed semantics в DS-27.
+
+**Где делаем:** существующие `tests/unit/test_canonicalizer.py`, `test_page_classifier.py`, `test_media_selection.py`, `test_scheduler.py`, `test_budget.py`, `test_search_pipeline.py`, `test_rate_limiter.py`, `test_media_downloader.py`, `test_ssrf.py` и минимальные изменения соответствующих production symbols.
+
+**Почему:** минимальные контрпримеры — самая дешёвая защита от возврата уже доказанного дефекта при последующем упрощении архитектуры.
+
+**Класс хрупкости:** `FRAG-PARSING`, `FRAG-BOUNDARY`, `FRAG-ORDER`, `FRAG-STATE`, `FRAG-RETRY`, `FRAG-TIME`, `FRAG-RECOVERY`, `FRAG-DEPENDENCY`.
+
+**Как проверить:** каждый FRAG-ID упомянут ровно одним первичным regression test; test падает на коммите аудита и проходит после локального fix; FRAG-010 выполняется с controlled redirect/resolver без доступа к интернету.
+
+**Regression test:** точные имена тестов перечислены в разделе 4.6; shrink/minimal input сохраняется непосредственно в параметрах теста, без отдельного каталога fixture-файлов.
+
+**Готово когда:** повторный запуск всего corpus детерминирован и не требует DNS, Chromium, внешней сети или постоянной директории вывода.
+
+### DS-29 — Добавить property, metamorphic и differential проверки чистых алгоритмов
+
+**Приоритет:** P1
+
+**Основание:** H-002, H-003, H-004, H-007, H-010, H-012 и отсутствие проверок целых классов входов при единичных example-based tests.
+
+**Что делаем:** добавляем Hypothesis только как dev dependency и генерируем осмысленные классы: empty/single/duplicates, Unicode, reserved URL characters, reordered query pairs, extreme thresholds, repeated tokens, one oversized paragraph и equal scores. Проверяем `normalize(normalize(x)) == normalize(x)`, симметрию Hamming distance, exact-dedup idempotency, permutation invariance после явного tie-break, score range, chunk reassembly и hard word bound. Differential test сравнивает hash policy в двух dependency profiles и простую reference-модель ranking/dedup.
+
+**Где делаем:** `pyproject.toml`, `uv.lock` и существующие `test_canonicalizer.py`, `test_deduplicator.py`, `test_media_selection.py`, `test_page_classifier.py`, `test_search_pipeline.py`, `test_media_downloader.py`.
+
+**Почему:** example tests доказывают отдельные точки, но не радиус устойчивости вокруг них; shrinking автоматически даёт минимальный вход для новой FRAG-записи.
+
+**Класс хрупкости:** `FRAG-BOUNDARY`, `FRAG-ORDER`, `FRAG-PARSING`, `FRAG-NUMERIC`, `FRAG-HEURISTIC`, `FRAG-INVARIANT`.
+
+**Как проверить:** PR suite использует не менее 500 deterministic examples на property, nightly — не менее 5000; seed и shrunk example печатаются при падении; запрещено подавлять найденный пример через blanket `assume`/filter без контрактного объяснения.
+
+**Regression test:** каждый новый shrunk counterexample добавляется как именованный example рядом с property test до исправления production code.
+
+**Готово когда:** properties не находят divergence на утверждённой области входов, а invalid domain отвергается validation, а не случайным исключением внутри алгоритма.
+
+### DS-30 — Проверить frontier, budget и limiter через stateful model и управляемое время
+
+**Приоритет:** P1
+
+**Основание:** FRAG-004, FRAG-005, FRAG-007; H-014; wall-clock и mutable queue/counters определяют correctness нескольких алгоритмов.
+
+**Что делаем:** создаём простую эталонную модель состояний и генерируем команды `add/lease/start/retry/complete/fail/expire/cancel`. В production внедряем минимальные callables `now_monotonic`/`now_wall` и RNG там, где без этого нельзя воспроизводимо проверить deadline/backoff; отдельный Clock framework не создаём. Проверяем повторные и конкурентные вызовы, cancellation race и lease expiry при clock jumps.
+
+**Где делаем:** `scraper/control/scheduler.py`, `budget.py`, `rate_limiter.py`, `acquisition/browser_pool.py`; `tests/unit/test_scheduler.py`, `test_budget.py`, `test_rate_limiter.py` и browser fake tests.
+
+**Почему:** корректность stateful алгоритма нельзя доказать тестированием только happy-path методов по отдельности.
+
+**Класс хрупкости:** `FRAG-STATE`, `FRAG-TIME`, `FRAG-CONCURRENCY`, `FRAG-RETRY`, `FRAG-NUMERIC`.
+
+**Как проверить:** model-based test после каждой команды подтверждает: queue IDs уникальны; terminal request не lease-ится; capacity учитывает queued+active по утверждённому контракту; attempts монотонны; stats partition согласован; rejected budget event атомарен; concurrency никогда не превышает limit. Отдельно выполняются `t-ε/t/t+ε`, backward/forward clock jumps и cancellation immediately before/after commit.
+
+**Regression test:** sequence `lease,retry,retry,lease,lease` остаётся обязательным example; каждый новый shrunk command sequence сохраняется рядом с state machine test.
+
+**Готово когда:** реальная система и reference model совпадают на сгенерированных последовательностях, а тесты не используют `sleep` для доказательства времени.
+
+### DS-31 — Ввести fault injection и проверить graceful degradation всего рабочего пути
+
+**Приоритет:** P1
+
+**Основание:** FRAG-010, FRAG-011, H-001, H-011, H-013, H-014; текущие broad exceptions стирают outcome и оставляют неясное состояние output.
+
+**Что делаем:** через уже внедряемые dependencies/transport fakes принудительно создаём DNS failure, redirect to private, timeout до/после response headers, partial/chunked body, malformed payload, browser crash, disk full, permission denied, source file disappearance, cancellation и archive write failure. Для каждой стадии утверждаем `normal → partial → safe failure`; result содержит stage/provider outcome и не выглядит успешным без данных.
+
+**Где делаем:** application service из DS-04, `http_fetcher.py`, `browser_pool.py`, `media_downloader.py`, `search_pipeline.py`, `archive_exporter.py`; существующие unit/integration tests с `httpx.MockTransport` и временной filesystem boundary.
+
+**Почему:** сбой одной зависимости сейчас усиливается до empty success, silent skip либо потенциально неполного persistent artifact.
+
+**Класс хрупкости:** `FRAG-DEPENDENCY`, `FRAG-RECOVERY`, `FRAG-CONTRACT`, `FRAG-CONCURRENCY`, `FRAG-STATE`.
+
+**Как проверить:** fault matrix проверяет outcome и состояние после каждой точки отказа; нет temp/file leaks; manifest появляется только после атомарного завершения; partial result перечисляет пропущенные sources; SSRF test валидирует каждый redirect и browser/media request до соединения.
+
+**Regression test:** `test_single_failure_is_not_empty_success`, `test_redirect_target_revalidated` и по одному fault test на границу каждой pipeline stage.
+
+**Готово когда:** ни один инъецированный сбой не повреждает ранее валидный output, не раскрывает внутренний адрес и не превращается в необъяснимый пустой успех.
+
+### DS-32 — Измерить чувствительность эвристик, порогов и tie-break
+
+**Приоритет:** P1
+
+**Основание:** FRAG-002, FRAG-003, FRAG-009; H-013 и H-015; hard-coded weights/keywords/thresholds определяют browser cost, provider selection и media winner.
+
+**Что делаем:** для classifier, CostPlanner, seed intent и media ranking строим table-driven sensitivity matrix для `threshold-ε/threshold/threshold+ε`, весов `±1/5/10%`, equal/near-equal scores, permutation и добавления neutral candidate. Сначала документируем допустимые discontinuities; конфигурируемым делаем только параметр с доказанной потребностью изменения. Для равных score вводим предметный deterministic tie-break.
+
+**Где делаем:** `scraper/acquisition/page_classifier.py`, `control/planner.py`, `discovery/seed_finder.py`, `media_finder.py`, соответствующие unit tests и capability documentation.
+
+**Почему:** небольшая лексическая или численная вариация сейчас способна переключить дорогую стратегию или полностью поменять выбранный источник.
+
+**Класс хрупкости:** `FRAG-HEURISTIC`, `FRAG-BOUNDARY`, `FRAG-ORDER`, `FRAG-NUMERIC`, `FRAG-COMPLEXITY`.
+
+**Как проверить:** decision/ranking diff на sensitivity corpus объясним; permutation не меняет winner при одинаковом множестве кандидатов; neutral candidate не меняет существующие scores; каждое намеренное пороговое переключение имеет два граничных теста и rationale.
+
+**Regression test:** минимальные `reaction`, equal-score A/B и inverted min/max cases обязательны; новые winner flips сохраняются как parameterized cases.
+
+**Готово когда:** у каждого magic constant есть источник и boundary test, а небольшое изменение входа не вызывает недокументированный скачок поведения.
+
+### DS-33 — Найти complexity cliffs и худшие реалистичные входы
+
+**Приоритет:** P2
+
+**Основание:** линейный scan всех SimHash на каждый документ, повторная сортировка frontier, `list.pop(0)`, последовательные provider/media/PDF запросы и full-body buffering.
+
+**Что делаем:** совместно с DS-25 измеряем `N=0/1/2/10²/10³/10⁴`, all-duplicates, all-equal priority, one huge document, thousands of small objects, long-chain crawl и slow/partial responses. Сначала фиксируем practical break point по latency, memory, event-loop lag и requests; алгоритм меняем только при доказанном cliff. Для fast path создаём простую медленную reference implementation и проверяем equivalence.
+
+**Где делаем:** `tests/performance`, `deduplicator.py`, `scheduler.py`, `search_pipeline.py`, `media_downloader.py`, discovery/provider adapters; benchmark job из DS-25.
+
+**Почему:** Big-O предположительно неблагоприятен в нескольких местах, но оптимизация без практической границы будет преждевременной.
+
+**Класс хрупкости:** `FRAG-COMPLEXITY`, `FRAG-SCALABILITY`, `FRAG-DEPENDENCY`, `FRAG-RECOVERY`.
+
+**Как проверить:** baseline хранит median/p95, peak RSS, request count и event-loop lag; doubling ratio выявляет смену режима; PR gate сравнивает только стабильные deterministic benchmarks, шумные сетевые сценарии запускаются scheduled/manual.
+
+**Regression test:** отдельные adversarial cases для repeated SimHash, equal-priority frontier, oversized chunked body и long-chain queue; correctness всегда сравнивается с reference model.
+
+**Готово когда:** для каждого critical path известна практическая граница, config не позволяет незаметно её превысить, а оптимизация сохраняет результат reference implementation.
+
+### DS-34 — Ввести targeted mutation gate и закрывать FRAG только после повторного индекса
+
+**Приоритет:** P2
+
+**Основание:** 462 lint findings и 61% coverage не показывают, различают ли тесты `>`/`>=`, success/failure, one/two retries и boundary constants.
+
+**Что делаем:** запускаем targeted mutation testing только для top-10 pure/control modules после зелёных regression/property/stateful suites. Приоритетные мутации: `>/<`, `>=/<=`, `and/or`, `0/1`, `N/N+1`, success/error return, удаление validation и retry branch. Surviving mutant получает FRAG/MUT ID; production code не меняется ради metric, если mutant эквивалентен — это доказывается и исключение документируется. После каждого hardening пересчитываем FI и область устойчивости.
+
+**Где делаем:** dev tooling/CI manual или scheduled job, `canonicalizer.py`, `page_classifier.py`, `planner.py`, `scheduler.py`, `budget.py`, `rate_limiter.py`, `deduplicator.py`, archive chunker и их tests; результат — в существующем `AUDIT_REPORT.md`.
+
+**Почему:** line coverage может оставаться высокой при полном отсутствии спецификации критической развилки.
+
+**Класс хрупкости:** все классы, в первую очередь `FRAG-BOUNDARY`, `FRAG-RETRY`, `FRAG-INVARIANT`, `FRAG-RECOVERY`.
+
+**Как проверить:** targeted mutation score не ниже 80%; ни один surviving non-equivalent mutant не меняет security boundary, state transition, limit, retry count или error outcome; job воспроизводим с pinned tool version.
+
+**Regression test:** каждый уничтоженный meaningful mutant связан с существующим test либо порождает минимальный новый test; дублирующие тесты не добавляются только ради процента.
+
+**Готово когда:** FRAG закрывается только при зелёном counterexample, relevant property/state model, fault test при внешней зависимости, отсутствии critical surviving mutants и пересчитанном FI с объяснением остаточного риска.
+
+## 7. Порядок выполнения
 
 | Этап | Пункты | Результат этапа |
 | --- | --- | --- |
-| A. Правда и безопасность | DS-01…DS-08 | честная поверхность, зелёный герметичный baseline, закрытые сетевые/API границы |
-| B. Один рабочий путь | DS-09…DS-15 | ограниченный и объяснимый research/crawl pipeline без утечек |
-| C. Удаление лишнего | DS-16…DS-22 | нет demo-функций, параллельных приложений и неработающих интерфейсов |
-| D. Эксплуатация | DS-23…DS-26 | измеримая производительность, безопасный контейнер и проверяемый release |
+| A. Правда, доказательства и безопасность | DS-01…DS-08, DS-27, DS-28 | честная поверхность, утверждённые контракты, минимальный corpus и закрытые сетевые/API границы |
+| B. Один устойчивый рабочий путь | DS-09…DS-15, DS-29…DS-31 | ограниченный pipeline с properties, state model и безопасной деградацией |
+| C. Удаление лишнего и стабилизация решений | DS-16…DS-22, DS-32 | нет demo-функций и недокументированных heuristic flips |
+| D. Эксплуатационные границы | DS-23…DS-25, DS-33, DS-34 | известны practical cliffs, mutation strength и измеримая производительность |
+| E. Release | DS-26 | документация и capability surface подтверждены полным regression gate |
 
-Пункты выполняются небольшими отдельными коммитами. Каждый коммит обязан добавлять или обновлять проверку из поля «Как проверить». Массовое перемещение файлов не совмещается с изменением поведения: сначала characterization tests, затем изменение контракта, затем удаление старого пути.
+Пункты выполняются небольшими отдельными коммитами. Каждый коммит обязан добавлять или обновлять проверку из поля «Как проверить». Массовое перемещение файлов не совмещается с изменением поведения: сначала characterization/contract, затем минимальный counterexample, затем локальное исправление и только после этого удаление старого пути. PASS 6–8 запускаются лишь там, где RiskScore/evidence показывают высокую ожидаемую ценность; весь репозиторий не подвергается бесконечному fuzz/mutation запуску.
 
-## 7. Definition of Done для stable release
+## 8. Definition of Done для stable release
 
 - Все mandatory CI jobs зелёные на Python 3.11/3.12.
 - Unit suite полностью герметична; browser/provider/storage tests отделены и воспроизводимы.
@@ -415,3 +724,8 @@ CLI, REST и MCP должны быть только тремя адаптера�
 - Документация не заявляет возможность без соответствующего contract/integration test.
 - Показатели latency, peak memory и request count имеют зафиксированный baseline.
 - Clean-room установка, wheel smoke, container health и MCP handshake проходят автоматически.
+- Для top-10 утверждены contract, invariants, hidden assumptions, boundary/order/state/time/retry/failure semantics.
+- Все подтверждённые P0/P1 FRAG имеют минимальный regression test; неподтверждённые риски явно остаются hypotheses.
+- Property tests сохраняют shrunk examples, stateful tests совпадают с reference model, fault tests проверяют состояние после ошибки.
+- Нет surviving meaningful mutants на security boundary, state transitions, budgets, retry и error outcomes; targeted mutation score не ниже 80%.
+- После hardening пересчитан Fragility Index; остаточный `31+` допускается только с явным risk acceptance и ограничением public capability.
