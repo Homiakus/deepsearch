@@ -1,0 +1,249 @@
+openapi: 3.0.3
+info:
+  title: DeepSearch Adaptive Web Scraping & Retrieval Platform API
+  version: 1.0.0
+  description: REST API for page inspection, adaptive web crawling, hybrid text/visual vector search, and autonomous research pipeline execution.
+servers:
+  - url: http://localhost:8080/api/v1
+security:
+  - bearerAuth: []
+paths:
+  /health:
+    get:
+      summary: System Health Check
+      security: []
+      responses:
+        '200':
+          description: Service health status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: "ok" }
+                  app: { type: string, example: "DeepSearch Adaptive Scraper" }
+                  version: { type: string, example: "1.0.0" }
+
+  /metrics/summary:
+    get:
+      summary: Prometheus Telemetry Metrics Summary
+      security: []
+      responses:
+        '200':
+          description: Telemetry counters and performance metrics summary
+          content:
+            application/json:
+              schema:
+                type: object
+
+  /inspect:
+    post:
+      summary: Inspect URL Page Intelligence & Strategy Recommendation (§57)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InspectRequest'
+      responses:
+        '200':
+          description: Inspection report with page metrics and cost estimation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InspectResponse'
+
+  /crawl:
+    post:
+      summary: Start Adaptive Domain Crawl Job (§55)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CrawlJobRequest'
+      responses:
+        '200':
+          description: Crawl job created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CrawlJobResponse'
+
+  /crawl/{job_id}:
+    get:
+      summary: Get Crawl Job Status & Frontier Stats
+      parameters:
+        - in: path
+          name: job_id
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Crawl job status and stats
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  job_id: { type: string }
+                  stats: { type: object }
+
+  /search/text:
+    post:
+      summary: Semantic Text Vector Search
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SearchQueryRequest'
+      responses:
+        '200':
+          description: Search results
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SearchResultItem'
+
+  /search/visual:
+    post:
+      summary: Visual Multivector Search (PixelRAG)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SearchQueryRequest'
+      responses:
+        '200':
+          description: Search results
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SearchResultItem'
+
+  /search/hybrid:
+    post:
+      summary: Hybrid Text & Visual Multivector Search
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SearchQueryRequest'
+      responses:
+        '200':
+          description: Search results
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SearchResultItem'
+
+  /research:
+    post:
+      summary: Execute DeepSearch Research Pipeline
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResearchPipelineRequest'
+      responses:
+        '200':
+          description: Research pipeline completed and archive path returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResearchPipelineResponse'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+  schemas:
+    InspectRequest:
+      type: object
+      required: [url]
+      properties:
+        url: { type: string, format: uri }
+
+    InspectResponse:
+      type: object
+      properties:
+        url: { type: string }
+        canonical_url: { type: string }
+        http_status: { type: integer }
+        content_type: { type: string }
+        static_score: { type: number }
+        js_dependency_score: { type: number }
+        detected_apis_count: { type: integer }
+        tables_count: { type: integer }
+        canvas_detected: { type: boolean }
+        visual_score: { type: number }
+        recommended_strategy: { type: string }
+        estimated_cost: { type: number }
+
+    CrawlJobRequest:
+      type: object
+      required: [url]
+      properties:
+        url: { type: string, format: uri }
+        max_depth: { type: integer, default: 3, minimum: 0, maximum: 10 }
+        max_pages: { type: integer, default: 100, minimum: 1, maximum: 50000 }
+        mode: { type: string, enum: [fast, balanced, complete, research, archive], default: balanced }
+
+    CrawlJobResponse:
+      type: object
+      properties:
+        job_id: { type: string }
+        status: { type: string }
+        url: { type: string }
+        max_depth: { type: integer }
+        max_pages: { type: integer }
+
+    SearchQueryRequest:
+      type: object
+      required: [query]
+      properties:
+        query: { type: string }
+        limit: { type: integer, default: 10 }
+
+    SearchResultItem:
+      type: object
+      properties:
+        url: { type: string }
+        title: { type: string }
+        score: { type: number }
+        snippet: { type: string }
+        retrieval_type: { type: string }
+
+    ResearchPipelineRequest:
+      type: object
+      required: [query]
+      properties:
+        query: { type: string }
+        domain: { type: string, nullable: true }
+        preferred_sources:
+          type: array
+          items: { type: string }
+        depth: { type: integer, default: 3, minimum: 0, maximum: 10 }
+        max_pages: { type: integer, default: 50, minimum: 1, maximum: 5000 }
+        mode: { type: string, enum: [fast, balanced, complete, research, archive], default: balanced }
+        export_archive: { type: boolean, default: true }
+
+    ResearchPipelineResponse:
+      type: object
+      properties:
+        query: { type: string }
+        total_pages_processed: { type: integer }
+        total_rag_chunks: { type: integer }
+        archive_path: { type: string, nullable: true }
+        manifest: { type: object }
