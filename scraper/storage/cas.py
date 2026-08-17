@@ -53,3 +53,13 @@ class ContentAddressableStore:
         if ZSTD_AVAILABLE:
             return self.dctx.decompress(compressed)
         return compressed
+
+
+def get_cas_store(backend: Optional[str] = None) -> ContentAddressableStore:
+    """Factory to retrieve configured CAS store (local or S3)."""
+    selected = backend or settings.cas_backend
+    if selected.lower() == "s3":
+        from scraper.storage.s3_cas import S3ContentAddressableStore
+        return S3ContentAddressableStore()
+    return ContentAddressableStore()
+

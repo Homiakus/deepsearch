@@ -1,0 +1,23 @@
+{
+  "name": "@deepsearch/sdk",
+  "version": "1.0.0",
+  "description": "Official TypeScript/JavaScript Client SDK for DeepSearch Platform",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "echo \"Running TS tests\""
+  },
+  "keywords": [
+    "deepsearch",
+    "scraper",
+    "rag",
+    "retrieval",
+    "sdk"
+  ],
+  "author": "DeepSearch Team",
+  "license": "Apache-2.0",
+  "devDependencies": {
+    "typescript": "^5.3.0"
+  }
+}

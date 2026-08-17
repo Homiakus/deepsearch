@@ -194,3 +194,61 @@ async def cancel_research(run_id: str):
         return {"run_id": run_id, "status": "CANCELLED"}
     except KeyError:
         raise HTTPException(status_code=404, detail=f"Research run '{run_id}' not found")
+
+
+
+from fastapi.responses import StreamingResponse
+from scraper.api.sse import sse_broker
+from scraper.storage.exporters.obsidian import ObsidianVaultExporter
+from scraper.storage.exporters.zotero import ZoteroLibraryExporter
+
+
+
+@router.get("/research/{run_id}/events")
+async def stream_research_events(run_id: str):
+    """Real-time SSE event stream for live research execution telemetry and status updates."""
+    return StreamingResponse(
+        sse_broker.subscribe(run_id),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
+@router.post("/research/{run_id}/export/obsidian")
+async def export_research_obsidian(run_id: str, output_dir: Optional[str] = None):
+    """Export research execution artifacts to an Obsidian markdown vault."""
+    try:
+        res = await research_service.result(run_id)
+        if res is None:
+            raise HTTPException(status_code=425, detail="Research is still running")
+        vault_dir = output_dir or f"./data/exports/obsidian_{run_id}"
+        exporter = ObsidianVaultExporter(vault_dir)
+        index_path = exporter.export_vault(
+            query=res.query,
+            extractions=[],
+            evidence_claims=res.claims,
+            metadata={"run_id": run_id, "quality_score": res.quality_score},
+        )
+        return {"status": "ok", "run_id": run_id, "vault_index": index_path, "vault_dir": vault_dir}
+    except KeyError:
+        raise HTTPException(status_code=404, detail=f"Research run '{run_id}' not found")
+
+
+@router.post("/research/{run_id}/export/zotero")
+async def export_research_zotero(run_id: str, output_dir: Optional[str] = None):
+    """Export research execution citations to Zotero CSL-JSON and RIS files."""
+    try:
+        res = await research_service.result(run_id)
+        if res is None:
+            raise HTTPException(status_code=425, detail="Research is still running")
+        zotero_dir = output_dir or f"./data/exports/zotero_{run_id}"
+        exporter = ZoteroLibraryExporter(zotero_dir)
+        files = exporter.export_all([], query=res.query)
+        return {"status": "ok", "run_id": run_id, "files": files, "output_dir": zotero_dir}
+    except KeyError:
+        raise HTTPException(status_code=404, detail=f"Research run '{run_id}' not found")
+

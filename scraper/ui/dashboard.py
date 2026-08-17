@@ -357,6 +357,8 @@ def render_dashboard_html() -> str:
             }
         }
 
+        let currentEventSource = null;
+
         async function startResearch() {
             const q = document.getElementById('crawl-url-input').value;
             if(!q) return;
@@ -370,11 +372,60 @@ def render_dashboard_html() -> str:
                 const data = await res.json();
                 document.getElementById('job-status-pre').innerText = JSON.stringify(data, null, 2);
                 if (data.run_id) {
-                    pollJob(data.run_id);
+                    streamJobEvents(data.run_id);
                 }
             } catch(e) {
                 document.getElementById('job-status-pre').innerText = "Error: " + e;
             }
+        }
+
+        function streamJobEvents(runId) {
+            if (currentEventSource) {
+                currentEventSource.close();
+            }
+            const logArea = document.getElementById('job-status-pre');
+            logArea.innerText = `[SSE Stream Connected for Run: ${runId}]\nWaiting for telemetry events...\n`;
+
+            currentEventSource = new EventSource(`/api/v1/research/${runId}/events`);
+            
+            currentEventSource.onmessage = function(e) {
+                try {
+                    const parsed = JSON.parse(e.data);
+                    logArea.innerText += `\n[${new Date(parsed.timestamp * 1000).toLocaleTimeString()}] [${parsed.event_type}]: ${JSON.stringify(parsed.data || parsed)}`;
+                    logArea.scrollTop = logArea.scrollHeight;
+                } catch(err) {
+                    logArea.innerText += `\n${e.data}`;
+                }
+            };
+
+            currentEventSource.addEventListener('stage_change', function(e) {
+                const ev = JSON.parse(e.data);
+                logArea.innerText += `\n⚡ STAGE: ${ev.data.stage || ev.event_type}`;
+            });
+
+            currentEventSource.addEventListener('completed', function(e) {
+                logArea.innerText += `\n✅ RESEARCH COMPLETED! Ready for Obsidian / Zotero Export.`;
+                currentEventSource.close();
+            });
+
+            currentEventSource.onerror = function() {
+                // Fallback to polling if SSE closes or completes
+                pollJob(runId);
+            };
+        }
+
+        async function exportObsidian(runId) {
+            if(!runId) return;
+            const res = await fetch(`/api/v1/research/${runId}/export/obsidian`, {method: 'POST'});
+            const data = await res.json();
+            alert(`Obsidian Vault Exported to: ${data.vault_dir}`);
+        }
+
+        async function exportZotero(runId) {
+            if(!runId) return;
+            const res = await fetch(`/api/v1/research/${runId}/export/zotero`, {method: 'POST'});
+            const data = await res.json();
+            alert(`Zotero CSL-JSON and RIS Exported to: ${data.output_dir}`);
         }
 
         async function pollJob(runId) {
@@ -387,12 +438,12 @@ def render_dashboard_html() -> str:
                         clearInterval(timer);
                     }
                 } catch(e) {}
-            }, 1000);
+            }, 1500);
         }
 
         async function refreshMetrics() {
             try {
-                const res = await fetch('/api/v1/metrics');
+                const res = await fetch('/api/v1/metrics/summary');
                 if(res.ok) {
                     const m = await res.json();
                     if(m.pages_processed !== undefined) document.getElementById('stat-pages').innerText = m.pages_processed;

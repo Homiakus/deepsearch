@@ -85,9 +85,6 @@ class Settings(BaseSettings):
     qdrant_url: str = "http://localhost:6333"
     storage_path: str = "./data/storage"
 
-    # External Search Providers
-    annas_archive_url: str = "https://annas-archive.cc"
-
     # Feature Flags & Orchestration (§0, §1, DS-A40, DS-A50)
     orchestration_backend: str = "axiom"  # legacy | axiom
     retrieval_backend: str = "qdrant"     # disabled | qdrant
@@ -95,7 +92,29 @@ class Settings(BaseSettings):
     orchestrator_url: str = "http://localhost:8081"
     orchestrator_token: str = "adgo-dev-token"
 
+    # S3 / MinIO Object Storage CAS Backend
+    cas_backend: str = "local"  # local | s3
+    s3_endpoint_url: str = "http://localhost:9000"
+    s3_bucket_name: str = "deepsearch-cas"
+    s3_access_key_id: str = "minioadmin"
+    s3_secret_access_key: str = "minioadmin"
+    s3_region: str = "us-east-1"
+
+    # Distributed Queue Settings
+    distributed_queue_backend: str = "memory"  # memory | redis
+    redis_stream_key: str = "deepsearch:crawl_requests"
+    redis_consumer_group: str = "deepsearch_workers"
+
+    # Dynamic Cookie & Auth Session Persistence
+    session_vault_key: str = "deepsearch-master-secret-key-32b!"
+    session_vault_path: str = "./data/sessions.vault"
+
+    # VLM Visual Embeddings
+    vlm_model_name: str = "Qwen/Qwen2-VL-7B-Instruct"
+    vlm_embedding_dim: int = 512
+
     # Operational Sub-configurations (§101 defaults)
+
     adaptive: AdaptiveConfig = Field(default_factory=AdaptiveConfig)
     robots: RobotsConfig = Field(default_factory=RobotsConfig)
     limits: RateLimitConfig = Field(default_factory=RateLimitConfig)
@@ -105,3 +124,4 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+

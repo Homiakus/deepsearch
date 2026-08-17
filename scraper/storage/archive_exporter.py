@@ -294,3 +294,33 @@ class ArchiveExporter:
 
         return str(zip_path)
 
+
+    def export_obsidian_vault(
+        self,
+        results: List[Tuple[CapturedArtifact, ExtractionResult]],
+        output_dir: str,
+        evidence_claims: Optional[List[Dict[str, Any]]] = None,
+    ) -> str:
+        """Export research results directly to an Obsidian Vault directory."""
+        from scraper.storage.exporters.obsidian import ObsidianVaultExporter
+        extractions = [ext for _, ext in results]
+        exporter = ObsidianVaultExporter(output_dir)
+        return exporter.export_vault(
+            query=self.metadata.query,
+            extractions=extractions,
+            evidence_claims=evidence_claims,
+            metadata=self.metadata.model_dump(),
+        )
+
+    def export_zotero_library(
+        self,
+        results: List[Tuple[CapturedArtifact, ExtractionResult]],
+        output_dir: str,
+    ) -> Dict[str, str]:
+        """Export research results to Zotero CSL-JSON and RIS files."""
+        from scraper.storage.exporters.zotero import ZoteroLibraryExporter
+        extractions = [ext for _, ext in results]
+        exporter = ZoteroLibraryExporter(output_dir)
+        return exporter.export_all(extractions, query=self.metadata.query)
+
+

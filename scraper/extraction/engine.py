@@ -19,12 +19,14 @@ class FieldProvenance(BaseModel):
 
 class ExtractionResult(BaseModel):
     url: str
+    title: Optional[str] = None
     raw_markdown: str
     clean_markdown: str
     fit_markdown: str
     extracted_records: Dict[str, FieldProvenance] = {}
     tables: List[TableData] = []
     extraction_strategy: str = "E1_DETERMINISTIC"
+
 
 
 class ExtractionEngine:
