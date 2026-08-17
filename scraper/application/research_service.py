@@ -14,8 +14,6 @@ from scraper.application.models import (
     ResearchResult,
     RunLifecycleState,
 )
-from scraper.config import settings
-
 logger = logging.getLogger(__name__)
 
 
@@ -127,7 +125,11 @@ class DefaultResearchApplicationService:
             pipeline = DeepSearchPipeline()
             pipeline_res = await pipeline.execute(opts)
 
-            status.status = RunLifecycleState.COMPLETED
+            status.status = (
+                RunLifecycleState.COMPLETED
+                if pipeline_res.quality_gate_passed
+                else RunLifecycleState.INSUFFICIENT_EVIDENCE
+            )
             status.progress = 1.0
             status.current_node = "CompleteResearch"
             status.pages_processed = pipeline_res.total_pages_processed
@@ -137,7 +139,7 @@ class DefaultResearchApplicationService:
             res = ResearchResult(
                 run_id=run_id,
                 query=pipeline_res.query,
-                status=RunLifecycleState.COMPLETED,
+                status=status.status,
                 total_pages_processed=pipeline_res.total_pages_processed,
                 total_rag_chunks=pipeline_res.total_rag_chunks,
                 archive_path=pipeline_res.archive_path,

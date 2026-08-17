@@ -19,6 +19,8 @@ class AdaptiveConfig(BaseModel):
     visual_threshold: float = Field(default=0.65, description="Visual need score threshold for Visual/PixelRAG indexing")
     api_preference: bool = Field(default=True, description="Prefer detected direct JSON API over browser rendering")
     retry_http_before_browser: bool = Field(default=True, description="Retry with HTTP headers before browser escalation")
+    browser_navigation_timeout_seconds: float = Field(default=5.0, ge=2.0, le=120.0, description="Bounded browser navigation timeout")
+    browser_selector_timeout_seconds: float = Field(default=3.0, ge=1.0, le=30.0, description="Bounded readiness selector timeout")
 
 
 class RobotsConfig(BaseModel):

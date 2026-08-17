@@ -15,6 +15,7 @@ class RunLifecycleState(str, Enum):
     FAILED = "FAILED"
     CANCELLED = "CANCELLED"
     BUDGET_EXHAUSTED = "BUDGET_EXHAUSTED"
+    INSUFFICIENT_EVIDENCE = "INSUFFICIENT_EVIDENCE"
 
 
 class FeatureAvailabilityState(str, Enum):

@@ -19,3 +19,7 @@ def test_canonicalize_canonical_tag_override():
     raw = "https://site.com/page?variant=2"
     canonical_tag = "https://site.com/page"
     assert canonicalize_url(raw, canonical_link_tag=canonical_tag) == "https://site.com/page"
+
+
+def test_canonicalize_upgrades_known_secure_discovery_domains():
+    assert canonicalize_url("http://arxiv.org/abs/2309.15217v2") == "https://arxiv.org/abs/2309.15217v2"

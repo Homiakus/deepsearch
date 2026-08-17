@@ -9,6 +9,14 @@ TRACKING_PARAMS: Set[str] = {
     "fbclid", "gclid", "msclkid", "mc_eid", "_ga", "ref", "source"
 }
 
+HTTPS_UPGRADE_DOMAINS: Set[str] = {
+    "arxiv.org",
+    "export.arxiv.org",
+    "europepmc.org",
+    "pubmed.ncbi.nlm.nih.gov",
+    "ncbi.nlm.nih.gov",
+}
+
 
 def canonicalize_url(raw_url: str, canonical_link_tag: str = None) -> str:
     """Normalizes and canonicalizes a URL (§16)."""
@@ -22,6 +30,9 @@ def canonicalize_url(raw_url: str, canonical_link_tag: str = None) -> str:
     # 1. Lowercase scheme and hostname
     scheme = parsed.scheme.lower()
     netloc = parsed.netloc.lower()
+
+    if scheme == "http" and netloc in HTTPS_UPGRADE_DOMAINS:
+        scheme = "https"
 
     # 2. Normalize default ports
     if scheme == "http" and netloc.endswith(":80"):

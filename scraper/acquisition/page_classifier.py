@@ -55,15 +55,15 @@ def classify_page(
 
     # Detect frameworks & SPA hydration markers (§7)
     frameworks = []
-    if "__next_data__" in html_lower or "next.js" in html_lower:
+    if "__next_data__" in html_lower or "next/static" in html_lower or "__next" in html_lower:
         frameworks.append("Next.js")
-    if "__nuxt__" in html_lower or "nuxt" in html_lower:
+    if "__nuxt__" in html_lower or "nuxt.js" in html_lower:
         frameworks.append("Nuxt")
-    if "react" in html_lower or "data-reactroot" in html_lower:
+    if "data-reactroot" in html_lower or 'id="react-root"' in html_lower or "react-dom" in html_lower or "/react." in html_lower:
         frameworks.append("React")
-    if "vue" in html_lower or "v-app" in html_lower:
+    if "v-app" in html_lower or "data-v-" in html_lower or "vue.js" in html_lower or "vue.runtime" in html_lower:
         frameworks.append("Vue")
-    if "angular" in html_lower or "ng-version" in html_lower:
+    if "ng-version" in html_lower or "ng-app" in html_lower or "ng-controller" in html_lower:
         frameworks.append("Angular")
 
     # Detect visual elements

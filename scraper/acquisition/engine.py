@@ -1,5 +1,6 @@
 """Adaptive Acquisition Engine (§6, DS-RB37)."""
 
+import asyncio
 import logging
 import time
 from typing import Optional, Dict, Any, List
@@ -152,10 +153,13 @@ class AdaptiveAcquisitionEngine:
 
         # L3: Browser Escalation (Playwright Chromium) (§6.1 L3)
         try:
-            browser_res: BrowserResponse = await self.browser_pool.fetch_page(
-                url,
-                visual_mode=take_screenshot or (mode in (ExecutionMode.RESEARCH, ExecutionMode.COMPLETE)),
-                take_screenshot=take_screenshot
+            browser_res: BrowserResponse = await asyncio.wait_for(
+                self.browser_pool.fetch_page(
+                    url,
+                    visual_mode=take_screenshot or (mode in (ExecutionMode.RESEARCH, ExecutionMode.COMPLETE)),
+                    take_screenshot=take_screenshot
+                ),
+                timeout=float(settings.adaptive.browser_navigation_timeout_seconds + 3.0)
             )
             pi = classify_page(
                 browser_res.url,

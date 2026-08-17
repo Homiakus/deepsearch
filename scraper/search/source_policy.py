@@ -1,7 +1,17 @@
 """Source Policy & Contextual Authority Prior (DS-SI18, DS-SI48)."""
 
-from typing import Optional
+from enum import Enum
 from scraper.search.source_types import SourceType
+
+
+class SourceClass(str, Enum):
+    PEER_REVIEWED = "peer_reviewed"
+    PREPRINT = "preprint"
+    OFFICIAL = "official"
+    DATASET = "dataset"
+    SECONDARY = "secondary"
+    NAVIGATION = "navigation"
+    UNKNOWN = "unknown"
 
 
 # High authority scientific & medical repositories
@@ -79,3 +89,48 @@ def calculate_authority_prior(
         return 0.40
 
     return 0.50
+
+
+PEER_REVIEWED_DOMAINS = (
+    "nature.com",
+    "springer.com",
+    "sciencedirect.com",
+    "mdpi.com",
+    "frontiersin.org",
+    "plos.org",
+    "acm.org",
+    "ieeexplore.ieee.org",
+    "wiley.com",
+    "tandfonline.com",
+    "pubmed.ncbi.nlm.nih.gov",
+)
+
+
+def classify_source_class(url: str, source_type: str = "UNKNOWN", title: str = "") -> SourceClass:
+    """Classifies epistemic role independently of topical relevance."""
+    from urllib.parse import urlparse
+
+    parsed = urlparse(url or "")
+    domain = parsed.netloc.lower()
+    path = parsed.path.lower()
+    title_lower = (title or "").lower()
+
+    if any(marker in path for marker in ("/search", "/results", "/browse", "/login", "/accounts/login")):
+        return SourceClass.NAVIGATION
+    if source_type in (SourceType.WIKI.value, SourceType.AGGREGATOR.value):
+        return SourceClass.SECONDARY
+    if source_type in (SourceType.BLOG.value, SourceType.NEWS_MEDIA.value, SourceType.NEWS_WIRE.value):
+        return SourceClass.SECONDARY
+    if domain == "arxiv.org" or domain == "export.arxiv.org":
+        return SourceClass.PREPRINT
+    if domain == "europepmc.org" and "/article/" in path:
+        return SourceClass.PEER_REVIEWED
+    if any(domain == d or domain.endswith("." + d) for d in PEER_REVIEWED_DOMAINS):
+        return SourceClass.PEER_REVIEWED
+    if source_type in (SourceType.REGULATOR.value, SourceType.GUIDELINE.value, SourceType.STANDARD.value, SourceType.GOVERNMENT.value, SourceType.OFFICIAL_DOC.value):
+        return SourceClass.OFFICIAL
+    if source_type == SourceType.SOURCE_CODE.value:
+        return SourceClass.DATASET
+    if any(term in title_lower for term in ("survey", "systematic review", "meta-analysis", "benchmark")):
+        return SourceClass.SECONDARY
+    return SourceClass.UNKNOWN

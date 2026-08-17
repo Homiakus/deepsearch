@@ -1,10 +1,9 @@
 """Unit tests for Topic Media Discovery, Candidate Extraction, and Relevance Scoring."""
 
-import pytest
 from scraper.discovery.media_finder import (
     extract_image_candidates,
     score_and_rank_images,
-    extract_relevant_images
+    is_accepted_media_file,
 )
 
 
@@ -92,3 +91,18 @@ def test_score_and_rank_images_min_max_bounds():
     # Target 5 to 10 range
     ranked_10 = score_and_rank_images(candidates, query=query, min_count=5, max_count=10)
     assert len(ranked_10) == 10
+
+
+def test_media_quality_gate_rejects_small_and_technical_assets():
+    assert not is_accepted_media_file(
+        {"width": 10, "height": 10, "relevance_score": 0.9},
+        {"caption": "Topic image"},
+    )
+    assert not is_accepted_media_file(
+        {"width": 800, "height": 600, "relevance_score": 0.9},
+        {"caption": "Creative Commons licence badge"},
+    )
+    assert is_accepted_media_file(
+        {"width": 800, "height": 600, "relevance_score": 0.8},
+        {"caption": "Quantum algorithm diagram"},
+    )

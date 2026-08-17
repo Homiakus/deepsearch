@@ -1,11 +1,17 @@
-"""Typer CLI Application (§56, §57 Inspect Mode, DS-A02, DS-A03)."""
-
+import sys
 import asyncio
 from typing import Optional
 import typer
 from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
+
+if hasattr(sys.stdout, "reconfigure"):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+        sys.stderr.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
 
 from scraper.config import settings, ExecutionMode
 from scraper.normalization.canonicalizer import canonicalize_url
@@ -20,7 +26,8 @@ app = typer.Typer(
     help="Adaptive Web Scraping & Retrieval Platform (§100 UX Principle: simple commands, auto strategy selection)",
     add_completion=False
 )
-console = Console()
+console = Console(legacy_windows=False)
+
 
 
 @app.command()
@@ -171,16 +178,19 @@ def research(
         while True:
             await asyncio.sleep(0.5)
             st = await research_service.status(handle.run_id)
-            if st.status in (RunLifecycleState.COMPLETED, RunLifecycleState.FAILED, RunLifecycleState.CANCELLED):
+            if st.status in (RunLifecycleState.COMPLETED, RunLifecycleState.INSUFFICIENT_EVIDENCE, RunLifecycleState.FAILED, RunLifecycleState.CANCELLED):
                 break
 
         res = await research_service.result(handle.run_id)
-        if res and res.status == RunLifecycleState.COMPLETED:
+        if res and res.status in (RunLifecycleState.COMPLETED, RunLifecycleState.INSUFFICIENT_EVIDENCE):
             total_media = res.manifest.get("summary", {}).get("total_media_files", 0)
             console.print(f"[bold cyan]Total Pages Processed:[/bold cyan] {res.total_pages_processed}")
             console.print(f"[bold cyan]Total RAG Chunks Generated:[/bold cyan] {res.total_rag_chunks}")
             console.print(f"[bold cyan]Total Media Images Archived:[/bold cyan] {total_media}")
-            console.print(f"[bold green]Archive Generated Successfully at:[/bold green] {res.archive_path or res.dir_path}")
+            if res.status == RunLifecycleState.COMPLETED:
+                console.print(f"[bold green]Archive Generated Successfully at:[/bold green] {res.archive_path or res.dir_path}")
+            else:
+                console.print(f"[bold yellow]Archive Generated with Insufficient Evidence:[/bold yellow] {res.archive_path or res.dir_path}")
         else:
             st = await research_service.status(handle.run_id)
             console.print(f"[bold red]Research {st.status.value}:[/bold red] {st.error_message}")

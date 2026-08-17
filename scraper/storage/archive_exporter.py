@@ -76,7 +76,10 @@ class ArchiveExporter:
         results: List[Tuple[CapturedArtifact, ExtractionResult]],
         output_dir: str,
         pdf_files: Optional[List[Dict[str, Any]]] = None,
-        media_files: Optional[List[Dict[str, Any]]] = None
+        media_files: Optional[List[Dict[str, Any]]] = None,
+        rejections: Optional[List[Dict[str, Any]]] = None,
+        quality_report: Optional[Dict[str, Any]] = None,
+        media_quality: Optional[Dict[str, Any]] = None,
     ) -> str:
         """Builds the uncompressed folder structure containing `files/`, `pdfs/`, `media/`, `rag/`, and `manifest.json`."""
         out_path = Path(output_dir)
@@ -93,7 +96,7 @@ class ArchiveExporter:
         manifest_files = []
         all_rag_chunks: List[RAGChunk] = []
         rag_context_lines = [
-            f"# DeepSearch RAG Context Corpus",
+            "# DeepSearch RAG Context Corpus",
             f"> Search Query: {self.metadata.query}",
             f"> Subject Domain: {self.metadata.domain or 'Global'}",
             f"> Sources: {', '.join(self.metadata.preferred_sources) if self.metadata.preferred_sources else 'All'}",
@@ -117,11 +120,17 @@ class ArchiveExporter:
                 f"> **Canonical URL**: {artifact.canonical_url}\n"
                 f"> **Acquisition Strategy**: {artifact.strategy_used}\n"
                 f"> **Quality Score**: {artifact.page_intelligence.content_quality:.2f}\n"
+                f"> **Source Type**: {extraction.source_type}\n"
+                f"> **Authority Score**: {extraction.authority_score:.2f}\n"
+                f"> **Relevance Score**: {extraction.relevance_score if extraction.relevance_score is not None else 'n/a'}\n"
                 f"> **HTTP Status**: {artifact.status_code}\n\n"
                 f"---\n\n"
                 f"## Content Summary & Text\n\n"
-                f"{extraction.clean_markdown}\n"
+                f"{extraction.abstract_markdown or extraction.clean_markdown}\n"
             )
+
+            if extraction.full_text_markdown:
+                user_content += f"\n\n## Full-text Evidence\n\n{extraction.full_text_markdown}\n"
 
             if extraction.tables:
                 user_content += "\n\n## Extracted Tables\n\n"
@@ -138,7 +147,7 @@ class ArchiveExporter:
             })
 
             # --- 2. LLM RAG Dataset Generation (`rag/`) ---
-            text_for_rag = extraction.fit_markdown or extraction.clean_markdown
+            text_for_rag = extraction.full_text_markdown or extraction.fit_markdown or extraction.clean_markdown
             chunks = self._chunk_text(text_for_rag)
 
             for c_idx, chunk_text in enumerate(chunks):
@@ -152,11 +161,16 @@ class ArchiveExporter:
                     domain=domain_name,
                     text=chunk_text,
                     token_estimate=token_est,
-                    relevance_score=None,
+                    relevance_score=extraction.relevance_score,
                     provenance={
                         "strategy": artifact.strategy_used,
                         "status_code": artifact.status_code,
-                        "static_score": artifact.page_intelligence.static_score
+                        "static_score": artifact.page_intelligence.static_score,
+                        "source_type": extraction.source_type,
+                        "authority_score": extraction.authority_score,
+                        "published_at": extraction.published_at,
+                        "document_type": extraction.document_type,
+                        "full_text": bool(extraction.full_text_markdown),
                     }
                 )
                 all_rag_chunks.append(rag_chunk)
@@ -262,6 +276,19 @@ class ArchiveExporter:
         vector_index_path.write_text(json.dumps(vector_meta, indent=2, ensure_ascii=False), encoding="utf-8")
 
         # --- 5. Root Manifest (`manifest.json`) ---
+        rejection_records = rejections or []
+        if rejection_records:
+            rejection_path = out_path / "rejections.jsonl"
+            with rejection_path.open("w", encoding="utf-8") as f:
+                for record in rejection_records:
+                    f.write(json.dumps(record, ensure_ascii=False) + "\n")
+
+        if quality_report is not None:
+            (out_path / "source_quality_report.json").write_text(
+                json.dumps(quality_report, indent=2, ensure_ascii=False),
+                encoding="utf-8",
+            )
+
         manifest_data = {
             "deepsearch_version": "1.0",
             "metadata": self.metadata.model_dump(),
@@ -270,9 +297,13 @@ class ArchiveExporter:
                 "total_rag_chunks": len(all_rag_chunks),
                 "total_user_files": len(manifest_files),
                 "total_pdfs": total_pdf_files,
-                "total_media_files": total_media_files
+                "total_media_files": total_media_files,
+                "total_rejections": len(rejection_records),
             },
-            "inventory": manifest_files
+            "inventory": manifest_files,
+            "rejections": rejection_records,
+            "quality_gate": quality_report or {},
+            "media_quality": media_quality or {},
         }
         manifest_path = out_path / "manifest.json"
         manifest_path.write_text(json.dumps(manifest_data, indent=2, ensure_ascii=False), encoding="utf-8")

@@ -26,6 +26,17 @@ class ExtractionResult(BaseModel):
     extracted_records: Dict[str, FieldProvenance] = {}
     tables: List[TableData] = []
     extraction_strategy: str = "E1_DETERMINISTIC"
+    abstract_markdown: Optional[str] = None
+    full_text_markdown: Optional[str] = None
+    source_type: str = "UNKNOWN"
+    authority_score: float = 0.5
+    relevance_score: Optional[float] = None
+    published_at: Optional[str] = None
+    document_type: str = "DOCUMENT"
+    source_id: Optional[str] = None
+    source_title: str = ""
+    provider: str = ""
+    extraction_completeness: float = 1.0
 
 
 

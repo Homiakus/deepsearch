@@ -28,6 +28,8 @@ EXCLUDE_KEYWORDS = {
     "nav", "tracking", "pixel", "cookie", "sprite", "spinner", "loader",
     "social", "facebook", "twitter", "instagram", "linkedin", "share"
 }
+MIN_ACCEPTED_IMAGE_DIMENSION = 160
+MIN_ACCEPTED_IMAGE_RELEVANCE = 0.55
 
 
 def extract_document_links(raw_html: str, base_url: str) -> List[str]:
@@ -146,69 +148,52 @@ def extract_image_candidates(raw_html: str, base_url: str) -> List[Dict[str, Any
     return candidates
 
 
-async def fetch_wikimedia_topic_images(query: str, max_results: int = 15) -> List[Dict[str, Any]]:
+async def fetch_wikimedia_topic_images(query: str, max_results: int = 10) -> List[Dict[str, Any]]:
     """Queries Wikimedia Commons API for open topic-relevant images using list=search."""
     if not query:
         return []
 
     encoded_query = urllib.parse.quote(query)
     search_url = (
-        f"https://commons.wikimedia.org/w/api.php?action=query&list=search"
-        f"&srsearch={encoded_query}&srnamespace=6&srlimit={max_results}&format=json"
+        f"https://commons.wikimedia.org/w/api.php?action=query&generator=search"
+        f"&gsrsearch={encoded_query}&gsrnamespace=6&gsrlimit={max_results}&prop=imageinfo"
+        f"&iiprop=url|size|extmetadata&format=json"
     )
 
     candidates: List[Dict[str, Any]] = []
     headers = {"User-Agent": "DeepSearchBot/1.0 (https://deepsearch.org; contact@deepsearch.org) Python/3.13"}
 
     try:
-        async with httpx.AsyncClient(timeout=10.0, trust_env=False) as client:
+        async with httpx.AsyncClient(timeout=6.0, trust_env=False) as client:
             res = await client.get(search_url, headers=headers)
             if res.status_code == 200:
-                search_items = res.json().get("query", {}).get("search", [])
-                for item in search_items:
-                    file_title = item.get("title", "")
-                    if not file_title.startswith("File:"):
+                pages = res.json().get("query", {}).get("pages", {})
+                for page_id, page_info in pages.items():
+                    file_title = page_info.get("title", "")
+                    imageinfo = page_info.get("imageinfo", [])
+                    if not imageinfo:
+                        continue
+                    info = imageinfo[0]
+                    img_url = info.get("url")
+                    if not img_url:
                         continue
 
-                    # Filter extensions
-                    ext = file_title.split(".")[-1].lower()
-                    if ext not in {"jpg", "jpeg", "png", "webp", "gif", "svg"}:
-                        continue
+                    raw_title = file_title.replace("File:", "").replace("_", " ")
+                    extmetadata = info.get("extmetadata", {})
+                    desc = extmetadata.get("ObjectName", {}).get("value") or extmetadata.get("ImageDescription", {}).get("value") or raw_title
+                    clean_desc = re.sub(r'<[^>]+>', '', str(desc)).strip()[:200] or raw_title
 
-                    # Get imageinfo
-                    safe_file = urllib.parse.quote(file_title)
-                    info_url = f"https://commons.wikimedia.org/w/api.php?action=query&titles={safe_file}&prop=imageinfo&iiprop=url|size|extmetadata&format=json"
-                    try:
-                        info_res = await client.get(info_url, headers=headers)
-                        if info_res.status_code == 200:
-                            pages = info_res.json().get("query", {}).get("pages", {})
-                            for page_id, page_info in pages.items():
-                                imageinfo = page_info.get("imageinfo", [])
-                                if not imageinfo:
-                                    continue
-                                info = imageinfo[0]
-                                img_url = info.get("url")
-                                if not img_url:
-                                    continue
-
-                                raw_title = file_title.replace("File:", "").replace("_", " ")
-                                extmetadata = info.get("extmetadata", {})
-                                desc = extmetadata.get("ObjectName", {}).get("value") or extmetadata.get("ImageDescription", {}).get("value") or raw_title
-                                clean_desc = re.sub(r'<[^>]+>', '', str(desc)).strip()[:200] or raw_title
-
-                                candidates.append({
-                                    "url": img_url,
-                                    "caption": clean_desc,
-                                    "alt": raw_title,
-                                    "title": raw_title,
-                                    "figcaption": clean_desc,
-                                    "width": info.get("width"),
-                                    "height": info.get("height"),
-                                    "source_domain": "commons.wikimedia.org",
-                                    "page_url": info.get("descriptionurl", "")
-                                })
-                    except Exception:
-                        pass
+                    candidates.append({
+                        "url": img_url,
+                        "caption": clean_desc,
+                        "alt": raw_title,
+                        "title": raw_title,
+                        "figcaption": clean_desc,
+                        "width": info.get("width"),
+                        "height": info.get("height"),
+                        "source_domain": "commons.wikimedia.org",
+                        "page_url": info.get("descriptionurl", "")
+                    })
     except Exception as exc:
         logger.warning("Wikimedia Commons media search error for '%s': %s", query, exc)
 
@@ -224,7 +209,7 @@ async def fetch_wikipedia_article_images(query: str, max_results: int = 10) -> L
     encoded_query = urllib.parse.quote(query)
     api_url = (
         f"https://en.wikipedia.org/w/api.php?action=query&generator=search"
-        f"&gsrsearch={encoded_query}&gsrlimit=5&prop=pageimages|images"
+        f"&gsrsearch={encoded_query}&gsrlimit=5&prop=pageimages"
         f"&pithumbsize=1000&format=json"
     )
 
@@ -232,7 +217,7 @@ async def fetch_wikipedia_article_images(query: str, max_results: int = 10) -> L
     headers = {"User-Agent": "DeepSearchBot/1.0 (https://deepsearch.org; contact@deepsearch.org) Python/3.13"}
 
     try:
-        async with httpx.AsyncClient(timeout=10.0, trust_env=False) as client:
+        async with httpx.AsyncClient(timeout=6.0, trust_env=False) as client:
             res = await client.get(api_url, headers=headers)
             if res.status_code == 200:
                 data = res.json()
@@ -253,43 +238,8 @@ async def fetch_wikipedia_article_images(query: str, max_results: int = 10) -> L
                             "source_domain": "en.wikipedia.org",
                             "page_url": f"https://en.wikipedia.org/wiki/{urllib.parse.quote(title.replace(' ', '_'))}"
                         })
-
-                    # Also query File: images listed in article
-                    images_list = page_info.get("images", [])
-                    for img_node in images_list[:4]:
-                        file_title = img_node.get("title", "")
-                        if any(ext in file_title.lower() for ext in [".jpg", ".png", ".webp", ".svg"]):
-                            if not any(k in file_title.lower() for k in EXCLUDE_KEYWORDS):
-                                clean_name = file_title.replace("File:", "").replace("_", " ")
-                                # Convert file title to Wikipedia upload URL stream
-                                safe_file = urllib.parse.quote(file_title.replace("File:", "").replace(" ", "_"))
-                                file_info_url = f"https://en.wikipedia.org/w/api.php?action=query&titles=File:{safe_file}&prop=imageinfo&iiprop=url|size&format=json"
-                                try:
-                                    f_res = await client.get(file_info_url, headers=headers)
-                                    if f_res.status_code == 200:
-                                        f_pages = f_res.json().get("query", {}).get("pages", {})
-                                        for fp_id, fp_info in f_pages.items():
-                                            f_info_list = fp_info.get("imageinfo", [])
-                                            if f_info_list and f_info_list[0].get("url"):
-                                                fi = f_info_list[0]
-                                                candidates.append({
-                                                    "url": fi["url"],
-                                                    "caption": f"{title} - {clean_name}",
-                                                    "alt": clean_name,
-                                                    "title": clean_name,
-                                                    "figcaption": clean_name,
-                                                    "width": fi.get("width"),
-                                                    "height": fi.get("height"),
-                                                    "source_domain": "upload.wikimedia.org",
-                                                    "page_url": f"https://en.wikipedia.org/wiki/{safe_file}"
-                                                })
-                                except Exception:
-                                    pass
-
-                    if len(candidates) >= max_results:
-                        break
     except Exception as exc:
-        logger.warning("Wikipedia article images fetch error for '%s': %s", query, exc)
+        logger.warning("Wikipedia article media search error for '%s': %s", query, exc)
 
     return candidates
 
@@ -327,6 +277,15 @@ def score_and_rank_images(
 
         combined_text = f"{caption} {alt} {title} {figcaption} {filename}"
 
+        # Reject technical assets before scoring: favicons, badges, tracking
+        # pixels and licence marks are not topic evidence.
+        if any(kw in combined_text for kw in EXCLUDE_KEYWORDS):
+            continue
+        w = item.get("width")
+        h = item.get("height")
+        if (w is not None and w < MIN_ACCEPTED_IMAGE_DIMENSION) or (h is not None and h < MIN_ACCEPTED_IMAGE_DIMENSION):
+            continue
+
         # 1. Topic Lexical Matching
         term_matches = sum(1 for term in query_terms if term in combined_text)
         if query_terms:
@@ -339,8 +298,6 @@ def score_and_rank_images(
             score += 0.15
 
         # 3. Dimensions & Aspect Ratio Heuristics
-        w = item.get("width")
-        h = item.get("height")
         if w and h:
             if w >= 400 and h >= 300:
                 score += 0.15
@@ -354,10 +311,10 @@ def score_and_rank_images(
                 score -= 0.1
 
         # 4. Exclusion Keywords Penalty
-        if any(kw in combined_text for kw in EXCLUDE_KEYWORDS):
-            score -= 0.5
-
         final_score = round(max(0.05, min(1.0, score)), 3)
+
+        if query_terms and final_score < MIN_ACCEPTED_IMAGE_RELEVANCE:
+            continue
 
         scored_item = dict(item)
         scored_item["relevance_score"] = final_score
@@ -371,6 +328,23 @@ def score_and_rank_images(
     return scored_images[:target_count]
 
 
+def is_accepted_media_file(media_info: Dict[str, Any], candidate: Optional[Dict[str, Any]] = None) -> bool:
+    """Validates downloaded media, including dimensions and topic score."""
+    candidate = candidate or {}
+    width = media_info.get("width") or candidate.get("width")
+    height = media_info.get("height") or candidate.get("height")
+    if width is not None and width < MIN_ACCEPTED_IMAGE_DIMENSION:
+        return False
+    if height is not None and height < MIN_ACCEPTED_IMAGE_DIMENSION:
+        return False
+    if media_info.get("relevance_score", candidate.get("relevance_score", 0.0)) < MIN_ACCEPTED_IMAGE_RELEVANCE:
+        return False
+    combined_text = " ".join(
+        str(candidate.get(key, "")) for key in ("caption", "alt", "title", "figcaption")
+    ).lower()
+    return not any(kw in combined_text for kw in EXCLUDE_KEYWORDS)
+
+
 def extract_relevant_images(raw_html: str, base_url: str, max_images: int = 5) -> List[Dict[str, str]]:
     """Legacy helper for backwards compatibility. Returns top images extracted from HTML."""
     candidates = extract_image_candidates(raw_html, base_url)
@@ -378,4 +352,3 @@ def extract_relevant_images(raw_html: str, base_url: str, max_images: int = 5) -
         return []
     ranked = score_and_rank_images(candidates, query="", min_count=1, max_count=max_images)
     return [{"url": img["url"], "caption": img["caption"]} for img in ranked]
-

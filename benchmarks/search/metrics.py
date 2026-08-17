@@ -85,3 +85,49 @@ def compute_near_duplicate_ratio(fingerprints: List[int], hamming_thresh: int = 
         else:
             seen.append(fp)
     return duplicates / len(fingerprints)
+
+
+def compute_source_chunk_concentration(source_chunk_counts: Dict[str, int]) -> float:
+    """Largest fraction of chunks contributed by a single source."""
+    total = sum(source_chunk_counts.values())
+    return max(source_chunk_counts.values(), default=0) / max(total, 1)
+
+
+def compute_direct_evidence_rate(sources: List[Dict[str, Any]]) -> float:
+    if not sources:
+        return 0.0
+    return sum(bool(source.get("direct_evidence")) for source in sources) / len(sources)
+
+
+def evaluate_quality_gate_report(
+    report: Dict[str, Any],
+    min_direct_evidence_rate: float = 0.80,
+    max_block_page_rate: float = 0.0,
+) -> Dict[str, Any]:
+    """Evaluate the run-level source quality contract from an exported report."""
+    summary = report.get("summary", {})
+    accepted = int(summary.get("accepted_source_count", 0))
+    rejected = int(summary.get("rejected_candidate_count", 0))
+    total = accepted + rejected
+    block_rejections = sum(
+        1 for item in report.get("rejections", [])
+        if str(item.get("document_type", "")).upper() in {"BLOCK_PAGE", "LOGIN", "JS_SHELL", "ERROR_PAGE"}
+        or "BLOCK" in str(item.get("reason_code", "")).upper()
+    )
+    direct_rate = float(summary.get("direct_evidence_rate", compute_direct_evidence_rate(report.get("sources", []))))
+    block_rate = block_rejections / max(total, 1)
+    checks = {
+        "direct_evidence_rate": direct_rate >= min_direct_evidence_rate,
+        "block_page_rate": block_rate <= max_block_page_rate,
+        "report_status": report.get("status") == "SUFFICIENT_EVIDENCE",
+    }
+    return {
+        "passed": all(checks.values()),
+        "checks": checks,
+        "metrics": {
+            "direct_evidence_rate": round(direct_rate, 3),
+            "block_page_rate": round(block_rate, 3),
+            "accepted_sources": accepted,
+            "rejected_candidates": rejected,
+        },
+    }

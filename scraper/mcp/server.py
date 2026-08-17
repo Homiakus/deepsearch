@@ -16,7 +16,7 @@ from scraper.normalization.canonicalizer import canonicalize_url
 from scraper.extraction.engine import ExtractionEngine
 from scraper.search.search_engine import SearchEngine
 from scraper.discovery.seed_finder import discover_diverse_seeds
-from scraper.application.models import ResearchRequest, RunLifecycleState, FeatureAvailabilityState
+from scraper.application.models import ResearchRequest, RunLifecycleState
 from scraper.application.research_service import research_service
 
 logger = logging.getLogger(__name__)
@@ -61,13 +61,19 @@ async def deepsearch_research(
     while True:
         await asyncio.sleep(0.5)
         st = await research_service.status(handle.run_id)
-        if st.status in (RunLifecycleState.COMPLETED, RunLifecycleState.FAILED, RunLifecycleState.CANCELLED):
+        if st.status in (
+            RunLifecycleState.COMPLETED,
+            RunLifecycleState.INSUFFICIENT_EVIDENCE,
+            RunLifecycleState.FAILED,
+            RunLifecycleState.CANCELLED,
+        ):
             break
 
     res = await research_service.result(handle.run_id)
-    if res and res.status == RunLifecycleState.COMPLETED:
+    if res and res.status in (RunLifecycleState.COMPLETED, RunLifecycleState.INSUFFICIENT_EVIDENCE):
         return json.dumps({
             "status": "success",
+            "quality_status": res.status.value,
             "run_id": res.run_id,
             "query": res.query,
             "total_pages_processed": res.total_pages_processed,

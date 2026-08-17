@@ -110,12 +110,19 @@ class BrowserPoolManager:
             await page.route("**/*", route_handler)
 
         try:
-            res = await page.goto(url, wait_until="networkidle", timeout=30000)
+            res = await page.goto(
+                url,
+                wait_until="domcontentloaded",
+                timeout=int(settings.adaptive.browser_navigation_timeout_seconds * 1000),
+            )
             status_code = res.status if res else 200
 
             if wait_for_selector:
                 try:
-                    await page.wait_for_selector(wait_for_selector, timeout=5000)
+                    await page.wait_for_selector(
+                        wait_for_selector,
+                        timeout=int(settings.adaptive.browser_selector_timeout_seconds * 1000),
+                    )
                 except Exception:
                     pass
 
