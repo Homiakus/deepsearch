@@ -1,21 +1,23 @@
-"""DeepSearch Model Context Protocol (MCP) Server.
+"""DeepSearch Model Context Protocol (MCP) Server (§100, DS-A02, DS-A03).
 
 Exposes DeepSearch research, inspection, extraction, and hybrid retrieval tools
 to LLM clients (Claude, Cursor, Antigravity, VS Code, etc.) over standard MCP interfaces.
 """
 
+import asyncio
 import json
 import logging
-from typing import Optional, List, Dict, Any
+from typing import Optional, List
 from mcp.server.fastmcp import FastMCP
 
 from scraper.config import settings, ExecutionMode
 from scraper.acquisition.engine import AdaptiveAcquisitionEngine
 from scraper.normalization.canonicalizer import canonicalize_url
 from scraper.extraction.engine import ExtractionEngine
-from scraper.pipeline.search_pipeline import DeepSearchPipeline, DeepSearchPipelineOptions
 from scraper.search.search_engine import SearchEngine
 from scraper.discovery.seed_finder import discover_diverse_seeds
+from scraper.application.models import ResearchRequest, RunLifecycleState, FeatureAvailabilityState
+from scraper.application.research_service import research_service
 
 logger = logging.getLogger(__name__)
 
@@ -40,24 +42,9 @@ async def deepsearch_research(
     category: Optional[str] = None,
     auto_discover: bool = True
 ) -> str:
-    """Executes end-to-end DeepSearch research pipeline with multi-source discovery.
-    
-    Inputs:
-      query: Topic or search query string
-      domain: Subject domain or target domain scope (None = multi-domain)
-      preferred_sources: List of priority seed URLs or whitelist domains
-      depth: Max crawl depth
-      max_pages: Page limit
-      mode: Execution mode (fast|balanced|complete|research)
-      output_archive: Destination path for generated .zip archive
-      category: Query category hint (science|news|engineering|None for auto-detect)
-      auto_discover: If True, automatically discover seeds from ArXiv, Wikipedia, etc.
-
-    Outputs:
-      JSON string with pages count, RAG chunks count, output directory, manifest summary, and files/ (with links) & rag/ (for LLM) archive location.
-    """
+    """Executes end-to-end DeepSearch research pipeline via ResearchApplicationService (DS-A02)."""
     sources = preferred_sources or []
-    opts = DeepSearchPipelineOptions(
+    req = ResearchRequest(
         query=query,
         domain=domain,
         preferred_sources=sources,
@@ -65,21 +52,37 @@ async def deepsearch_research(
         max_pages=max_pages,
         mode=ExecutionMode(mode),
         output_archive_path=output_archive or f"deepsearch_mcp_{query.replace(' ', '_')[:20]}.zip",
-        auto_discover_sources=auto_discover,
-        category=category
+        auto_discover=auto_discover,
+        category=category,
     )
-    pipeline = DeepSearchPipeline(acquisition_engine=acquisition_engine)
-    res = await pipeline.execute(opts)
+    handle = await research_service.start(req)
 
-    return json.dumps({
-        "status": "success",
-        "query": res.query,
-        "total_pages_processed": res.total_pages_processed,
-        "total_rag_chunks": res.total_rag_chunks,
-        "archive_path": res.archive_path,
-        "output_directory": res.dir_path,
-        "manifest": res.manifest
-    }, indent=2, ensure_ascii=False)
+    # Wait for completion in MCP sync wrapper
+    while True:
+        await asyncio.sleep(0.5)
+        st = await research_service.status(handle.run_id)
+        if st.status in (RunLifecycleState.COMPLETED, RunLifecycleState.FAILED, RunLifecycleState.CANCELLED):
+            break
+
+    res = await research_service.result(handle.run_id)
+    if res and res.status == RunLifecycleState.COMPLETED:
+        return json.dumps({
+            "status": "success",
+            "run_id": res.run_id,
+            "query": res.query,
+            "total_pages_processed": res.total_pages_processed,
+            "total_rag_chunks": res.total_rag_chunks,
+            "archive_path": res.archive_path,
+            "output_directory": res.dir_path,
+            "manifest": res.manifest
+        }, indent=2, ensure_ascii=False)
+    else:
+        st = await research_service.status(handle.run_id)
+        return json.dumps({
+            "status": "failed",
+            "run_id": handle.run_id,
+            "error": st.error_message or "Unknown failure"
+        }, indent=2, ensure_ascii=False)
 
 
 @mcp.tool()
@@ -89,20 +92,7 @@ async def deepsearch_discover(
     preferred_sources: Optional[List[str]] = None,
     category: Optional[str] = None
 ) -> str:
-    """Discovers diverse seed URLs from multiple academic and knowledge sources.
-
-    Queries ArXiv API, Wikipedia (EN/RU), Anna's Archive, and domain-specific providers
-    to build a comprehensive seed URL list before crawling.
-
-    Inputs:
-      query: Search topic or question
-      domain: Optional domain scope hint
-      preferred_sources: Optional user-supplied seed URLs to include
-      category: Optional hint (science|news|engineering) for targeted discovery
-
-    Outputs:
-      JSON list of discovered seed URLs from multiple providers.
-    """
+    """Discovers diverse seed URLs from multiple academic and knowledge sources."""
     seeds = await discover_diverse_seeds(
         query=query,
         domain=domain,
@@ -164,9 +154,15 @@ async def deepsearch_extract(url: str) -> str:
 
 @mcp.tool()
 async def deepsearch_search(query: str, limit: int = 10) -> str:
-    """Searches indexed content using text, visual, and hybrid multivector retrieval."""
+    """Searches indexed content using text, visual, and hybrid multivector retrieval without fake results."""
+    state = search_engine.get_feature_state()
     results = search_engine.search_hybrid(query, limit=limit)
-    return json.dumps([r.model_dump() for r in results], indent=2, ensure_ascii=False)
+    return json.dumps({
+        "query": query,
+        "state": state.value,
+        "results": [r.model_dump() for r in results],
+        "count": len(results)
+    }, indent=2, ensure_ascii=False)
 
 
 def run_mcp_server():
@@ -176,4 +172,3 @@ def run_mcp_server():
 
 if __name__ == "__main__":
     run_mcp_server()
-

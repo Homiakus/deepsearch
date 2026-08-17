@@ -189,7 +189,7 @@ Research должен останавливаться не только по `max
 
 # PHASE 0 — зафиксировать воспроизводимую baseline
 
-## DS-A00. Зафиксировать текущую версию и сделать CI обязательным
+## DS-A00. Зафиксировать текущую версию и сделать CI обязательным [x] (ВЫПОЛНЕНО)
 
 ### Что делаем
 
@@ -232,7 +232,7 @@ CI должен отдельно запускать:
 
 ---
 
-## DS-A01. Синхронизировать документацию с реальным runtime
+## DS-A01. Синхронизировать документацию с реальным runtime [x] (ВЫПОЛНЕНО)
 
 ### Что делаем
 
@@ -265,7 +265,7 @@ DEPRECATED  — оставлено только на время миграции
 
 # PHASE 1 — один application boundary
 
-## DS-A02. Ввести `ResearchApplicationService`
+## DS-A02. Ввести `ResearchApplicationService` [x] (ВЫПОЛНЕНО)
 
 ### Что делаем
 
@@ -305,7 +305,7 @@ Contract test вызывает одинаковый use case через CLI/API/
 
 ---
 
-## DS-A03. Удалить фиктивное успешное поведение Search
+## DS-A03. Удалить фиктивное успешное поведение Search [x] (ВЫПОЛНЕНО)
 
 ### Что делаем
 
@@ -338,7 +338,7 @@ READY
 
 # PHASE 2 — Axiom ADGO как durable control plane
 
-## DS-A04. Добавить Go-модуль orchestration на базе Axiom ADGO
+## DS-A04. Добавить Go-модуль orchestration на базе Axiom ADGO [x] (ВЫПОЛНЕНО)
 
 ### Что делаем
 
@@ -390,7 +390,7 @@ github.com/Homiakus/axiom/adgo
 
 ---
 
-## DS-A05. Описать immutable `ResearchPlan` в ADGO
+## DS-A05. Описать immutable `ResearchPlan` в ADGO [x] (ВЫПОЛНЕНО)
 
 ### Что делаем
 
@@ -456,7 +456,7 @@ Compiler tests должны ловить:
 
 ---
 
-## DS-A06. Создать Python ADGO Remote Worker Client
+## DS-A06. Создать Python ADGO Remote Worker Client [x] (ВЫПОЛНЕНО)
 
 ### Что делаем
 
@@ -514,7 +514,7 @@ Contract suite поднимает Go coordinator и Python worker и прове�
 
 ---
 
-## DS-A07. Перевести `/research` на durable job semantics
+## DS-A07. Перевести `/research` на durable job semantics [x] (ВЫПОЛНЕНО)
 
 ### Что делаем
 
@@ -550,7 +550,7 @@ POST /api/v1/research/{run_id}/cancel
 
 ---
 
-## DS-A08. Удалить ложный `/crawl` RUNNING state
+## DS-A08. Удалить ложный `/crawl` RUNNING state [x] (ВЫПОЛНЕНО)
 
 ### Что делаем
 
@@ -578,7 +578,7 @@ POST /api/v1/research/{run_id}/cancel
 
 # PHASE 3 — decomposition текущего монолитного pipeline
 
-## DS-A09. Разрезать `DeepSearchPipeline.execute` на application activities
+## DS-A09. Разрезать `DeepSearchPipeline.execute` на application activities [x] (ВЫПОЛНЕНО)
 
 ### Что делаем
 
@@ -620,7 +620,7 @@ Cyclomatic complexity orchestration-функций ≤ 10; отдельные ac
 
 ---
 
-## DS-A10. Ввести `ResearchExecutionContext`
+## DS-A10. Ввести `ResearchExecutionContext` [x] (ВЫПОЛНЕНО)
 
 ### Что делаем
 
@@ -658,7 +658,7 @@ cancellation
 
 # PHASE 4 — реально подключить существующие control mechanisms
 
-## DS-A11. Подключить `BudgetTracker` к фактической работе
+## DS-A11. Подключить `BudgetTracker` к фактической работе [x] (ВЫПОЛНЕНО)
 
 ### Что делаем
 
@@ -687,7 +687,7 @@ Property tests: ни один путь не превышает configured hard b
 
 ---
 
-## DS-A12. Подключить rate limiter и host concurrency
+## DS-A12. Подключить rate limiter и host concurrency [x] (ВЫПОЛНЕНО)
 
 ### Где
 
@@ -713,7 +713,7 @@ Load test доказывает:
 
 ---
 
-## DS-A13. Подключить robots policy к acquisition/discovery
+## DS-A13. Подключить robots policy к acquisition/discovery [x] (ВЫПОЛНЕНО)
 
 ### Где
 
@@ -738,7 +738,7 @@ policy override
 
 ---
 
-## DS-A14. Подключить CAS и dedup в основной path
+## DS-A14. Подключить CAS и dedup в основной path [x] (ВЫПОЛНЕНО)
 
 ### Где
 
@@ -763,7 +763,7 @@ policy override
 
 # PHASE 5 — Crawlee становится реальным crawl runtime
 
-## DS-A15. Заменить самодельную list-queue на Crawlee RequestQueue
+## DS-A15. Заменить самодельную list-queue на Crawlee RequestQueue [x] (ВЫПОЛНЕНО)
 
 ### Что делаем
 
@@ -804,7 +804,7 @@ Crawlee отвечает за:
 
 ---
 
-## DS-A16. Разделить crawl frontier и research graph
+## DS-A16. Разделить crawl frontier и research graph [x] (ВЫПОЛНЕНО)
 
 ### Что делаем
 
@@ -829,7 +829,7 @@ Research на 10 000 URL не создаёт 10 000 static ADGO graph nodes.
 
 # PHASE 6 — исправить adaptive acquisition
 
-## DS-A17. Сделать `CostPlanner` единственным decision engine эскалации
+## DS-A17. Сделать `CostPlanner` единственным decision engine эскалации [x] (ВЫПОЛНЕНО)
 
 ### Где
 
@@ -869,7 +869,7 @@ Decision table tests для static HTML, SPA, blocked page, JSON API, PDF, visua
 
 ---
 
-## DS-A18. Сделать Direct API tier реально достижимым
+## DS-A18. Сделать Direct API tier реально достижимым [x] (ВЫПОЛНЕНО)
 
 ### Проблема
 
@@ -903,7 +903,7 @@ Fixture SPA с XHR API выбирает API replay без full visual browser pa
 
 ---
 
-## DS-A19. Заменить `content_quality = 1 - block_score` на реальный quality evaluator
+## DS-A19. Заменить `content_quality = 1 - block_score` на реальный quality evaluator [x] (ВЫПОЛНЕНО)
 
 ### Где
 
@@ -942,7 +942,7 @@ Golden pages: empty SPA shell не получает высокий quality score
 
 # PHASE 7 — security boundary
 
-## DS-A20. Сделать единый URL SecurityPolicy
+## DS-A20. Сделать единый URL SecurityPolicy [x] (ВЫПОЛНЕНО)
 
 ### Что делаем
 
@@ -981,7 +981,7 @@ Security tests:
 
 ---
 
-## DS-A21. Закрыть API control plane
+## DS-A21. Закрыть API control plane [x] (ВЫПОЛНЕНО)
 
 ### Где
 
@@ -1006,7 +1006,7 @@ Unauthorized request не может стартовать costly research job и
 
 # PHASE 8 — discovery provider architecture
 
-## DS-A22. Удалить hard-coded intent keyword routing из core
+## DS-A22. Удалить hard-coded intent keyword routing из core [x] (ВЫПОЛНЕНО)
 
 ### Где
 
@@ -1053,7 +1053,7 @@ risk
 
 ---
 
-## DS-A23. Выполнять независимых discovery providers конкурентно
+## DS-A23. Выполнять независимых discovery providers конкурентно [x] (ВЫПОЛНЕНО)
 
 ### Как
 
@@ -1077,7 +1077,7 @@ SKIPPED
 
 # PHASE 9 — extraction и document model
 
-## DS-A24. Ввести структурный Document model
+## DS-A24. Ввести структурный Document model [x] (ВЫПОЛНЕНО)
 
 ### Добавить
 
@@ -1105,7 +1105,7 @@ HTML/PDF adapters дают один domain contract.
 
 ---
 
-## DS-A25. Заменить word-based chunking на structure-aware chunking
+## DS-A25. Заменить word-based chunking на structure-aware chunking [x] (ВЫПОЛНЕНО)
 
 ### Где
 
@@ -1138,7 +1138,7 @@ Heading и table boundaries не разрываются случайно на л
 
 # PHASE 10 — настоящий retrieval
 
-## DS-A26. Реализовать Qdrant adapter полностью
+## DS-A26. Реализовать Qdrant adapter полностью [x] (ВЫПОЛНЕНО)
 
 ### Где
 
@@ -1165,7 +1165,7 @@ Integration test с настоящим Qdrant container.
 
 ---
 
-## DS-A27. Добавить FastEmbed для local embedding/reranking path
+## DS-A27. Добавить FastEmbed для local embedding/reranking path [x] (ВЫПОЛНЕНО)
 
 ### Где
 
@@ -1197,7 +1197,7 @@ Benchmark показывает Recall@K/NDCG выше dense-only baseline на g
 
 ---
 
-## DS-A28. Сделать `SearchEngine` реальным façade над Retriever
+## DS-A28. Сделать `SearchEngine` реальным façade над Retriever [x] (ВЫПОЛНЕНО)
 
 ### Где
 
@@ -1216,7 +1216,7 @@ SearchEngine больше не знает о demo docs; возвращает р�
 
 # PHASE 11 — evidence-driven research
 
-## DS-A29. Добавить Evidence Store
+## DS-A29. Добавить Evidence Store [x] (ВЫПОЛНЕНО)
 
 ### Добавить
 
@@ -1268,7 +1268,7 @@ quote_span/provenance
 
 ---
 
-## DS-A30. Ввести EvidenceCoverageEvaluator
+## DS-A30. Ввести EvidenceCoverageEvaluator [x] (ВЫПОЛНЕНО)
 
 ### Что делаем
 
@@ -1306,7 +1306,7 @@ Synthetic research scenario с явным информационным проб�
 
 ---
 
-## DS-A31. Добавить bounded follow-up research loop
+## DS-A31. Добавить bounded follow-up research loop [x] (ВЫПОЛНЕНО)
 
 ### Как
 
@@ -1326,7 +1326,7 @@ ADGO graph допускает цикл только с bounds:
 
 # PHASE 12 — adaptive provider routing через Axiom ADGO
 
-## DS-A32. Использовать ADGO provider routing для LLM/search providers
+## DS-A32. Использовать ADGO provider routing для LLM/search providers [x] (ВЫПОЛНЕНО)
 
 ### Что делаем
 
@@ -1371,7 +1371,7 @@ Transient failure primary provider приводит к durable retry и выбо
 
 ---
 
-## DS-A33. Использовать ADGO result cache для pure expensive activities
+## DS-A33. Использовать ADGO result cache для pure expensive activities [x] (ВЫПОЛНЕНО)
 
 ### Кандидаты
 
@@ -1394,7 +1394,7 @@ Transient failure primary provider приводит к durable retry и выбо
 
 # PHASE 13 — ошибки и recovery semantics
 
-## DS-A34. Убрать широкие `except Exception` из orchestration semantics
+## DS-A34. Убрать широкие `except Exception` из orchestration semantics [x] (ВЫПОЛНЕНО)
 
 ### Что делаем
 
@@ -1427,7 +1427,7 @@ Python worker переводит исключение в ADGO failure class.
 
 ---
 
-## DS-A35. Добавить idempotency contract для всех external activities
+## DS-A35. Добавить idempotency contract для всех external activities [x] (ВЫПОЛНЕНО)
 
 ### Как
 
@@ -1450,7 +1450,7 @@ Worker crash после фактического side effect, но до `complet
 
 # PHASE 14 — observability
 
-## DS-A36. Объединить OpenTelemetry с ADGO execution identity
+## DS-A36. Объединить OpenTelemetry с ADGO execution identity [x] (ВЫПОЛНЕНО)
 
 ### Где
 
@@ -1477,7 +1477,7 @@ failure_class
 
 ---
 
-## DS-A37. Сделать dashboard только из реальных данных
+## DS-A37. Сделать dashboard только из реальных данных [x] (ВЫПОЛНЕНО)
 
 ### Где
 
@@ -1506,7 +1506,7 @@ UI не показывает job/throughput, отсутствующий в backe
 
 # PHASE 15 — storage consistency
 
-## DS-A38. Устранить три источника истины schema/migrations
+## DS-A38. Устранить три источника истины schema/migrations [x] (ВЫПОЛНЕНО)
 
 ### Где
 
@@ -1530,7 +1530,7 @@ Fresh DB и upgraded DB получают одинаковую schema checksum.
 
 ---
 
-## DS-A39. Отделить orchestration state от domain DB
+## DS-A39. Отделить orchestration state от domain DB [x] (ВЫПОЛНЕНО)
 
 ### Правило
 
@@ -1554,7 +1554,7 @@ Projection восстанавливаемый.
 
 # PHASE 16 — конфигурация и зависимости
 
-## DS-A40. Сделать конфигурацию typed и проверяемой на startup
+## DS-A40. Сделать конфигурацию typed и проверяемой на startup [x] (ВЫПОЛНЕНО)
 
 ### Где
 
@@ -1585,7 +1585,7 @@ Startup validation проверяет обязательные URL/paths/credent
 
 ---
 
-## DS-A41. Удалить зависимости, не участвующие ни в ACTIVE, ни в EXPERIMENTAL path
+## DS-A41. Удалить зависимости, не участвующие ни в ACTIVE, ни в EXPERIMENTAL path [x] (ВЫПОЛНЕНО)
 
 ### Как
 
@@ -1603,7 +1603,7 @@ Dependency inventory test/doc соответствует импортам и fea
 
 # PHASE 17 — test architecture
 
-## DS-A42. Разделить test pyramid
+## DS-A42. Разделить test pyramid [x] (ВЫПОЛНЕНО)
 
 ### Структура
 
@@ -1634,7 +1634,7 @@ tests/
 
 ---
 
-## DS-A43. Добавить crash/recovery тесты Axiom integration
+## DS-A43. Добавить crash/recovery тесты Axiom integration [x] (ВЫПОЛНЕНО)
 
 ### Сценарии
 
@@ -1657,7 +1657,7 @@ tests/
 
 # PHASE 18 — research quality evaluation
 
-## DS-A44. Создать golden research benchmark
+## DS-A44. Создать golden research benchmark [x] (ВЫПОЛНЕНО)
 
 ### Добавить
 
@@ -1703,7 +1703,7 @@ latency per successful research
 
 ---
 
-## DS-A45. Подключить Pydantic Evals или Ragas только как evaluation layer
+## DS-A45. Подключить Pydantic Evals или Ragas только как evaluation layer [x] (ВЫПОЛНЕНО)
 
 ### Правило
 
@@ -1717,7 +1717,7 @@ Evaluation package можно удалить без изменения productio
 
 # PHASE 19 — PixelRAG после текстового retrieval
 
-## DS-A46. Перевести PixelRAG в явный experimental feature
+## DS-A46. Перевести PixelRAG в явный experimental feature [x] (ВЫПОЛНЕНО)
 
 ### До выполнения условий
 
@@ -1739,7 +1739,7 @@ Disabled PixelRAG не влияет на text research flow.
 
 ---
 
-## DS-A47. Реализовывать visual retrieval по уровням
+## DS-A47. Реализовывать visual retrieval по уровням [x] (ВЫПОЛНЕНО)
 
 ```text
 V1 captions/alt/table metadata
@@ -1755,7 +1755,7 @@ V5 PixelRAG multivector
 
 # PHASE 20 — cleanup legacy paths
 
-## DS-A48. Удалить root research scripts как параллельные приложения
+## DS-A48. Удалить root research scripts как параллельные приложения [x] (ВЫПОЛНЕНО)
 
 ### Кандидаты
 
@@ -1779,7 +1779,7 @@ examples/
 
 ---
 
-## DS-A49. Удалить или переписать старый `RequestFrontier`
+## DS-A49. Удалить или переписать старый `RequestFrontier` [x] (ВЫПОЛНЕНО)
 
 После Crawlee+ADGO migration определить:
 
@@ -1794,7 +1794,7 @@ examples/
 
 # PHASE 21 — rollout strategy
 
-## DS-A50. Ввести feature flags миграции, но не два равноправных production path
+## DS-A50. Ввести feature flags миграции, но не два равноправных production path [x] (ВЫПОЛНЕНО)
 
 ### Флаги
 
@@ -1812,7 +1812,7 @@ Legacy допускается только на время migration window.
 
 ---
 
-## DS-A51. Shadow-run Axiom orchestration
+## DS-A51. Shadow-run Axiom orchestration [x] (ВЫПОЛНЕНО)
 
 На раннем этапе:
 
@@ -1832,7 +1832,7 @@ termination
 
 ---
 
-## DS-A52. Переключить primary execution на Axiom ADGO
+## DS-A52. Переключить primary execution на Axiom ADGO [x] (ВЫПОЛНЕНО)
 
 ### Preconditions
 

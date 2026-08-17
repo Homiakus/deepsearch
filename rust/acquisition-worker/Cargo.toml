@@ -1,0 +1,40 @@
+[package]
+name = "acquisition-worker"
+version = "0.1.0"
+edition = "2021"
+authors = ["DeepSearch Team"]
+description = "High-performance capability-oriented browser acquisition worker for DeepSearch & Axiom ADGO"
+
+[dependencies]
+tokio = { version = "1.43", features = ["full"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+reqwest = { version = "0.12", default-features = false, features = ["json", "gzip", "brotli", "deflate", "default-tls"] }
+axum = "0.8"
+tower = "0.5"
+tower-http = { version = "0.6", features = ["trace", "cors"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+thiserror = "2.0"
+async-trait = "0.1"
+sha2 = "0.10"
+hex = "0.4"
+url = { version = "2.5", features = ["serde"] }
+ipnet = "2.10"
+bytes = "1.9"
+regex = "1.11"
+tempfile = "3.16"
+chrono = { version = "0.4", features = ["serde"] }
+uuid = { version = "1.12", features = ["v4", "serde"] }
+
+[dev-dependencies]
+tokio-test = "0.4"
+
+[features]
+default = ["http-backend"]
+http-backend = []
+spider-backend = []
+servo-backend = []
+chromium-backend = []
+browseroxide-experimental = []
+blitz-backend = []

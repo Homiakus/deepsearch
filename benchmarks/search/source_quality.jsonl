@@ -1,0 +1,5 @@
+{"domain": "europepmc.org", "source_type": "PRIMARY_RESEARCH", "epistemic_authority": 0.95, "operational_reliability": 0.90}
+{"domain": "pubmed.ncbi.nlm.nih.gov", "source_type": "PRIMARY_RESEARCH", "epistemic_authority": 0.95, "operational_reliability": 0.92}
+{"domain": "en.wikipedia.org", "source_type": "WIKI", "epistemic_authority": 0.75, "operational_reliability": 0.98}
+{"domain": "qdrant.tech", "source_type": "OFFICIAL_DOC", "epistemic_authority": 0.92, "operational_reliability": 0.95}
+{"domain": "github.com", "source_type": "SOURCE_CODE", "epistemic_authority": 0.90, "operational_reliability": 0.96}

@@ -1,0 +1,32 @@
+version: "1.0"
+groups:
+  factual:
+    description: "Specific verifiable facts and data"
+    target_k: 10
+  technical:
+    description: "Software engineering, APIs, algorithms, standards"
+    target_k: 10
+  medical:
+    description: "Clinical guidelines, pharmacology, pathology, biology"
+    target_k: 10
+  engineering:
+    description: "Manufacturing, CNC, materials, CAD/CAM"
+    target_k: 10
+  current_information:
+    description: "Timely news, updates, recent releases"
+    target_k: 10
+  multi_hop:
+    description: "Queries requiring multi-step reasoning and multiple sources"
+    target_k: 15
+  comparative:
+    description: "A vs B comparisons requiring balanced sources"
+    target_k: 10
+  contradiction_seeking:
+    description: "Controversial or disputed claims requiring multiple viewpoints"
+    target_k: 15
+  multilingual:
+    description: "Russian and English cross-language queries"
+    target_k: 10
+  niche_terminology:
+    description: "Rare identifiers, GOST codes, DOI, chemical symbols"
+    target_k: 5

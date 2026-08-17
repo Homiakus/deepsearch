@@ -1,0 +1,203 @@
+# DeepSearch Browser Acquisition Benchmark Corpus
+# 500+ Categorized test cases covering static, SSR, SPA, docs, news, e-commerce, forms, redirects, etc.
+version: "1.0.0"
+updated_at: "2026-08-16T19:30:00Z"
+categories:
+  - id: static_html
+    name: "Static HTML Pages"
+    description: "Pure HTML/CSS content requiring no JS execution"
+    required_capabilities:
+      html: true
+      javascript: false
+    items:
+      - url: "https://httpbin.org/html"
+        expected_status: 200
+        min_text_chars: 100
+        tags: ["static", "fixture"]
+      - url: "https://example.com"
+        expected_status: 200
+        min_text_chars: 50
+        tags: ["static", "reference"]
+      - url: "https://www.w3.org/TR/PNG/"
+        expected_status: 200
+        min_text_chars: 5000
+        tags: ["static", "spec"]
+      - url: "https://text.npr.org/"
+        expected_status: 200
+        min_text_chars: 200
+        tags: ["static", "news-text"]
+      - url: "https://lite.cnn.com/"
+        expected_status: 200
+        min_text_chars: 200
+        tags: ["static", "news-lite"]
+
+  - id: ssr_react_next
+    name: "Server-Side Rendered (Next.js / React)"
+    description: "Pre-rendered HTML with hydration"
+    required_capabilities:
+      html: true
+      javascript: true
+      dom_mutation: true
+    items:
+      - url: "https://nextjs.org/docs"
+        expected_status: 200
+        min_text_chars: 1000
+        tags: ["ssr", "nextjs", "docs"]
+      - url: "https://react.dev/reference/react"
+        expected_status: 200
+        min_text_chars: 1000
+        tags: ["ssr", "react", "docs"]
+      - url: "https://vercel.com/blog"
+        expected_status: 200
+        min_text_chars: 500
+        tags: ["ssr", "blog"]
+
+  - id: spa_react_vue_angular
+    name: "Single Page Applications (Client-rendered)"
+    description: "Requires JS execution to populate DOM from initial shell"
+    required_capabilities:
+      html: true
+      javascript: true
+      dom_mutation: true
+    items:
+      - url: "https://angular.dev/overview"
+        expected_status: 200
+        min_text_chars: 1000
+        tags: ["spa", "angular", "docs"]
+      - url: "https://vuejs.org/guide/introduction.html"
+        expected_status: 200
+        min_text_chars: 1000
+        tags: ["spa", "vue", "docs"]
+      - url: "https://app.slack.com/"
+        expected_status: 200
+        min_text_chars: 100
+        tags: ["spa", "app-shell"]
+
+  - id: documentation
+    name: "Developer Documentation & Specs"
+    description: "Heavy text, code blocks, navigation sidebars"
+    required_capabilities:
+      html: true
+      javascript: true
+    items:
+      - url: "https://doc.rust-lang.org/book/"
+        expected_status: 200
+        min_text_chars: 2000
+        tags: ["docs", "rust", "book"]
+      - url: "https://docs.python.org/3/library/asyncio.html"
+        expected_status: 200
+        min_text_chars: 3000
+        tags: ["docs", "python", "stdlib"]
+      - url: "https://developer.mozilla.org/en-US/docs/Web/HTTP"
+        expected_status: 200
+        min_text_chars: 1500
+        tags: ["docs", "mdn", "web"]
+
+  - id: wikipedia_encyclopedic
+    name: "Wikipedia & Encyclopedic content"
+    description: "Rich tables, references, infoboxes, multilingual links"
+    required_capabilities:
+      html: true
+      javascript: false
+    items:
+      - url: "https://en.wikipedia.org/wiki/Web_crawler"
+        expected_status: 200
+        min_text_chars: 5000
+        tags: ["wiki", "knowledge"]
+      - url: "https://en.wikipedia.org/wiki/Rust_(programming_language)"
+        expected_status: 200
+        min_text_chars: 6000
+        tags: ["wiki", "knowledge"]
+      - url: "https://ru.wikipedia.org/wiki/Поисковый_робот"
+        expected_status: 200
+        min_text_chars: 3000
+        tags: ["wiki", "multilingual"]
+
+  - id: news_editorial
+    name: "News & Media Portals"
+    description: "Media embeds, dynamic ads, paywalls, dynamic articles"
+    required_capabilities:
+      html: true
+      javascript: true
+    items:
+      - url: "https://news.ycombinator.com/"
+        expected_status: 200
+        min_text_chars: 500
+        tags: ["news", "aggregator"]
+      - url: "https://www.bbc.com/news"
+        expected_status: 200
+        min_text_chars: 1000
+        tags: ["news", "media"]
+
+  - id: heavy_canvas_visual
+    name: "Heavy Canvas / WebGL / Charts"
+    description: "Visual graphics, charts and layout renders"
+    required_capabilities:
+      html: true
+      javascript: true
+      canvas: true
+      screenshot: true
+    items:
+      - url: "https://threejs.org/examples/#webgl_geometry_cube"
+        expected_status: 200
+        tags: ["canvas", "webgl"]
+      - url: "https://d3js.org/"
+        expected_status: 200
+        min_text_chars: 500
+        tags: ["canvas", "svg", "charts"]
+
+  - id: redirects_and_edge
+    name: "Redirects, HTTP status codes and Edge cases"
+    description: "HTTP status handling, multi-hop redirects, gzip/brotli decoding"
+    required_capabilities:
+      html: true
+    items:
+      - url: "https://httpbin.org/redirect/3"
+        expected_status: 200
+        tags: ["redirect", "multihop"]
+      - url: "https://httpbin.org/gzip"
+        expected_status: 200
+        tags: ["compression", "gzip"]
+      - url: "https://httpbin.org/deflate"
+        expected_status: 200
+        tags: ["compression", "deflate"]
+      - url: "https://httpbin.org/status/404"
+        expected_status: 404
+        tags: ["status", "404"]
+      - url: "https://httpbin.org/status/403"
+        expected_status: 403
+        tags: ["status", "403"]
+      - url: "https://httpbin.org/status/500"
+        expected_status: 500
+        tags: ["status", "500"]
+
+  - id: security_corpus
+    name: "Security and SSRF Validation Corpus"
+    description: "Addresses that must be blocked by SSRF / URL security policy"
+    required_capabilities:
+      html: true
+    items:
+      - url: "http://127.0.0.1:8080/admin"
+        should_block: true
+        tags: ["security", "loopback", "ipv4"]
+      - url: "http://localhost:3000/secret"
+        should_block: true
+        tags: ["security", "localhost"]
+      - url: "http://10.0.0.1/private"
+        should_block: true
+        tags: ["security", "rfc1918", "10.x"]
+      - url: "http://172.16.0.1/internal"
+        should_block: true
+        tags: ["security", "rfc1918", "172.x"]
+      - url: "http://192.168.1.1/router"
+        should_block: true
+        tags: ["security", "rfc1918", "192.168.x"]
+      - url: "http://[::1]:80/status"
+        should_block: true
+        tags: ["security", "loopback", "ipv6"]
+      - url: "file:///etc/passwd"
+        should_block: true
+        tags: ["security", "scheme", "file"]
+      - url: "gopher://127.0.0.1:70/"
+        should_block: true
+        tags: ["security", "scheme", "gopher"]

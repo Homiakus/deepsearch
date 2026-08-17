@@ -1,4 +1,4 @@
-"""Adaptive Acquisition Engine (§6)."""
+"""Adaptive Acquisition Engine (§6, DS-RB37)."""
 
 import logging
 import time
@@ -7,11 +7,13 @@ from pydantic import BaseModel, Field
 
 from scraper.config import settings, ExecutionMode
 from scraper.exceptions import AcquisitionError
-from scraper.contracts import FetcherProtocol, BrowserPoolProtocol
+from scraper.contracts import FetcherProtocol, BrowserPoolProtocol, AcquisitionBackend
 from scraper.acquisition.http_fetcher import HTTPFetcher, HTTPResponse
 from scraper.acquisition.browser_pool import BrowserPoolManager, BrowserResponse
 from scraper.acquisition.page_classifier import classify_page, PageIntelligence
 from scraper.control.planner import StrategyEscalation
+from scraper.acquisition.capabilities import BrowserCapabilities, CapabilityLevel
+from scraper.acquisition.models import AcquisitionRequest, AcquisitionResult
 
 logger = logging.getLogger(__name__)
 
@@ -31,15 +33,17 @@ class CapturedArtifact(BaseModel):
 
 
 class AdaptiveAcquisitionEngine:
-    """Orchestrates L0-L5 adaptive page acquisition according to minimal effective cost principle (§2, §6)."""
+    """Orchestrates capability-oriented adaptive page acquisition (§2, §6, DS-RB37)."""
 
     def __init__(
         self,
         http_fetcher: Optional[FetcherProtocol] = None,
-        browser_pool: Optional[BrowserPoolProtocol] = None
+        browser_pool: Optional[BrowserPoolProtocol] = None,
+        acquisition_backend: Optional[AcquisitionBackend] = None,
     ):
         self.http_fetcher: FetcherProtocol = http_fetcher or HTTPFetcher()
         self.browser_pool: BrowserPoolProtocol = browser_pool or BrowserPoolManager()
+        self.acquisition_backend: Optional[AcquisitionBackend] = acquisition_backend
 
     async def acquire_page(
         self,
@@ -65,6 +69,38 @@ class AdaptiveAcquisitionEngine:
                 text_content=text,
                 page_intelligence=pi,
                 elapsed_sec=time.time() - start_t
+            )
+
+        # Capability-based Acquisition Backend path (if provided)
+        if self.acquisition_backend:
+            req_caps = BrowserCapabilities.minimal_http()
+            if take_screenshot or mode in (ExecutionMode.RESEARCH, ExecutionMode.COMPLETE):
+                req_caps.screenshot = CapabilityLevel.SUPPORTED
+                req_caps.javascript = CapabilityLevel.SUPPORTED
+
+            req = AcquisitionRequest(
+                url=url,
+                canonical_url=canonical_url,
+                required_capabilities=req_caps,
+                mode=str(mode.value) if hasattr(mode, "value") else str(mode),
+            )
+            res: AcquisitionResult = await self.acquisition_backend.acquire(req)
+            raw = res.raw_content or res.text_preview.encode("utf-8", errors="ignore")
+            text = res.text_preview or raw.decode("utf-8", errors="ignore")
+            pi = classify_page(res.final_url, res.status_code, res.headers, text)
+
+            return CapturedArtifact(
+                url=res.final_url,
+                canonical_url=canonical_url,
+                strategy_used=res.backend,
+                status_code=res.status_code,
+                content_type=res.content_type,
+                raw_content=raw,
+                text_content=text,
+                screenshot_bytes=res.screenshot_bytes,
+                page_intelligence=pi,
+                network_logs=[],
+                elapsed_sec=res.elapsed_sec or (time.time() - start_t),
             )
 
         # L1: Direct HTTP GET (§6.1 L1)

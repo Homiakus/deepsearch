@@ -1,6 +1,6 @@
-"""FastAPI Application Entrypoint."""
+"""FastAPI Application Entrypoint (§105, DS-A21)."""
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 
@@ -12,15 +12,16 @@ def create_app() -> FastAPI:
     app = FastAPI(
         title=settings.app_name,
         version=settings.app_version,
-        description="Adaptive Web Scraping & Retrieval Platform (§105)"
+        description="Adaptive Web Scraping & Retrieval Platform (§105, DS-A21)"
     )
 
+    # Hardened CORS policy without wildcard credentials
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
+        allow_origins=["http://localhost:3000", "http://localhost:8080", "http://127.0.0.1:8080"],
         allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
+        allow_methods=["GET", "POST", "DELETE"],
+        allow_headers=["Authorization", "Content-Type", "X-API-Key"],
     )
 
     app.include_router(api_router)

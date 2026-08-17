@@ -1,0 +1,38 @@
+# Golden Page Expectations Envelope (DS-RB01)
+# Defines acceptance criteria envelopes for pages without brittle byte-level DOM comparisons.
+
+version: "1.0.0"
+rules:
+  default_html:
+    min_status_code: 200
+    max_status_code: 299
+    min_content_bytes: 50
+    min_text_chars: 20
+    must_not_contain_text:
+      - "Access Denied"
+      - "Cloudflare Ray ID"
+      - "Checking your browser before accessing"
+      - "Please enable JavaScript"
+      - "403 Forbidden"
+    max_elapsed_ms: 15000
+
+  documentation_page:
+    min_status_code: 200
+    max_status_code: 299
+    min_text_chars: 1000
+    min_links: 5
+    must_not_contain_text:
+      - "404 Not Found"
+      - "Page not found"
+    max_elapsed_ms: 10000
+
+  spa_page:
+    requires_js: true
+    min_status_code: 200
+    max_status_code: 299
+    min_text_chars: 200
+    min_dom_nodes: 50
+    must_not_contain_text:
+      - "Loading..."
+      - "You need to enable JavaScript to run this app."
+    max_elapsed_ms: 15000

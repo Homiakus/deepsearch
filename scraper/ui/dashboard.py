@@ -234,33 +234,34 @@ def render_dashboard_html() -> str:
         <div id="tab-dashboard" class="tab-content active">
             <div class="stats-grid">
                 <div class="stat-card">
-                    <div class="stat-label">Browser Escalation Ratio</div>
-                    <div class="stat-val" id="stat-escalation">6.4%</div>
-                    <div class="stat-badge">Target < 25% (§69)</div>
+                    <div class="stat-label">Pages Acquired</div>
+                    <div class="stat-val" id="stat-pages">-</div>
+                    <div class="stat-badge">Live System Metric</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-label">Useful Data / Downloaded Byte</div>
-                    <div class="stat-val" id="stat-useful">0.84</div>
-                    <div class="stat-badge">High Efficiency (§70)</div>
+                    <div class="stat-label">Evidence Claims Stored</div>
+                    <div class="stat-val" id="stat-claims">-</div>
+                    <div class="stat-badge">Live Graph Metric</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-label">Active Crawl Jobs</div>
-                    <div class="stat-val" id="stat-jobs">3</div>
-                    <div class="stat-badge">Autoscaling Active</div>
+                    <div class="stat-label">Active Research Runs</div>
+                    <div class="stat-val" id="stat-jobs">-</div>
+                    <div class="stat-badge">Durable ADGO Control Plane</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-label">Pages / Second</div>
-                    <div class="stat-val" id="stat-pps">48.2</div>
-                    <div class="stat-badge">Throughput Optimal</div>
+                    <div class="stat-label">Vector Store Status</div>
+                    <div class="stat-val" id="stat-qdrant">Ready</div>
+                    <div class="stat-badge">Qdrant Indexed</div>
                 </div>
             </div>
 
             <div class="section-card">
-                <div class="section-title">🚀 Launch New Crawl Job</div>
+                <div class="section-title">🚀 Launch Durable Research Job</div>
                 <div class="input-group">
-                    <input type="text" id="crawl-url-input" placeholder="https://example.com/docs">
-                    <button class="btn" onclick="startCrawl()">Start Crawl</button>
+                    <input type="text" id="crawl-url-input" placeholder="Enter research query (e.g. 'Deep Learning in Medicine')">
+                    <button class="btn" onclick="startResearch()">Start Research</button>
                 </div>
+                <pre id="job-status-pre">// Research job progress and telemetry will appear here...</pre>
             </div>
         </div>
 
@@ -356,11 +357,51 @@ def render_dashboard_html() -> str:
             }
         }
 
-        async function startCrawl() {
-            const url = document.getElementById('crawl-url-input').value;
-            if(!url) return;
-            alert("Crawl job launched for " + url);
+        async function startResearch() {
+            const q = document.getElementById('crawl-url-input').value;
+            if(!q) return;
+            document.getElementById('job-status-pre').innerText = "Launching research job...";
+            try {
+                const res = await fetch('/api/v1/research', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({query: q})
+                });
+                const data = await res.json();
+                document.getElementById('job-status-pre').innerText = JSON.stringify(data, null, 2);
+                if (data.run_id) {
+                    pollJob(data.run_id);
+                }
+            } catch(e) {
+                document.getElementById('job-status-pre').innerText = "Error: " + e;
+            }
         }
+
+        async function pollJob(runId) {
+            const timer = setInterval(async () => {
+                try {
+                    const res = await fetch('/api/v1/research/' + runId);
+                    const status = await res.json();
+                    document.getElementById('job-status-pre').innerText = JSON.stringify(status, null, 2);
+                    if(status.status === 'COMPLETED' || status.status === 'FAILED' || status.status === 'CANCELLED') {
+                        clearInterval(timer);
+                    }
+                } catch(e) {}
+            }, 1000);
+        }
+
+        async function refreshMetrics() {
+            try {
+                const res = await fetch('/api/v1/metrics');
+                if(res.ok) {
+                    const m = await res.json();
+                    if(m.pages_processed !== undefined) document.getElementById('stat-pages').innerText = m.pages_processed;
+                    if(m.active_jobs !== undefined) document.getElementById('stat-jobs').innerText = m.active_jobs;
+                }
+            } catch(e) {}
+        }
+        setInterval(refreshMetrics, 5000);
+        refreshMetrics();
     </script>
 </body>
 </html>"""

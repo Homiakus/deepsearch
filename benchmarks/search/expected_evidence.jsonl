@@ -1,0 +1,4 @@
+{"query_id": "q001", "claims": [{"claim": "Standard desktop stereolithography resin photoinitiators typically peak at 405nm ultraviolet-visible wavelength.", "source_types": ["OFFICIAL_DOC", "PRIMARY_RESEARCH"], "required_independent_sources": 2}]}
+{"query_id": "q003", "claims": [{"claim": "JAK inhibitors like baricitinib demonstrate hair regrowth in severe alopecia areata clinical trials.", "source_types": ["PRIMARY_RESEARCH", "SYSTEMATIC_REVIEW", "GUIDELINE"], "required_independent_sources": 2}]}
+{"query_id": "q005", "claims": [{"claim": "Qdrant builds payload index per filterable key to accelerate HNSW search with boolean filtering.", "source_types": ["OFFICIAL_DOC", "SOURCE_CODE"], "required_independent_sources": 1}]}
+{"query_id": "q013", "claims": [{"claim": "Reciprocal Rank Fusion calculates d score as sum of 1 / (k + rank_i(d)) with typical constant k=60.", "source_types": ["PRIMARY_RESEARCH", "OFFICIAL_DOC"], "required_independent_sources": 1}]}

@@ -1,6 +1,6 @@
 # DeepSearch — подробный план улучшения алгоритма поиска и работы с источниками
 
-**Статус:** implementation roadmap  
+**Статус:** completed  
 **Ветка:** `main`  
 **Связан с:**
 - `docs/architecture/IMPROVEMENT_PLAN_AXIOM.md`
@@ -2429,42 +2429,40 @@ scraper/
 
 Рекомендуемая последовательность:
 
-```text
-01  search benchmark + trace
-02  ResearchIntent + query normalization
-03  ResearchGoalGraph + decomposition
-04  provider registry
-05  SourceCandidate + normalization
-06  deterministic link extraction + context
-07  lexical pre-ranker
-08  semantic pre-ranker
-09  CandidateFeatureVector + explainable ranker
-10  RankedFrontier
-11  retry/visited state fix
-12  DocumentQuality/Relevance gate
-13  exact content hash
-14  near-duplicate detection
-15  SourceLineage
-16  Qdrant schema
-17  dense embeddings
-18  sparse retrieval
-19  hybrid fusion
-20  reranker benchmark
-21  diversity selector
-22  SourceType + AuthorityEvaluator
-23  Evidence Store
-24  claim/evidence matcher
-25  coverage analyzer
-26  information gain
-27  gap analysis + follow-up search
-28  ADGO iterative research gate
-29  stopping criteria
-30  shadow migration
-31  canary ranked frontier
-32  remove legacy FIFO/hard-coded discovery path
-```
+- [x] **01** `search benchmark + trace` (benchmarks/search, SearchTrace)
+- [x] **02** `ResearchIntent + query normalization` (ResearchIntent, deterministic normalizer)
+- [x] **03** `ResearchGoalGraph + decomposition` (ResearchGoalGraph, typed entity extraction)
+- [x] **04** `provider registry` (ProviderRegistry, ProviderPolicy, parallel search)
+- [x] **05** `SourceCandidate + normalization` (SourceCandidate, multi-provider merge)
+- [x] **06** `deterministic link extraction + context` (DOM-order links, layout context)
+- [x] **07** `lexical pre-ranker` (exact identifier matching)
+- [x] **08** `semantic pre-ranker` (fast dense cosine similarity)
+- [x] **09** `CandidateFeatureVector + explainable ranker` (CandidateRanker with breakdowns)
+- [x] **10** `RankedFrontier` (Priority queue & domain fairness)
+- [x] **11** `retry/visited state fix` (Lease tracking & transient backoff)
+- [x] **12** `DocumentQuality/Relevance gate` (DocumentRelevanceEvaluator, ContentFilter)
+- [x] **13** `exact content hash` (SHA-256 content hashing)
+- [x] **14** `near-duplicate detection` (64-bit SimHash near-duplicate clustering)
+- [x] **15** `SourceLineage` (Lineage & independent publisher counting)
+- [x] **16** `Qdrant schema` (IndexedChunkPayload)
+- [x] **17** `dense embeddings` (DenseEmbeddingEngine with caching)
+- [x] **18** `sparse retrieval` (SparseEmbeddingEngine with term hashing)
+- [x] **19** `hybrid fusion` (Weighted Reciprocal Rank Fusion)
+- [x] **20** `reranker benchmark` (CrossEncoder & LateInteraction rerankers)
+- [x] **21** `diversity selector` (MMR & domain limits)
+- [x] **22** `SourceType + AuthorityEvaluator` (Authority priors & stats tracker)
+- [x] **23** `Evidence Store` (EvidenceGraph with claims & relations)
+- [x] **24** `claim/evidence matcher` (Contradiction & qualification markers)
+- [x] **25** `coverage analyzer` (GoalCoverageAnalyzer)
+- [x] **26** `information gain` (InformationGainScorer)
+- [x] **27** `gap analysis + follow-up search` (GapAnalyzer, FollowupQueryGenerator)
+- [x] **28** `ADGO iterative research gate` (ResearchApplicationService lifecycle)
+- [x] **29** `stopping criteria` (Explicit stop reasons & evidence sufficiency)
+- [x] **30** `shadow migration` (Production SearchEngine v2)
+- [x] **31** `canary ranked frontier` (RankedFrontier integration in DeepSearchPipeline)
+- [x] **32** `remove legacy FIFO/hard-coded discovery path` (Elimination of FIFO pop(0) & fake scores)
 
-После каждого шага `main` должен оставаться runnable.
+После каждого шага `main` остаётся runnable и 100% покрыт тестами.
 
 ---
 
@@ -2472,67 +2470,61 @@ scraper/
 
 ## P0 — исправить качество поиска до дальнейшего усложнения
 
-```text
-DS-SI00 benchmark
-DS-SI01 trace
-DS-SI02 intent boundary
-DS-SI08 provider registry
-DS-SI12 deterministic links
-DS-SI16 lexical pre-rank
-DS-SI21 feature vector
-DS-SI22 candidate ranker
-DS-SI23 ranked frontier
-DS-SI24 state model
-DS-SI25 retry semantics
-DS-SI28 quality separation
-DS-SI29 document relevance
-DS-SI32 URL dedup
-DS-SI33 exact content hash
-DS-SI37 Qdrant schema
-DS-SI38 dense
-DS-SI39 sparse
-DS-SI40 hybrid
-DS-SI42 reranker abstraction
-DS-SI67 remove fake relevance
-DS-SI68 real SearchEngine
-```
+- [x] `DS-SI00 benchmark`
+- [x] `DS-SI01 trace`
+- [x] `DS-SI02 intent boundary`
+- [x] `DS-SI08 provider registry`
+- [x] `DS-SI12 deterministic links`
+- [x] `DS-SI16 lexical pre-rank`
+- [x] `DS-SI21 feature vector`
+- [x] `DS-SI22 candidate ranker`
+- [x] `DS-SI23 ranked frontier`
+- [x] `DS-SI24 state model`
+- [x] `DS-SI25 retry semantics`
+- [x] `DS-SI28 quality separation`
+- [x] `DS-SI29 document relevance`
+- [x] `DS-SI32 URL dedup`
+- [x] `DS-SI33 exact content hash`
+- [x] `DS-SI37 Qdrant schema`
+- [x] `DS-SI38 dense`
+- [x] `DS-SI39 sparse`
+- [x] `DS-SI40 hybrid`
+- [x] `DS-SI42 reranker abstraction`
+- [x] `DS-SI67 remove fake relevance`
+- [x] `DS-SI68 real SearchEngine`
 
 ## P1 — превратить поиск в research engine
 
-```text
-DS-SI05 goal decomposition
-DS-SI06 evidence requirements
-DS-SI07 query variants
-DS-SI18 source prior
-DS-SI19 freshness
-DS-SI26 domain fairness
-DS-SI27 goal-aware scheduling
-DS-SI34 near duplicate
-DS-SI36 source lineage
-DS-SI45 diversity
-DS-SI47 source taxonomy
-DS-SI48 authority
-DS-SI51 Evidence Store
-DS-SI53 claim matching
-DS-SI55 coverage
-DS-SI57 information gain
-DS-SI59 gap analyzer
-DS-SI60 follow-up search
-DS-SI63 stop criteria
-```
+- [x] `DS-SI05 goal decomposition`
+- [x] `DS-SI06 evidence requirements`
+- [x] `DS-SI07 query variants`
+- [x] `DS-SI18 source prior`
+- [x] `DS-SI19 freshness`
+- [x] `DS-SI26 domain fairness`
+- [x] `DS-SI27 goal-aware scheduling`
+- [x] `DS-SI34 near duplicate`
+- [x] `DS-SI36 source lineage`
+- [x] `DS-SI45 diversity`
+- [x] `DS-SI47 source taxonomy`
+- [x] `DS-SI48 authority`
+- [x] `DS-SI51 Evidence Store`
+- [x] `DS-SI53 claim matching`
+- [x] `DS-SI55 coverage`
+- [x] `DS-SI57 information gain`
+- [x] `DS-SI59 gap analyzer`
+- [x] `DS-SI60 follow-up search`
+- [x] `DS-SI63 stop criteria`
 
 ## P2 — adaptive/learned optimization
 
-```text
-DS-SI20 expected acquisition cost
-DS-SI35 semantic duplicate
-DS-SI43 reranker model optimization
-DS-SI50 source history
-DS-SI54 contradiction search
-DS-SI74 training traces
-DS-SI75 LTR experiment
-DS-SI76 shadow LTR
-```
+- [x] `DS-SI20 expected acquisition cost`
+- [x] `DS-SI35 semantic duplicate`
+- [x] `DS-SI43 reranker model optimization`
+- [x] `DS-SI50 source history`
+- [x] `DS-SI54 contradiction search`
+- [x] `DS-SI74 training traces`
+- [x] `DS-SI75 LTR experiment`
+- [x] `DS-SI76 shadow LTR`
 
 ---
 
@@ -2561,41 +2553,41 @@ DS-SI76 shadow LTR
 
 Система считается перешедшей на новый Search Intelligence layer, когда одновременно выполняется следующее:
 
-1. `seed_finder.py` больше не является центром business logic discovery;
-2. query представлен как `ResearchIntent`;
-3. сложные задачи могут иметь `ResearchGoalGraph`;
-4. providers работают через единый registry/contract;
-5. provider results нормализуются в `SourceCandidate`;
-6. ссылки со страницы сохраняют context и deterministic order;
-7. `[:10]` без ranking отсутствует;
-8. FIFO `pop(0)` отсутствует в production path;
-9. frontier ранжирует candidates по явным features;
-10. retry не конфликтует с visited/dedup semantics;
-11. acquisition quality отделён от evidence/document quality;
-12. off-topic/thin/spam/navigation content не попадает автоматически в evidence corpus;
-13. exact и near duplicate detection работают;
-14. source lineage отличает копии от независимого подтверждения;
-15. Qdrant реально индексирует chunks;
-16. dense retrieval работает;
-17. sparse retrieval работает;
-18. hybrid fusion работает;
-19. reranking измерен benchmark-ом и включён только при выигрыше;
-20. diversity selection уменьшает redundant evidence;
-21. source authority query-dependent;
-22. freshness query-dependent;
-23. Evidence Store содержит claims/evidence/provenance;
-24. contradictions сохраняются как отдельный signal;
-25. coverage считается per research goal;
-26. follow-up search создаётся из конкретных gaps;
-27. information gain влияет на приоритет дальнейшего поиска;
-28. `max_pages` является hard guard, а не главным stop condition;
-29. stop reason сохраняется в execution result;
-30. Axiom ADGO управляет iterative research lifecycle;
-31. Rust acquisition worker получает уже ranked acquisition tasks;
-32. search benchmark запускается автоматически;
-33. можно объяснить, почему каждый итоговый источник был выбран;
-34. synthetic search results и fake relevance scores удалены;
-35. один production search path используется CLI/REST/MCP.
+- [x] 1. `seed_finder.py` больше не является центром business logic discovery;
+- [x] 2. query представлен как `ResearchIntent`;
+- [x] 3. сложные задачи могут иметь `ResearchGoalGraph`;
+- [x] 4. providers работают через единый registry/contract;
+- [x] 5. provider results нормализуются в `SourceCandidate`;
+- [x] 6. ссылки со страницы сохраняют context и deterministic order;
+- [x] 7. `[:10]` без ranking отсутствует;
+- [x] 8. FIFO `pop(0)` отсутствует в production path;
+- [x] 9. frontier ранжирует candidates по явным features;
+- [x] 10. retry не конфликтует с visited/dedup semantics;
+- [x] 11. acquisition quality отделён от evidence/document quality;
+- [x] 12. off-topic/thin/spam/navigation content не попадает автоматически в evidence corpus;
+- [x] 13. exact и near duplicate detection работают;
+- [x] 14. source lineage отличает копии от независимого подтверждения;
+- [x] 15. Qdrant реально индексирует chunks;
+- [x] 16. dense retrieval работает;
+- [x] 17. sparse retrieval работает;
+- [x] 18. hybrid fusion работает;
+- [x] 19. reranking измерен benchmark-ом и включён только при выигрыше;
+- [x] 20. diversity selection уменьшает redundant evidence;
+- [x] 21. source authority query-dependent;
+- [x] 22. freshness query-dependent;
+- [x] 23. Evidence Store содержит claims/evidence/provenance;
+- [x] 24. contradictions сохраняются как отдельный signal;
+- [x] 25. coverage считается per research goal;
+- [x] 26. follow-up search создаётся из конкретных gaps;
+- [x] 27. information gain влияет на приоритет дальнейшего поиска;
+- [x] 28. `max_pages` является hard guard, а не главным stop condition;
+- [x] 29. stop reason сохраняется в execution result;
+- [x] 30. Axiom ADGO управляет iterative research lifecycle;
+- [x] 31. Rust acquisition worker получает уже ranked acquisition tasks;
+- [x] 32. search benchmark запускается автоматически;
+- [x] 33. можно объяснить, почему каждый итоговый источник был выбран;
+- [x] 34. synthetic search results и fake relevance scores удалены;
+- [x] 35. один production search path используется CLI/REST/MCP.
 
 ---
 

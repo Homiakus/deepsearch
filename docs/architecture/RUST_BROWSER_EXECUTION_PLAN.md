@@ -1,6 +1,6 @@
 # DeepSearch — план внедрения Rust browser execution layer
 
-**Статус:** implementation roadmap  
+**Статус:** ✅ Реализовано (Core Execution Layer, Capabilities, Planner, Security, Backends, ADGO Integration, CI/CD)  
 **Ветка:** `main`  
 **Связан с:** `docs/architecture/IMPROVEMENT_PLAN_AXIOM.md`  
 **Область:** acquisition / crawling / browser rendering / Axiom ADGO workers

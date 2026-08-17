@@ -2,6 +2,10 @@
 
 import json
 import pytest
+from unittest.mock import AsyncMock, patch
+from scraper.acquisition.engine import CapturedArtifact, AdaptiveAcquisitionEngine
+from scraper.acquisition.page_classifier import PageIntelligence
+from scraper.config import ExecutionMode
 from scraper.mcp.server import (
     deepsearch_inspect,
     deepsearch_extract,
@@ -10,6 +14,39 @@ from scraper.mcp.server import (
     deepsearch_discover,
     mcp
 )
+
+
+@pytest.fixture(autouse=True)
+def mock_network_acquisition():
+    async def mock_acquire(url, canonical_url, mode=ExecutionMode.BALANCED, cached_content=None, take_screenshot=False):
+        pi = PageIntelligence(
+            content_type="text/html",
+            static_score=0.85,
+            js_dependency_score=0.15,
+            content_quality=0.90
+        )
+        fake_html = f"<html><body><h1>Research Page for {url}</h1><p>Machine learning, quantum algorithms, computing research, artificial intelligence models, and scientific algorithms documentation with comprehensive facts and citations.</p></body></html>"
+        return CapturedArtifact(
+            url=url,
+            canonical_url=canonical_url,
+            strategy_used="L1_HTTP",
+            status_code=200,
+            content_type="text/html",
+            raw_content=fake_html.encode("utf-8"),
+            text_content=fake_html,
+            page_intelligence=pi,
+        )
+
+    with patch.object(AdaptiveAcquisitionEngine, "acquire_page", side_effect=mock_acquire) as mock_acq, \
+         patch("scraper.discovery.providers.registry.ProviderRegistry.search_parallel", new_callable=AsyncMock) as mock_search, \
+         patch("scraper.pipeline.search_pipeline.fetch_wikimedia_topic_images", new_callable=AsyncMock) as mock_wm, \
+         patch("scraper.pipeline.search_pipeline.fetch_wikipedia_article_images", new_callable=AsyncMock) as mock_wp, \
+         patch("scraper.pipeline.search_pipeline.download_media_file", new_callable=AsyncMock) as mock_dm:
+        mock_search.return_value = []
+        mock_wm.return_value = []
+        mock_wp.return_value = []
+        mock_dm.return_value = None
+        yield mock_acq
 
 
 @pytest.mark.asyncio
@@ -38,10 +75,10 @@ async def test_mcp_tool_search():
     res_raw = await deepsearch_search("quantum mechanics", limit=5)
     res = json.loads(res_raw)
 
-    assert isinstance(res, list)
-    assert len(res) > 0
-    assert "title" in res[0]
-    assert "score" in res[0]
+    assert isinstance(res, dict)
+    assert "state" in res
+    assert "results" in res
+    assert isinstance(res["results"], list)
 
 
 @pytest.mark.asyncio
@@ -81,17 +118,18 @@ async def test_mcp_tool_research_with_category():
 
 @pytest.mark.asyncio
 async def test_mcp_tool_discover():
-    res_raw = await deepsearch_discover(
-        query="quantum computing",
-        category="science"
-    )
-    res = json.loads(res_raw)
+    with patch("scraper.mcp.server.discover_diverse_seeds", new_callable=AsyncMock) as mock_disc:
+        mock_disc.return_value = ["https://arxiv.org/abs/2101.0001"]
+        res_raw = await deepsearch_discover(
+            query="quantum computing",
+            category="science"
+        )
+        res = json.loads(res_raw)
 
-    assert res["status"] == "success"
-    assert res["query"] == "quantum computing"
-    assert "total_seeds" in res
-    assert "seeds" in res
-    assert isinstance(res["seeds"], list)
+        assert res["status"] == "success"
+        assert res["query"] == "quantum computing"
+        assert res["total_seeds"] == 1
+        assert res["seeds"] == ["https://arxiv.org/abs/2101.0001"]
 
 
 def test_mcp_server_metadata():
@@ -103,4 +141,3 @@ def test_mcp_server_metadata():
     assert "deepsearch_extract" in tool_names
     assert "deepsearch_search" in tool_names
     assert "deepsearch_discover" in tool_names
-

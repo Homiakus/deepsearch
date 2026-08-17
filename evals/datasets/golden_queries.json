@@ -1,0 +1,23 @@
+[
+  {
+    "id": "q1_medicine",
+    "query": "Impact of GLP-1 receptor agonists on cardiovascular outcomes",
+    "domain": "medical",
+    "expected_sources": ["nejm.org", "thelancet.com", "pubmed.ncbi.nlm.nih.gov"],
+    "minimum_claims": 3
+  },
+  {
+    "id": "q2_quantum",
+    "query": "Topological quantum error correction surface codes",
+    "domain": "physics",
+    "expected_sources": ["arxiv.org", "nature.com", "journals.aps.org"],
+    "minimum_claims": 2
+  },
+  {
+    "id": "q3_ai",
+    "query": "Reciprocal Rank Fusion versus Learned Sparse Retrieval in hybrid search",
+    "domain": "computer_science",
+    "expected_sources": ["arxiv.org", "acm.org"],
+    "minimum_claims": 2
+  }
+]

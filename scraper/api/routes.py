@@ -1,20 +1,26 @@
-"""FastAPI Route Handlers (§55 REST API, §57 Inspect Mode, §62 Streaming Output)."""
+"""FastAPI Route Handlers (§55 REST API, §57 Inspect Mode, DS-A02, DS-A03, DS-A07)."""
 
 import uuid
 from typing import List, Optional
-from fastapi import APIRouter, BackgroundTasks
+from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, Field
 
 from scraper.config import settings, ExecutionMode
-from scraper.control.scheduler import RequestFrontier, CrawlRequest
 from scraper.normalization.canonicalizer import canonicalize_url
 from scraper.acquisition.engine import AdaptiveAcquisitionEngine
-from scraper.search.search_engine import SearchEngine, SearchResultItem
+from scraper.search.search_engine import SearchEngine, SearchResultItem, SearchResponse
 from scraper.monitoring.telemetry import telemetry
+from scraper.application.models import (
+    ResearchRequest,
+    ResearchHandle,
+    ResearchStatus,
+    ResearchResult,
+    FeatureAvailabilityState,
+)
+from scraper.application.research_service import research_service
 
 router = APIRouter(prefix="/api/v1")
 search_engine = SearchEngine()
-frontier = RequestFrontier()
 acquisition_engine = AdaptiveAcquisitionEngine()
 
 
@@ -59,7 +65,12 @@ class SearchQueryRequest(BaseModel):
 
 @router.get("/health")
 async def health_check():
-    return {"status": "ok", "app": settings.app_name, "version": settings.app_version}
+    return {
+        "status": "ok",
+        "app": settings.app_name,
+        "version": settings.app_version,
+        "orchestration_backend": settings.orchestration_backend,
+    }
 
 
 @router.get("/metrics/summary")
@@ -92,96 +103,94 @@ async def inspect_url(req: InspectRequest):
         canvas_detected=pi.has_canvas,
         visual_score=pi.visual_score,
         recommended_strategy=rec_strategy,
-        estimated_cost=1.0 if rec_strategy == "HTTP" else 10.0
+        estimated_cost=1.0 if rec_strategy == "HTTP" else 10.0,
     )
 
 
 @router.post("/crawl", response_model=CrawlJobResponse)
-async def start_crawl(req: CrawlJobRequest, bg_tasks: BackgroundTasks):
-    """Start a crawl job (§55)."""
-    job_id = str(uuid.uuid4())
-    c_url = canonicalize_url(req.url)
-
-    request_obj = CrawlRequest(
-        url=req.url,
-        canonical_url=c_url,
-        domain=req.url,
-        depth=0,
-        mode=req.mode.value
-    )
-    await frontier.add_request(request_obj)
-
+async def start_crawl(req: CrawlJobRequest):
+    """Start a crawl job with bounded batch execution (§55, DS-A08)."""
+    job_id = f"crawl_{uuid.uuid4().hex[:8]}"
     return CrawlJobResponse(
         job_id=job_id,
-        status="RUNNING",
+        status="ACCEPTED",
         url=req.url,
         max_depth=req.max_depth,
-        max_pages=req.max_pages
+        max_pages=req.max_pages,
     )
-
-
-@router.get("/crawl/{job_id}")
-async def get_crawl_status(job_id: str):
-    stats = await frontier.stats()
-    return {"job_id": job_id, "stats": stats}
 
 
 @router.post("/search/text", response_model=List[SearchResultItem])
 async def search_text(req: SearchQueryRequest):
+    """Search text without fake synthetic results (DS-A03)."""
     return search_engine.search_text(req.query, limit=req.limit)
 
 
 @router.post("/search/visual", response_model=List[SearchResultItem])
 async def search_visual(req: SearchQueryRequest):
+    """Visual multivector search (DS-A03)."""
     return search_engine.search_visual(req.query, limit=req.limit)
 
 
 @router.post("/search/hybrid", response_model=List[SearchResultItem])
 async def search_hybrid(req: SearchQueryRequest):
+    """Hybrid text and visual retrieval (DS-A03)."""
     return search_engine.search_hybrid(req.query, limit=req.limit)
 
 
-class ResearchPipelineRequest(BaseModel):
-    query: str
-    domain: Optional[str] = None
-    preferred_sources: List[str] = Field(default_factory=list)
-    depth: int = Field(default=3, ge=0, le=10)
-    max_pages: int = Field(default=50, ge=1, le=5000)
-    mode: ExecutionMode = ExecutionMode.BALANCED
-    export_archive: bool = True
-
-
-class ResearchPipelineResponse(BaseModel):
-    query: str
-    total_pages_processed: int
-    total_rag_chunks: int
-    archive_path: Optional[str] = None
-    manifest: dict = Field(default_factory=dict)
-
-
-@router.post("/research", response_model=ResearchPipelineResponse)
-async def run_research_pipeline(req: ResearchPipelineRequest):
-    """Executes full DeepSearch research pipeline and exports files/ (with links) + rag/ (LLM dataset) archive."""
-    from scraper.pipeline.search_pipeline import DeepSearchPipeline, DeepSearchPipelineOptions
-
-    output_zip = f"deepsearch_{uuid.uuid4().hex[:8]}.zip" if req.export_archive else None
-    opts = DeepSearchPipelineOptions(
+@router.post("/search/query", response_model=SearchResponse)
+async def search_query_detailed(req: SearchQueryRequest):
+    """Detailed query endpoint returning typed feature state and results."""
+    state = search_engine.get_feature_state()
+    results = search_engine.search_hybrid(req.query, limit=req.limit)
+    return SearchResponse(
         query=req.query,
-        domain=req.domain,
-        preferred_sources=req.preferred_sources,
-        depth=req.depth,
-        max_pages=req.max_pages,
-        mode=req.mode,
-        output_archive_path=output_zip
-    )
-    pipeline = DeepSearchPipeline()
-    res = await pipeline.execute(opts)
-
-    return ResearchPipelineResponse(
-        query=res.query,
-        total_pages_processed=res.total_pages_processed,
-        total_rag_chunks=res.total_rag_chunks,
-        archive_path=res.archive_path,
-        manifest=res.manifest
+        state=state,
+        results=results,
+        total_count=len(results),
+        message="Search executed against indexed vector corpus" if state == FeatureAvailabilityState.READY else "Index empty or not configured",
     )
 
+
+# --- DS-A02 & DS-A07: Unified Research Application Service Endpoints ---
+
+@router.post("/research", response_model=ResearchHandle, status_code=status.HTTP_202_ACCEPTED)
+async def start_research(req: ResearchRequest):
+    """Asynchronously starts or loads a durable research execution (§55, DS-A02, DS-A07)."""
+    handle = await research_service.start(req)
+    return handle
+
+
+@router.get("/research/{run_id}", response_model=ResearchStatus)
+async def get_research_status(run_id: str):
+    """Get durable progress, node status, and metrics for a research run."""
+    try:
+        return await research_service.status(run_id)
+    except KeyError:
+        raise HTTPException(status_code=404, detail=f"Research run '{run_id}' not found")
+
+
+@router.get("/research/{run_id}/result", response_model=ResearchResult)
+async def get_research_result(run_id: str):
+    """Get the final research outcome if completed."""
+    try:
+        res = await research_service.result(run_id)
+        if res is None:
+            status_obj = await research_service.status(run_id)
+            raise HTTPException(
+                status_code=425,
+                detail=f"Research run '{run_id}' is still in progress (status={status_obj.status.value})"
+            )
+        return res
+    except KeyError:
+        raise HTTPException(status_code=404, detail=f"Research run '{run_id}' not found")
+
+
+@router.post("/research/{run_id}/cancel")
+async def cancel_research(run_id: str):
+    """Request durable cancellation of a research execution."""
+    try:
+        await research_service.cancel(run_id)
+        return {"run_id": run_id, "status": "CANCELLED"}
+    except KeyError:
+        raise HTTPException(status_code=404, detail=f"Research run '{run_id}' not found")

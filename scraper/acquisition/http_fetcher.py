@@ -72,7 +72,7 @@ class HTTPFetcher:
         if headers:
             default_headers.update(headers)
 
-        transport = httpx.AsyncHTTPTransport(retries=0)
+        transport = httpx.AsyncHTTPTransport(retries=0, verify=False)
         async with httpx.AsyncClient(
             transport=transport,
             timeout=self.timeout_sec,

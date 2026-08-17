@@ -1,0 +1,94 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  python-quality-and-unit:
+    name: Python Lint, Type Check & Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: uv sync --all-extras
+
+      - name: Syntax & Compile check
+        run: uv run python -m compileall scraper
+
+      - name: Ruff Linter
+        run: uv run ruff check .
+
+      - name: Formatter check
+        run: uv run ruff format --check .
+
+      - name: Run Unit & Contract Tests (Offline)
+        run: uv run pytest tests/ -v --durations=10
+
+      - name: Build Wheel Package
+        run: uv build
+
+      - name: Wheel Import Smoke Test
+        run: |
+          uv pip install dist/*.whl
+          python -c "import scraper; print('Scraper version:', scraper.__version__ if hasattr(scraper, '__version__') else 'OK')"
+
+  rust-acquisition-worker:
+    name: Rust Acquisition Worker (Format, Clippy, Test)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust/acquisition-worker
+
+      - name: Rust Formatter Check
+        run: cargo fmt --manifest-path rust/acquisition-worker/Cargo.toml -- --check
+
+      - name: Rust Clippy Check
+        run: cargo clippy --manifest-path rust/acquisition-worker/Cargo.toml --all-targets --all-features -- -D warnings
+
+      - name: Rust Unit & Contract Tests
+        run: cargo test --manifest-path rust/acquisition-worker/Cargo.toml --all-targets --all-features
+
+  go-orchestrator:
+    name: Go Orchestrator Build & Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.x"
+          cache-dependency-path: orchestrator/go.sum
+
+      - name: Build Orchestrator
+        run: |
+          cd orchestrator
+          go build ./...
+
+      - name: Run Orchestrator Tests
+        run: |
+          cd orchestrator
+          go test -v -race ./...

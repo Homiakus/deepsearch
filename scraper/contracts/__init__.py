@@ -48,3 +48,15 @@ class OCREngineProtocol(Protocol):
     """Abstract protocol for visual OCR engines (PaddleOCR-VL-1.6)."""
     async def extract_text_from_image(self, image_bytes: bytes) -> Any:
         ...
+
+
+@runtime_checkable
+class AcquisitionBackend(Protocol):
+    """Capability-oriented acquisition backend protocol (§4, DS-RB02)."""
+    @property
+    def descriptor(self) -> Any:
+        ...
+
+    async def acquire(self, request: Any) -> Any:
+        ...
+

@@ -88,3 +88,12 @@ class Deduplicator:
 
         self.simhashes[s_hash] = text[:100]
         return False
+
+    def compute_hashes(self, text: str):
+        """Computes content hash and SimHash for a given text."""
+        from collections import namedtuple
+        HashResult = namedtuple("HashResult", ["blake3_hash", "simhash_64"])
+        content_bytes = text.encode("utf-8")
+        b3 = self.hash_content(content_bytes)
+        sh = self.compute_simhash(text)
+        return HashResult(blake3_hash=b3, simhash_64=sh)

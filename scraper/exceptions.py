@@ -15,6 +15,9 @@ class SSRFError(AcquisitionError):
     pass
 
 
+SSRFBlockedError = SSRFError
+
+
 class BrowserPoolError(AcquisitionError):
     """Raised when browser pool initialization, allocation, or execution fails."""
     pass

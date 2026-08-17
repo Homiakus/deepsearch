@@ -38,7 +38,7 @@ class RAGChunk(BaseModel):
     domain: str
     text: str
     token_estimate: int
-    relevance_score: float = 1.0
+    relevance_score: Optional[float] = None
     provenance: Dict[str, Any] = Field(default_factory=dict)
 
 
@@ -152,7 +152,7 @@ class ArchiveExporter:
                     domain=domain_name,
                     text=chunk_text,
                     token_estimate=token_est,
-                    relevance_score=0.95,
+                    relevance_score=None,
                     provenance={
                         "strategy": artifact.strategy_used,
                         "status_code": artifact.status_code,

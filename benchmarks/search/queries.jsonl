@@ -1,0 +1,15 @@
+{"id": "q001", "query": "photopolymer resin SLA 3D printing curing wavelength 405nm", "group": "engineering", "language": "en", "requires_primary": true}
+{"id": "q002", "query": "режимы резания титановых сплавов фрезерование подача скорость", "group": "engineering", "language": "ru", "requires_primary": true}
+{"id": "q003", "query": "androgenetic alopecia JAK inhibitors clinical trials efficacy", "group": "medical", "language": "en", "requires_primary": true}
+{"id": "q004", "query": "клинические рекомендации лечение алопеции миноксидил финастерид", "group": "medical", "language": "ru", "requires_primary": true}
+{"id": "q005", "query": "Qdrant HNSW vector search indexing payload filter performance", "group": "technical", "language": "en", "requires_primary": true}
+{"id": "q006", "query": "FastEmbed dense embeddings BAAI bge-small-en-v1.5 cosine similarity", "group": "technical", "language": "en", "requires_primary": false}
+{"id": "q007", "query": "SimHash 64-bit Hamming distance near duplicate document detection", "group": "technical", "language": "en", "requires_primary": false}
+{"id": "q008", "query": "NXOpen UF_DRAW 2512 drafting API C++ Open C reference", "group": "niche_terminology", "language": "en", "requires_primary": true}
+{"id": "q009", "query": "ГОСТ 25346-2013 основные нормы взаимозаменяемости допуски и посадки", "group": "niche_terminology", "language": "ru", "requires_primary": true}
+{"id": "q10", "query": "quantum error correction surface codes threshold fault-tolerant quantum computing", "group": "factual", "language": "en", "requires_primary": true}
+{"id": "q011", "query": "SLA vs DLP 3D printing resolution and layer exposure comparison", "group": "comparative", "language": "en", "requires_primary": false}
+{"id": "q012", "query": "Finasteride 1mg vs 5mg efficacy side effects controversy post-finasteride syndrome", "group": "contradiction_seeking", "language": "en", "requires_primary": true}
+{"id": "q013", "query": "Reciprocal Rank Fusion RRF k=60 hybrid search ranking algorithm", "group": "technical", "language": "en", "requires_primary": false}
+{"id": "q014", "query": "Servo browser engine parallel layout WebRender Rust architecture", "group": "technical", "language": "en", "requires_primary": true}
+{"id": "q015", "query": "European PMC REST API full text XML query parameters and rate limits", "group": "technical", "language": "en", "requires_primary": true}

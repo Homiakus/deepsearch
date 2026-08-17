@@ -88,6 +88,13 @@ class Settings(BaseSettings):
     # External Search Providers
     annas_archive_url: str = "https://annas-archive.cc"
 
+    # Feature Flags & Orchestration (§0, §1, DS-A40, DS-A50)
+    orchestration_backend: str = "axiom"  # legacy | axiom
+    retrieval_backend: str = "qdrant"     # disabled | qdrant
+    visual_retrieval: str = "experimental"  # disabled | experimental
+    orchestrator_url: str = "http://localhost:8081"
+    orchestrator_token: str = "adgo-dev-token"
+
     # Operational Sub-configurations (§101 defaults)
     adaptive: AdaptiveConfig = Field(default_factory=AdaptiveConfig)
     robots: RobotsConfig = Field(default_factory=RobotsConfig)

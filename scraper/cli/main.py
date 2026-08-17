@@ -1,4 +1,4 @@
-"""Typer CLI Application (§56, §57 Inspect Mode)."""
+"""Typer CLI Application (§56, §57 Inspect Mode, DS-A02, DS-A03)."""
 
 import asyncio
 from typing import Optional
@@ -12,6 +12,8 @@ from scraper.normalization.canonicalizer import canonicalize_url
 from scraper.acquisition.engine import AdaptiveAcquisitionEngine
 from scraper.extraction.engine import ExtractionEngine
 from scraper.search.search_engine import SearchEngine
+from scraper.application.models import ResearchRequest, RunLifecycleState, FeatureAvailabilityState
+from scraper.application.research_service import research_service
 
 app = typer.Typer(
     name="scraper",
@@ -99,9 +101,15 @@ def extract(
 
 @app.command()
 def search(query: str = typer.Argument(..., help="Search query string")):
-    """Perform hybrid text and visual multivector search (§56)."""
+    """Perform hybrid text and visual multivector search (§56, DS-A03)."""
     se = SearchEngine()
+    state = se.get_feature_state()
     results = se.search_hybrid(query)
+
+    if state != FeatureAvailabilityState.READY or not results:
+        console.print(f"[yellow]Search status: {state.value}. No documents indexed matching '{query}'.[/yellow]")
+        return
+
     table = Table(title=f"Search Results for '{query}'")
     table.add_column("Title", style="cyan")
     table.add_column("Score", style="green")
@@ -126,13 +134,11 @@ def research(
     max_media: int = typer.Option(25, "--max-media", help="Maximum topic media images to archive"),
     output: Optional[str] = typer.Option("deepsearch_results.zip", "--output", "-o", help="Output ZIP file path")
 ):
-    """DeepSearch Research Pipeline: search query, domain scope, preferred sources, depth, output archive with files/ (links), media/ (5-25 images) & rag/ (LLM context)."""
-    from scraper.pipeline.search_pipeline import DeepSearchPipeline, DeepSearchPipelineOptions
-
+    """DeepSearch Research Pipeline via ResearchApplicationService (DS-A02)."""
     pref_sources = [s.strip() for s in sources.split(",")] if sources else []
 
     console.print(Panel(
-        f"[bold green]Starting DeepSearch Pipeline[/bold green]\n"
+        f"[bold green]Starting DeepSearch Application Service[/bold green]\n"
         f"Query: {query}\n"
         f"Domain: {domain or 'Global'}\n"
         f"Preferred Sources: {pref_sources or 'Auto-discovered'}\n"
@@ -144,7 +150,7 @@ def research(
         title="DeepSearch Research Engine"
     ))
 
-    opts = DeepSearchPipelineOptions(
+    req = ResearchRequest(
         query=query,
         domain=domain,
         preferred_sources=pref_sources,
@@ -156,18 +162,30 @@ def research(
         enable_media_archiving=True,
         output_archive_path=output
     )
-    pipeline = DeepSearchPipeline()
 
     async def _run():
-        res = await pipeline.execute(opts)
-        total_media = res.manifest.get("summary", {}).get("total_media_files", 0)
-        console.print(f"[bold cyan]Total Pages Processed:[/bold cyan] {res.total_pages_processed}")
-        console.print(f"[bold cyan]Total RAG Chunks Generated:[/bold cyan] {res.total_rag_chunks}")
-        console.print(f"[bold cyan]Total Media Images Archived:[/bold cyan] {total_media}")
-        console.print(f"[bold green]Archive Generated Successfully at:[/bold green] {res.archive_path or res.dir_path}")
+        handle = await research_service.start(req)
+        console.print(f"[bold blue]Run ID:[/bold blue] {handle.run_id}")
+
+        # Poll status until completed
+        while True:
+            await asyncio.sleep(0.5)
+            st = await research_service.status(handle.run_id)
+            if st.status in (RunLifecycleState.COMPLETED, RunLifecycleState.FAILED, RunLifecycleState.CANCELLED):
+                break
+
+        res = await research_service.result(handle.run_id)
+        if res and res.status == RunLifecycleState.COMPLETED:
+            total_media = res.manifest.get("summary", {}).get("total_media_files", 0)
+            console.print(f"[bold cyan]Total Pages Processed:[/bold cyan] {res.total_pages_processed}")
+            console.print(f"[bold cyan]Total RAG Chunks Generated:[/bold cyan] {res.total_rag_chunks}")
+            console.print(f"[bold cyan]Total Media Images Archived:[/bold cyan] {total_media}")
+            console.print(f"[bold green]Archive Generated Successfully at:[/bold green] {res.archive_path or res.dir_path}")
+        else:
+            st = await research_service.status(handle.run_id)
+            console.print(f"[bold red]Research {st.status.value}:[/bold red] {st.error_message}")
 
     asyncio.run(_run())
-
 
 
 @app.command()
@@ -208,7 +226,7 @@ def download_file(
     from scraper.acquisition.authorized_browser import AuthorizedBrowserManager
 
     mgr = AuthorizedBrowserManager()
-    
+
     async def _run():
         res = await mgr.download_file(url=url, output_dir=output_dir, click_selector=selector, headless=not headed)
         if res.success:
@@ -222,6 +240,3 @@ def download_file(
 
 if __name__ == "__main__":
     app()
-
-
-

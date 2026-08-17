@@ -1,7 +1,37 @@
-"""Text, Visual, and Hybrid Retrieval Search Engine (§41)."""
+"""Production Evidence-Driven Search Engine (DS-SI68, DS-SI69).
 
-from typing import List
-from pydantic import BaseModel
+Combines query normalization, dense + sparse retrieval, reciprocal rank fusion,
+cross-encoder reranking, and domain diversity selection with full explanation trace.
+"""
+
+from typing import Any, Dict, List, Optional
+from pydantic import BaseModel, Field
+
+from scraper.application.models import FeatureAvailabilityState
+from scraper.storage.vector_store import VectorStoreManager
+from scraper.research.query_normalizer import normalize_query
+from scraper.search.embeddings.dense import dense_embedder
+from scraper.search.embeddings.sparse import sparse_embedder
+from scraper.search.retrieval.hybrid import (
+    RetrievalHit,
+    FusedResult,
+    weighted_reciprocal_rank_fusion,
+)
+from scraper.search.rerank.cross_encoder import cross_encoder_reranker
+from scraper.search.selection.diversity import diversity_selector
+from scraper.search.rerank.base import RerankedPassage
+from scraper.evidence.store import EvidenceStore, evidence_store
+
+
+class SearchExplainTrace(BaseModel):
+    why_retrieved: str = ""
+    matched_terms: List[str] = Field(default_factory=list)
+    dense_rank: Optional[int] = None
+    sparse_rank: Optional[int] = None
+    fusion_score: float = 0.0
+    rerank_score: float = 0.0
+    authority_score: float = 0.5
+    domain: str = ""
 
 
 class SearchResultItem(BaseModel):
@@ -10,41 +40,144 @@ class SearchResultItem(BaseModel):
     title: str
     snippet: str
     score: float
-    retrieval_type: str  # text | visual | hybrid
+    retrieval_type: str = "hybrid"  # dense | sparse | hybrid
+    source_type: str = "UNKNOWN"
+    authority_score: float = 0.5
+    explain: Optional[SearchExplainTrace] = None
+    provenance: Dict[str, Any] = Field(default_factory=dict)
+
+
+class SearchResponse(BaseModel):
+    query: str
+    state: FeatureAvailabilityState
+    results: List[SearchResultItem] = Field(default_factory=list)
+    total_count: int = 0
+    message: Optional[str] = None
 
 
 class SearchEngine:
-    """Hybrid Retrieval Engine combining text vector search and visual screenshot retrieval (§41)."""
+    """Evidence-driven hybrid retrieval engine without synthetic fake results."""
+
+    def __init__(self, vector_store: Optional[VectorStoreManager] = None):
+        self.vector_store = vector_store or VectorStoreManager()
+
+    def get_feature_state(self) -> FeatureAvailabilityState:
+        if not self.vector_store or not self.vector_store.client:
+            return FeatureAvailabilityState.NOT_CONFIGURED
+        if not self.vector_store.has_documents():
+            return FeatureAvailabilityState.INDEX_EMPTY
+        return FeatureAvailabilityState.READY
+
+    def search_passages(
+        self,
+        query: str,
+        limit: int = 10,
+        explain: bool = False,
+        source_type_filter: Optional[str] = None,
+    ) -> List[SearchResultItem]:
+        """Hybrid search combining dense semantic vectors and sparse lexical tokens with reranking and diversity."""
+        state = self.get_feature_state()
+        if state != FeatureAvailabilityState.READY:
+            return []
+
+        norm_q = normalize_query(query)
+        q_dense = dense_embedder.embed_query(norm_q.normalized_text)
+
+        # 1. Retrieve Dense Hits from Vector Store
+        raw_hits = self.vector_store.search_text(vector=q_dense, top_k=limit * 3)
+        dense_hits: List[RetrievalHit] = []
+        for rank, h in enumerate(raw_hits, start=1):
+            p = h.get("payload", {})
+            dense_hits.append(
+                RetrievalHit(
+                    id=str(h.get("id", "")),
+                    score=float(h.get("score", 0.0)),
+                    chunk_id=p.get("chunk_id", str(h.get("id", ""))),
+                    document_id=p.get("document_id", ""),
+                    url=p.get("url", ""),
+                    title=p.get("title", "Document"),
+                    text=p.get("text", ""),
+                    source_type=p.get("source_type", "UNKNOWN"),
+                    authority_score=float(p.get("authority_score", 0.7)),
+                    goal_ids=p.get("goal_ids", []),
+                    metadata=p.get("provenance", {}),
+                )
+            )
+
+        # 2. Simulated Sparse Hits from lexical term matching
+        sparse_hits: List[RetrievalHit] = []
+        for dh in dense_hits:
+            if any(t.lower() in dh.text.lower() for t in norm_q.normalized_text.split()):
+                sparse_hits.append(dh)
+
+        # 3. Hybrid Fusion
+        filters = {}
+        if source_type_filter:
+            filters["source_type"] = source_type_filter
+
+        fused = weighted_reciprocal_rank_fusion(
+            dense_hits=dense_hits,
+            sparse_hits=sparse_hits,
+            top_n=limit * 2,
+            metadata_filter=filters if filters else None,
+        )
+
+        # 4. Reranking
+        reranked: List[RerankedPassage] = cross_encoder_reranker.rerank(
+            query=norm_q.normalized_text,
+            candidates=fused,
+            top_n=limit * 2,
+        )
+
+        # 5. Diversity Selection (MMR)
+        diverse = diversity_selector.select_diverse(reranked, top_k=limit)
+
+        # 6. Format Response
+        items = []
+        for d in diverse:
+            hit = d.fused_result.hit
+            explain_obj = None
+            if explain:
+                matched = [t for t in norm_q.normalized_text.split() if t.lower() in hit.text.lower()]
+                explain_obj = SearchExplainTrace(
+                    why_retrieved=d.explanation,
+                    matched_terms=matched,
+                    dense_rank=d.fused_result.dense_rank,
+                    sparse_rank=d.fused_result.sparse_rank,
+                    fusion_score=d.fused_result.fusion_score,
+                    rerank_score=d.rerank_score,
+                    authority_score=hit.authority_score,
+                    domain=hit.url.split("/")[2] if "//" in hit.url else "",
+                )
+
+            items.append(
+                SearchResultItem(
+                    id=hit.id,
+                    url=hit.url,
+                    title=hit.title,
+                    snippet=hit.text[:300],
+                    score=d.rerank_score,
+                    retrieval_type="hybrid",
+                    source_type=hit.source_type,
+                    authority_score=hit.authority_score,
+                    explain=explain_obj,
+                    provenance=hit.metadata,
+                )
+            )
+
+        return items
 
     def search_text(self, query: str, limit: int = 10) -> List[SearchResultItem]:
-        return [
-            SearchResultItem(
-                id="doc_1",
-                url="https://example.com/doc1",
-                title="Sample Document 1",
-                snippet=f"Matched query text: {query}",
-                score=0.92,
-                retrieval_type="text"
-            )
-        ]
+        return self.search_passages(query, limit=limit, explain=False)
 
-    def search_visual(self, query: str, limit: int = 10) -> List[SearchResultItem]:
-        return [
-            SearchResultItem(
-                id="visual_1",
-                url="https://example.com/doc1#tile=2",
-                title="Visual Diagram Match",
-                snippet="Matched visual fragment diagram",
-                score=0.88,
-                retrieval_type="visual"
-            )
-        ]
+    def search_documents(self, query: str, limit: int = 10) -> List[SearchResultItem]:
+        return self.search_passages(query, limit=limit, explain=False)
+
+    def search_evidence(self, query: str, limit: int = 10) -> List[SearchResultItem]:
+        return self.search_passages(query, limit=limit, explain=True)
 
     def search_hybrid(self, query: str, limit: int = 10) -> List[SearchResultItem]:
-        text_results = self.search_text(query, limit=limit)
-        visual_results = self.search_visual(query, limit=limit)
+        return self.search_passages(query, limit=limit, explain=False)
 
-        # Merge and rerank (§41)
-        combined = text_results + visual_results
-        combined.sort(key=lambda r: r.score, reverse=True)
-        return combined[:limit]
+
+search_engine = SearchEngine()
