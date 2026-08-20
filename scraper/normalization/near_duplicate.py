@@ -6,9 +6,11 @@ Uses 64-bit SimHash over tokens/shingles to detect syndicated and mirror copies.
 import hashlib
 import re
 from collections import namedtuple
-from typing import Dict, List, Optional, Set
+from typing import Dict, List
 
-NearDupCheckResult = namedtuple("NearDupCheckResult", ["is_near_duplicate", "duplicate_of_id", "cluster_id"])
+NearDupCheckResult = namedtuple(
+    "NearDupCheckResult", ["is_near_duplicate", "duplicate_of_id", "cluster_id"]
+)
 
 
 class NearDuplicateDetector:
@@ -23,7 +25,7 @@ class NearDuplicateDetector:
     @staticmethod
     def compute_simhash(text: str, shingle_size: int = 2) -> int:
         """Computes 64-bit SimHash over word tokens/shingles."""
-        tokens = [t for t in re.findall(r'\w+', text.lower()) if len(t) > 1]
+        tokens = [t for t in re.findall(r"\w+", text.lower()) if len(t) > 1]
         if not tokens:
             return 0
 
@@ -33,7 +35,7 @@ class NearDuplicateDetector:
             shingles = tokens
         else:
             for i in range(len(tokens) - shingle_size + 1):
-                shingles.append(" ".join(tokens[i:i + shingle_size]))
+                shingles.append(" ".join(tokens[i : i + shingle_size]))
 
         v = [0] * 64
         for sh in shingles:
@@ -48,7 +50,7 @@ class NearDuplicateDetector:
         fingerprint = 0
         for i in range(64):
             if v[i] >= 0:
-                fingerprint |= (1 << i)
+                fingerprint |= 1 << i
 
         return fingerprint
 

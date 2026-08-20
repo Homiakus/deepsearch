@@ -4,8 +4,8 @@ Extracts rich semantic context (ancestor headings, surrounding paragraphs,
 semantic section) around discovered links for pre-ranking.
 """
 
-from typing import List, Optional
-from selectolax.parser import HTMLParser, Node
+from typing import List
+from selectolax.parser import HTMLParser
 from scraper.discovery.links import DiscoveredLink
 
 
@@ -26,6 +26,7 @@ class LinkContextExtractor:
                 continue
 
             import urllib.parse
+
             full_url = urllib.parse.urljoin(base_url, href)
 
             # Find nearest ancestor heading

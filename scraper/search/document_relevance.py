@@ -6,7 +6,7 @@ and required entities to reject off-topic/spam content before RAG indexing.
 
 import re
 from enum import Enum
-from typing import List, Tuple
+from typing import Tuple
 from scraper.research.intent import ResearchIntent
 from scraper.search.document_quality import DocumentQuality
 
@@ -38,7 +38,7 @@ class DocumentRelevanceEvaluator:
             return RelevanceTier.OFF_TOPIC, quality
 
         q_lower = intent.normalized_query.lower()
-        q_tokens = [t for t in re.findall(r'\w+', q_lower) if len(t) > 2]
+        q_tokens = [t for t in re.findall(r"\w+", q_lower) if len(t) > 2]
         doc_lower = text_content.lower()
         title_lower = title.lower()
 
@@ -52,15 +52,24 @@ class DocumentRelevanceEvaluator:
             ename = (e.canonical_form or e.name).lower()
             if ename in doc_lower or ename in title_lower:
                 entity_matches += 1
-        entity_score = entity_matches / max(len(intent.entities), 1) if intent.entities else 1.0
+        entity_score = (
+            entity_matches / max(len(intent.entities), 1) if intent.entities else 1.0
+        )
 
         # 3. Evidence density (rough heuristic: presence of quantitative/verifiable tokens)
-        has_numbers = len(re.findall(r'\b\d+(?:\.\d+)?\b', doc_lower)) > 3
-        has_citations = any(k in doc_lower for k in ["doi:", "pmid", "reference", "источник", "таблица", "табл."])
-        density = 0.5 + (0.25 if has_numbers else 0.0) + (0.25 if has_citations else 0.0)
+        has_numbers = len(re.findall(r"\b\d+(?:\.\d+)?\b", doc_lower)) > 3
+        has_citations = any(
+            k in doc_lower
+            for k in ["doi:", "pmid", "reference", "источник", "таблица", "табл."]
+        )
+        density = (
+            0.5 + (0.25 if has_numbers else 0.0) + (0.25 if has_citations else 0.0)
+        )
 
         # Composite score
-        raw_relevance = (0.50 * token_coverage) + (0.35 * entity_score) + (0.15 * density)
+        raw_relevance = (
+            (0.50 * token_coverage) + (0.35 * entity_score) + (0.15 * density)
+        )
         raw_relevance = min(1.0, round(raw_relevance, 4))
 
         if raw_relevance >= 0.65:

@@ -1,7 +1,6 @@
 """Structure-Aware Hierarchical Chunking Engine (§9, DS-A25)."""
 
 import hashlib
-import re
 import uuid
 from typing import List, Optional
 from pydantic import BaseModel, Field

@@ -19,7 +19,9 @@ Allow: /public/
     assert allowed is True
     assert decision == RobotsDecision.ALLOWED
 
-    blocked, dec_blocked = mgr.evaluate("https://example.com/private/secret", "example.com")
+    blocked, dec_blocked = mgr.evaluate(
+        "https://example.com/private/secret", "example.com"
+    )
     assert blocked is False
     assert dec_blocked == RobotsDecision.BLOCKED
 

@@ -1,7 +1,6 @@
 """Boilerplate, Navigation, and Spam/Thin Content Filter (DS-SI30, DS-SI31)."""
 
 import re
-from typing import Tuple
 from pydantic import BaseModel
 
 
@@ -26,12 +25,11 @@ class ContentFilter:
                 rejection_reason="THIN_CONTENT_TOO_SHORT",
             )
 
-        lines = [l.strip() for l in raw_text.splitlines() if l.strip()]
-        total_chars = sum(len(l) for l in lines)
-        total_words = sum(len(l.split()) for l in lines)
+        lines = [line.strip() for line in raw_text.splitlines() if line.strip()]
+        total_words = sum(len(line.split()) for line in lines)
 
         # 1. Link density in markdown (approx count of markdown links vs total words)
-        link_matches = re.findall(r'\[([^\]]+)\]\([^\)]+\)', raw_text)
+        link_matches = re.findall(r"\[([^\]]+)\]\([^\)]+\)", raw_text)
         link_words = sum(len(m.split()) for m in link_matches)
         link_density = link_words / max(total_words, 1)
 
@@ -39,7 +37,14 @@ class ContentFilter:
         is_nav = link_density > 0.65
 
         # 2. Check for cookie/consent/boilerplate banner domination
-        boilerplate_terms = ["cookie policy", "terms of use", "privacy policy", "all rights reserved", "accept all cookies", "согласие на обработку"]
+        boilerplate_terms = [
+            "cookie policy",
+            "terms of use",
+            "privacy policy",
+            "all rights reserved",
+            "accept all cookies",
+            "согласие на обработку",
+        ]
         bp_count = sum(1 for bp in boilerplate_terms if bp in raw_text.lower())
         is_bp_dominated = bp_count >= 3 and len(raw_text) < 500
 

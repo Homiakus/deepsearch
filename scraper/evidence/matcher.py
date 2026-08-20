@@ -12,18 +12,39 @@ class EvidenceMatcher:
     """Matches textual evidence against claims to determine semantic relation."""
 
     CONTRADICTION_MARKERS = [
-        "not found", "failed to show", "no significant difference", "contradicts",
-        "ineffective", "disputed", "no evidence", "refuted", "however, no", "adverse",
-        "не обнаружено", "не подтвердилось", "опровергает", "противоречит", "неэффективно",
+        "not found",
+        "failed to show",
+        "no significant difference",
+        "contradicts",
+        "ineffective",
+        "disputed",
+        "no evidence",
+        "refuted",
+        "however, no",
+        "adverse",
+        "не обнаружено",
+        "не подтвердилось",
+        "опровергает",
+        "противоречит",
+        "неэффективно",
     ]
 
     QUALIFICATION_MARKERS = [
-        "only in cases of", "depends on", "limited to", "under specific conditions",
-        "preliminary", "small sample", "только при условии", "зависит от", "ограничен",
+        "only in cases of",
+        "depends on",
+        "limited to",
+        "under specific conditions",
+        "preliminary",
+        "small sample",
+        "только при условии",
+        "зависит от",
+        "ограничен",
     ]
 
     @classmethod
-    def match_relation(cls, claim_text: str, evidence_text: str) -> Tuple[EvidenceRelation, float]:
+    def match_relation(
+        cls, claim_text: str, evidence_text: str
+    ) -> Tuple[EvidenceRelation, float]:
         ev_lower = evidence_text.lower()
         cl_lower = claim_text.lower()
 
@@ -38,8 +59,8 @@ class EvidenceMatcher:
                 return EvidenceRelation.QUALIFIES, 0.75
 
         # Token overlap check for support
-        c_words = set(re.findall(r'\w+', cl_lower))
-        e_words = set(re.findall(r'\w+', ev_lower))
+        c_words = set(re.findall(r"\w+", cl_lower))
+        e_words = set(re.findall(r"\w+", ev_lower))
         overlap = len(c_words.intersection(e_words)) / max(len(c_words), 1)
 
         if overlap >= 0.3:

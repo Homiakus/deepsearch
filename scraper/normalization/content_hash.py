@@ -14,7 +14,7 @@ def compute_content_hash(text: str) -> str:
     norm_text = unicodedata.normalize("NFKC", text)
 
     # 2. Whitespace normalization (collapse multi-spaces and blank lines)
-    norm_text = re.sub(r'[ \t]+', ' ', norm_text)
-    norm_text = re.sub(r'\n+', '\n', norm_text).strip().lower()
+    norm_text = re.sub(r"[ \t]+", " ", norm_text)
+    norm_text = re.sub(r"\n+", "\n", norm_text).strip().lower()
 
     return hashlib.sha256(norm_text.encode("utf-8")).hexdigest()

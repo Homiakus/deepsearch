@@ -1,9 +1,7 @@
 """Unit tests for Server-Sent Events (SSE) Broker."""
 
 import pytest
-import asyncio
-import json
-from scraper.api.sse import SSEEventBroker, ResearchEvent
+from scraper.api.sse import SSEEventBroker
 
 
 @pytest.mark.asyncio

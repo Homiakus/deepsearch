@@ -84,7 +84,13 @@ def test_planner_domain_telemetry_penalizes_failing_backend(sample_descriptors):
     telemetry = DomainTelemetry()
     # Record 5 failures on domain for servo
     for _ in range(5):
-        telemetry.record("problematic.com", "servo-offscreen", success=False, quality=0.1, latency_ms=5000.0)
+        telemetry.record(
+            "problematic.com",
+            "servo-offscreen",
+            success=False,
+            quality=0.1,
+            latency_ms=5000.0,
+        )
 
     planner = BackendPlanner(telemetry=telemetry)
     js_caps = BrowserCapabilities(
@@ -119,7 +125,9 @@ def test_planner_escalation_triggers(sample_descriptors):
         ),
     )
 
-    should_esc, target = planner.should_escalate(blocked_res, http_desc, sample_descriptors)
+    should_esc, target = planner.should_escalate(
+        blocked_res, http_desc, sample_descriptors
+    )
     assert should_esc is True
     assert target is not None
     assert target.engine_family == "chromium"

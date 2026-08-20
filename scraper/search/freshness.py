@@ -14,12 +14,17 @@ def calculate_freshness_score(
         return 0.5  # Neutral freshness for timeless/historical facts
 
     if not published_at:
-        return 0.4 if requirement in (FreshnessRequirement.HIGH, FreshnessRequirement.REALTIME) else 0.5
+        return (
+            0.4
+            if requirement in (FreshnessRequirement.HIGH, FreshnessRequirement.REALTIME)
+            else 0.5
+        )
 
     # Try parsing publication year/date
     try:
         import re
-        year_match = re.search(r'\b(19\d{2}|20\d{2})\b', str(published_at))
+
+        year_match = re.search(r"\b(19\d{2}|20\d{2})\b", str(published_at))
         if year_match:
             pub_year = int(year_match.group(0))
             cur_year = time.gmtime().tm_year

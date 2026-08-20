@@ -1,7 +1,7 @@
 """Operational Source Reliability & Trust History (DS-SI50)."""
 
 from typing import Dict
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 
 class DomainStats(BaseModel):
@@ -19,7 +19,14 @@ class SourceStatsTracker:
     def __init__(self):
         self._stats: Dict[str, DomainStats] = {}
 
-    def record_attempt(self, domain: str, success: bool, latency: float = 0.5, is_blocked: bool = False, is_timeout: bool = False):
+    def record_attempt(
+        self,
+        domain: str,
+        success: bool,
+        latency: float = 0.5,
+        is_blocked: bool = False,
+        is_timeout: bool = False,
+    ):
         if domain not in self._stats:
             self._stats[domain] = DomainStats(domain=domain)
 
@@ -32,7 +39,9 @@ class SourceStatsTracker:
         if is_timeout:
             st.timeout_count += 1
 
-        st.avg_latency_sec = (st.avg_latency_sec * (st.total_attempts - 1) + latency) / st.total_attempts
+        st.avg_latency_sec = (
+            st.avg_latency_sec * (st.total_attempts - 1) + latency
+        ) / st.total_attempts
 
     def get_success_rate(self, domain: str) -> float:
         if domain not in self._stats or self._stats[domain].total_attempts == 0:

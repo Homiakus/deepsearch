@@ -18,20 +18,26 @@ async def run_extraction_activity(input_data: Dict[str, Any]) -> ActivityResult:
 
         try:
             res = ExtractionEngine.extract_from_html(url, html)
-            extracted_docs.append({
-                "url": url,
-                "canonical_url": art.get("canonical_url", url),
-                "clean_markdown": res.clean_markdown,
-                "fit_markdown": res.fit_markdown,
-                "tables": [t.model_dump() for t in res.tables] if res.tables else [],
-                "extracted_records": res.extracted_records,
-                "word_count": len(res.clean_markdown.split()),
-            })
+            extracted_docs.append(
+                {
+                    "url": url,
+                    "canonical_url": art.get("canonical_url", url),
+                    "clean_markdown": res.clean_markdown,
+                    "fit_markdown": res.fit_markdown,
+                    "tables": [t.model_dump() for t in res.tables]
+                    if res.tables
+                    else [],
+                    "extracted_records": res.extracted_records,
+                    "word_count": len(res.clean_markdown.split()),
+                }
+            )
         except Exception as e:
-            extracted_docs.append({
-                "url": url,
-                "error": str(e),
-            })
+            extracted_docs.append(
+                {
+                    "url": url,
+                    "error": str(e),
+                }
+            )
 
     return ActivityResult(
         data={

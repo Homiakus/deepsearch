@@ -4,9 +4,8 @@ Breaks down complex queries into cohesive research goals with targeted evidence 
 """
 
 import re
-from typing import List
-from scraper.research.intent import ResearchIntent, FreshnessRequirement
-from scraper.research.goals import ResearchGoal, ResearchGoalGraph, GoalStatus
+from scraper.research.intent import ResearchIntent
+from scraper.research.goals import ResearchGoal, ResearchGoalGraph
 
 
 def decompose_intent(intent: ResearchIntent) -> ResearchGoalGraph:
@@ -16,14 +15,50 @@ def decompose_intent(intent: ResearchIntent) -> ResearchGoalGraph:
     q_lower = q.lower()
 
     # Determine domain evidence requirements
-    is_medical = intent.task_type == "medical" or any(e.entity_type in ("DISEASE", "CHEMICAL") for e in intent.entities) or any(k in q_lower for k in ["alopecia", "клиническ", "лечени", "drug", "trial", "efficacy"])
-    is_software = intent.task_type in ("technical", "code") or any(e.entity_type in ("SOFTWARE_API", "PRODUCT") for e in intent.entities) or any(k in q_lower for k in ["api", "function", "library", "sdk", "qdrant", "rust", "python"])
-    is_comparative = " vs " in q_lower or " versus " in q_lower or "сравнение" in q_lower or "против" in q_lower
-    is_contradiction = any(k in q_lower for k in ["controversy", "dispute", "противореч", "побочные эффекты", "side effect", "risk", "criticism"])
+    is_medical = (
+        intent.task_type == "medical"
+        or any(e.entity_type in ("DISEASE", "CHEMICAL") for e in intent.entities)
+        or any(
+            k in q_lower
+            for k in ["alopecia", "клиническ", "лечени", "drug", "trial", "efficacy"]
+        )
+    )
+    is_software = (
+        intent.task_type in ("technical", "code")
+        or any(e.entity_type in ("SOFTWARE_API", "PRODUCT") for e in intent.entities)
+        or any(
+            k in q_lower
+            for k in ["api", "function", "library", "sdk", "qdrant", "rust", "python"]
+        )
+    )
+    is_comparative = (
+        " vs " in q_lower
+        or " versus " in q_lower
+        or "сравнение" in q_lower
+        or "против" in q_lower
+    )
+    is_contradiction = any(
+        k in q_lower
+        for k in [
+            "controversy",
+            "dispute",
+            "противореч",
+            "побочные эффекты",
+            "side effect",
+            "risk",
+            "criticism",
+        ]
+    )
 
     # Base evidence preference
     if is_medical:
-        base_reqs = ["GUIDELINE", "REGULATOR", "SYSTEMATIC_REVIEW", "META_ANALYSIS", "PRIMARY_RESEARCH"]
+        base_reqs = [
+            "GUIDELINE",
+            "REGULATOR",
+            "SYSTEMATIC_REVIEW",
+            "META_ANALYSIS",
+            "PRIMARY_RESEARCH",
+        ]
     elif is_software:
         base_reqs = ["OFFICIAL_DOC", "SOURCE_CODE", "STANDARD", "ISSUE_TRACKER"]
     else:
@@ -39,7 +74,7 @@ def decompose_intent(intent: ResearchIntent) -> ResearchGoalGraph:
 
     # 2. Comparative Query Decomposition
     if is_comparative:
-        parts = re.split(r'\b(?:vs|versus|против|и)\b', q, flags=re.IGNORECASE)
+        parts = re.split(r"\b(?:vs|versus|против|и)\b", q, flags=re.IGNORECASE)
         if len(parts) >= 2:
             item_a = parts[0].strip()
             item_b = parts[1].strip()
@@ -64,7 +99,12 @@ def decompose_intent(intent: ResearchIntent) -> ResearchGoalGraph:
             question=f"Investigate criticisms, adverse effects, and counter-evidence for: {q}",
             importance=0.9,
             dependencies=[root_goal.id],
-            required_evidence_types=["PRIMARY_RESEARCH", "SYSTEMATIC_REVIEW", "ISSUE_TRACKER", "FORUM"],
+            required_evidence_types=[
+                "PRIMARY_RESEARCH",
+                "SYSTEMATIC_REVIEW",
+                "ISSUE_TRACKER",
+                "FORUM",
+            ],
         )
         graph.add_goal(crit_goal)
 

@@ -1,6 +1,6 @@
 """EvidenceStore and Claim-Evidence Graph Repository (DS-SI51, DS-SI52)."""
 
-from typing import Dict, List, Optional
+from typing import List, Optional
 from scraper.evidence.models import Claim, EvidenceItem, EvidenceRelation
 from scraper.evidence.graph import EvidenceGraph
 
@@ -11,8 +11,19 @@ class EvidenceStore:
     def __init__(self):
         self.graph = EvidenceGraph()
 
-    def add_claim(self, claim_id: str, statement: str, goal_id: Optional[str] = None, initial_confidence: float = 0.5) -> Claim:
-        claim = Claim(id=claim_id, statement=statement, goal_id=goal_id, confidence=initial_confidence)
+    def add_claim(
+        self,
+        claim_id: str,
+        statement: str,
+        goal_id: Optional[str] = None,
+        initial_confidence: float = 0.5,
+    ) -> Claim:
+        claim = Claim(
+            id=claim_id,
+            statement=statement,
+            goal_id=goal_id,
+            confidence=initial_confidence,
+        )
         return self.graph.add_claim(claim)
 
     def add_evidence(
@@ -48,7 +59,11 @@ class EvidenceStore:
         return [c for c in self.graph.claims.values() if c.goal_id == goal_id]
 
     def get_contradictions(self) -> List[Claim]:
-        return [c for c in self.graph.claims.values() if c.status == "DISPUTED" or len(c.contradicting_evidence_ids) > 0]
+        return [
+            c
+            for c in self.graph.claims.values()
+            if c.status == "DISPUTED" or len(c.contradicting_evidence_ids) > 0
+        ]
 
 
 evidence_store = EvidenceStore()

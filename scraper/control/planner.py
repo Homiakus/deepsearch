@@ -6,12 +6,12 @@ from scraper.config import settings
 
 
 class ExtractionQuality(BaseModel):
-    completeness: float = 1.0     # Ratio of required schema fields populated
-    validity: float = 1.0         # Data type / format validity score
-    consistency: float = 1.0      # Cross-field logical consistency
-    schema_match: float = 1.0     # Schema validation match score
+    completeness: float = 1.0  # Ratio of required schema fields populated
+    validity: float = 1.0  # Data type / format validity score
+    consistency: float = 1.0  # Cross-field logical consistency
+    schema_match: float = 1.0  # Schema validation match score
     content_density: float = 1.0  # Useful text / total DOM size ratio
-    overall_score: float = 1.0    # Weighted overall quality score
+    overall_score: float = 1.0  # Weighted overall quality score
 
 
 class StrategyEscalation(str):
@@ -47,7 +47,7 @@ class CostPlanner:
         required_quality: float = 0.85,
         js_score: float = 0.0,
         api_available: bool = False,
-        visual_score: float = 0.0
+        visual_score: float = 0.0,
     ) -> str:
         """Determines next acquisition strategy according to escalation rules (§52)."""
         if quality.overall_score >= required_quality:
@@ -78,13 +78,17 @@ class CostPlanner:
 def evaluate_quality(
     extracted_data: Optional[Dict[str, Any]],
     raw_html: str,
-    required_fields: Optional[list] = None
+    required_fields: Optional[list] = None,
 ) -> ExtractionQuality:
     """Evaluates quality metrics for extracted page content (§52)."""
     if not raw_html:
         return ExtractionQuality(
-            completeness=0.0, validity=0.0, consistency=0.0,
-            schema_match=0.0, content_density=0.0, overall_score=0.0
+            completeness=0.0,
+            validity=0.0,
+            consistency=0.0,
+            schema_match=0.0,
+            content_density=0.0,
+            overall_score=0.0,
         )
 
     # 1. Content density (text length / HTML length)
@@ -102,11 +106,11 @@ def evaluate_quality(
     consistency = 1.0
 
     overall = (
-        0.3 * completeness +
-        0.2 * validity +
-        0.2 * consistency +
-        0.15 * schema_match +
-        0.15 * content_density
+        0.3 * completeness
+        + 0.2 * validity
+        + 0.2 * consistency
+        + 0.15 * schema_match
+        + 0.15 * content_density
     )
 
     return ExtractionQuality(
@@ -115,5 +119,5 @@ def evaluate_quality(
         consistency=round(consistency, 3),
         schema_match=round(schema_match, 3),
         content_density=round(content_density, 3),
-        overall_score=round(overall, 3)
+        overall_score=round(overall, 3),
     )

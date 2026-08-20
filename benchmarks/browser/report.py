@@ -14,7 +14,11 @@ def generate_benchmark_report(results: List[Dict[str, Any]]) -> str:
 
     latencies = [r["elapsed_ms"] for r in results if r.get("elapsed_ms")]
     avg_latency = statistics.mean(latencies) if latencies else 0.0
-    p95_latency = statistics.quantiles(latencies, n=20)[18] if len(latencies) >= 20 else avg_latency
+    p95_latency = (
+        statistics.quantiles(latencies, n=20)[18]
+        if len(latencies) >= 20
+        else avg_latency
+    )
 
     qualities = [r["quality_score"] for r in results if "quality_score" in r]
     avg_quality = statistics.mean(qualities) if qualities else 0.0

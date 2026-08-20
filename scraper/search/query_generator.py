@@ -3,7 +3,7 @@
 Generates bounded, goal-directed query formulations without exponential query explosion.
 """
 
-from typing import List, Optional
+from typing import List
 from scraper.research.intent import ResearchIntent
 from scraper.research.goals import ResearchGoalGraph, ResearchGoal
 from scraper.search.query_models import SearchQueryVariant, QueryType
@@ -12,7 +12,9 @@ from scraper.search.query_models import SearchQueryVariant, QueryType
 class QueryGenerator:
     """Generates typed query variants per goal with budget caps."""
 
-    def __init__(self, max_queries_per_goal: int = 4, max_total_query_variants: int = 16):
+    def __init__(
+        self, max_queries_per_goal: int = 4, max_total_query_variants: int = 16
+    ):
         self.max_queries_per_goal = max_queries_per_goal
         self.max_total_query_variants = max_total_query_variants
 
@@ -34,7 +36,9 @@ class QueryGenerator:
 
         return variants
 
-    def _generate_for_goal(self, goal: ResearchGoal, intent: ResearchIntent) -> List[SearchQueryVariant]:
+    def _generate_for_goal(
+        self, goal: ResearchGoal, intent: ResearchIntent
+    ) -> List[SearchQueryVariant]:
         results: List[SearchQueryVariant] = []
         clean_q = intent.normalized_query
 
@@ -42,7 +46,10 @@ class QueryGenerator:
         results.append(
             SearchQueryVariant(
                 query=clean_q,
-                language="ru" if intent.normalized_query and any(ord(c) > 127 for c in intent.normalized_query[:10]) else "en",
+                language="ru"
+                if intent.normalized_query
+                and any(ord(c) > 127 for c in intent.normalized_query[:10])
+                else "en",
                 goal_id=goal.id,
                 query_type=QueryType.SEMANTIC,
                 priority=1.0,
@@ -62,38 +69,73 @@ class QueryGenerator:
                 )
             )
 
-        # 3. English translation / cross-lingual variant if query is in Russian
-        if any(ord(c) > 1000 for c in clean_q):
-            # Medical or engineering translation heuristics
-            en_query = clean_q
-            if "алопец" in clean_q.lower() or "облысени" in clean_q.lower():
-                en_query = clean_q.lower().replace("алопеции", "alopecia").replace("алопеция", "alopecia")
-            elif "режимы резания" in clean_q.lower():
-                en_query = "cutting parameters machining titanium alloys milling feed speed"
-            elif "3d" in clean_q.lower() or "lcd" in clean_q.lower() or "печать" in clean_q.lower() or "принтер" in clean_q.lower() or "фотополимер" in clean_q.lower():
-                en_query = "LCD MSLA resin 3D printing parameters exposure peeling speed"
-            if en_query != clean_q:
+        # 3. Scientific Cross-Lingual Mapping (RU/ZH/ES/DE -> EN)
+        if any(ord(c) > 127 for c in clean_q):
+            en_query = clean_q.lower()
+            translations = [
+                ("жидкостная биопсия", "liquid biopsy ctDNA circulating tumor DNA"),
+                ("колоректальный рак", "colorectal cancer"),
+                ("онкологи", "oncology"),
+                ("квантов", "quantum"),
+                ("лазерн", "laser cutting assist gas nozzle parameters"),
+                ("резани", "machining parameters cutting speed feed rate"),
+                ("титан", "titanium alloy Ti6Al4V"),
+                ("печать", "3D printing additive manufacturing"),
+                (
+                    "алопец",
+                    "alopecia androgenetica tofacitinib baricitinib JAK inhibitors",
+                ),
+                ("облысени", "hair loss alopecia treatment clinical trial"),
+                ("иммунотерапи", "immunotherapy checkpoint inhibitors PD-1 CTLA-4"),
+                ("нейросеть", "neural networks deep learning RAG LLM"),
+                (
+                    "первичное исследование",
+                    "randomized clinical trial systematic review meta-analysis",
+                ),
+                ("научная статья", "journal article DOI"),
+            ]
+            for ru_term, en_replacement in translations:
+                if ru_term in en_query:
+                    en_query = en_query.replace(ru_term, en_replacement)
+
+            if en_query != clean_q.lower():
                 results.append(
                     SearchQueryVariant(
                         query=en_query,
                         language="en",
                         goal_id=goal.id,
                         query_type=QueryType.DOMAIN_SPECIFIC,
-                        priority=0.85,
+                        priority=0.92,
                     )
                 )
 
-        # 4. Primary Source Query
-        if "GUIDELINE" in goal.required_evidence_types or "PRIMARY_RESEARCH" in goal.required_evidence_types:
+        # 4. Primary Scientific Source Formulation (PubMed / Semantic Scholar / OpenAlex)
+        if (
+            "GUIDELINE" in goal.required_evidence_types
+            or "PRIMARY_RESEARCH" in goal.required_evidence_types
+            or "SYSTEMATIC_REVIEW" in goal.required_evidence_types
+        ):
             results.append(
                 SearchQueryVariant(
-                    query=f"{clean_q} clinical trial guideline systematic review",
+                    query=f"{clean_q} (systematic review OR meta-analysis OR clinical trial OR randomized controlled)",
                     language="en",
                     goal_id=goal.id,
                     query_type=QueryType.PRIMARY_SOURCE,
-                    provider_hint="pubmed",
-                    priority=0.8,
+                    provider_hint="semantic_scholar",
+                    priority=0.88,
                 )
             )
+
+        # 5. Multi-Regional Academic Formulation (HAL / CyberLeninka / CrossRef)
+        results.append(
+            SearchQueryVariant(
+                query=clean_q,
+                language="ru" if any(ord(c) > 127 for c in clean_q) else "en",
+                goal_id=goal.id,
+                query_type=QueryType.DOMAIN_SPECIFIC,
+                provider_hint="regional_academic",
+                priority=0.80,
+            )
+        )
 
         return results[: self.max_queries_per_goal]

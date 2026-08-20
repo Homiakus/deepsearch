@@ -1,10 +1,10 @@
 """Result Adapter: AcquisitionResult & ArtifactReference -> CapturedArtifact (§4, DS-RB26)."""
 
 import os
-from typing import Optional, Dict, Any, List
-from scraper.acquisition.models import AcquisitionResult, ArtifactReference
+from typing import Optional
+from scraper.acquisition.models import AcquisitionResult
 from scraper.acquisition.engine import CapturedArtifact
-from scraper.acquisition.page_classifier import classify_page, PageIntelligence
+from scraper.acquisition.page_classifier import classify_page
 
 
 def adapt_acquisition_result_to_captured_artifact(
@@ -20,7 +20,9 @@ def adapt_acquisition_result_to_captured_artifact(
         for ref in result.artifact_refs:
             if ref.media_type.startswith("text/html"):
                 prefix = ref.content_hash[:2]
-                file_path = os.path.join(cas_storage_dir, prefix, f"{ref.content_hash}.html")
+                file_path = os.path.join(
+                    cas_storage_dir, prefix, f"{ref.content_hash}.html"
+                )
                 if os.path.exists(file_path):
                     with open(file_path, "rb") as f:
                         raw_content = f.read()

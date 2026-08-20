@@ -2,7 +2,6 @@
 
 import os
 import json
-import pytest
 from scraper.storage.exporters.obsidian import ObsidianVaultExporter
 from scraper.storage.exporters.zotero import ZoteroLibraryExporter
 from scraper.extraction.engine import ExtractionResult
@@ -28,9 +27,8 @@ def test_obsidian_vault_exporter(tmp_path):
             clean_markdown="# Superconducting Qubits\n\nHigh fidelity gates.",
             fit_markdown="# Superconducting Qubits",
             tables=[],
-        )
+        ),
     ]
-
 
     claims = [
         {
@@ -53,10 +51,12 @@ def test_obsidian_vault_exporter(tmp_path):
     with open(index_path, "r", encoding="utf-8") as f:
         index_text = f.read()
         assert "Research Index: quantum algorithms speedup" in index_text
-        assert "[[Notes/01_quantum-machine-learning-foundations|Quantum Machine Learning Foundations]]" in index_text
+        assert (
+            "[[Notes/01_quantum-machine-learning-foundations|Quantum Machine Learning Foundations]]"
+            in index_text
+        )
         assert "[[Evidence/claim_001_" in index_text
         assert "Quantum algorithms achieve exponential speedup" in index_text
-
 
     # Verify Note file created
     notes = os.listdir(exporter.notes_dir)
@@ -76,7 +76,6 @@ def test_zotero_library_exporter(tmp_path):
             fit_markdown="Quantum algorithms",
             tables=[],
         )
-
     ]
 
     res = exporter.export_all(extractions, query="quantum ml")

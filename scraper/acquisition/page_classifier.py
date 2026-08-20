@@ -25,7 +25,7 @@ def classify_page(
     status_code: int,
     headers: Dict[str, str],
     content_text: str,
-    network_requests: List[Dict[str, Any]] = None
+    network_requests: List[Dict[str, Any]] = None,
 ) -> PageIntelligence:
     """Calculates metrics for Page Intelligence Engine (§7)."""
     mime = headers.get("content-type", "").lower()
@@ -37,7 +37,7 @@ def classify_page(
             js_dependency_score=0.0,
             api_score=1.0,
             visual_score=0.0,
-            content_quality=1.0
+            content_quality=1.0,
         )
 
     if "pdf" in mime:
@@ -47,7 +47,7 @@ def classify_page(
             js_dependency_score=0.0,
             api_score=0.0,
             visual_score=0.8,
-            content_quality=0.9
+            content_quality=0.9,
         )
 
     # Analyze HTML content
@@ -55,15 +55,33 @@ def classify_page(
 
     # Detect frameworks & SPA hydration markers (§7)
     frameworks = []
-    if "__next_data__" in html_lower or "next/static" in html_lower or "__next" in html_lower:
+    if (
+        "__next_data__" in html_lower
+        or "next/static" in html_lower
+        or "__next" in html_lower
+    ):
         frameworks.append("Next.js")
     if "__nuxt__" in html_lower or "nuxt.js" in html_lower:
         frameworks.append("Nuxt")
-    if "data-reactroot" in html_lower or 'id="react-root"' in html_lower or "react-dom" in html_lower or "/react." in html_lower:
+    if (
+        "data-reactroot" in html_lower
+        or 'id="react-root"' in html_lower
+        or "react-dom" in html_lower
+        or "/react." in html_lower
+    ):
         frameworks.append("React")
-    if "v-app" in html_lower or "data-v-" in html_lower or "vue.js" in html_lower or "vue.runtime" in html_lower:
+    if (
+        "v-app" in html_lower
+        or "data-v-" in html_lower
+        or "vue.js" in html_lower
+        or "vue.runtime" in html_lower
+    ):
         frameworks.append("Vue")
-    if "ng-version" in html_lower or "ng-app" in html_lower or "ng-controller" in html_lower:
+    if (
+        "ng-version" in html_lower
+        or "ng-app" in html_lower
+        or "ng-controller" in html_lower
+    ):
         frameworks.append("Angular")
 
     # Detect visual elements
@@ -108,9 +126,18 @@ def classify_page(
 
     # Compute Block score (detect bot block pages, Cloudflare, 403)
     block_score = 0.0
-    if status_code in (403, 429) or "captcha" in html_lower or "cloudflare" in html_lower or "access denied" in html_lower or "checking your browser" in html_lower or "just a moment..." in html_lower:
+    if (
+        status_code in (403, 429)
+        or "captcha" in html_lower
+        or "cloudflare" in html_lower
+        or "access denied" in html_lower
+        or "checking your browser" in html_lower
+        or "just a moment..." in html_lower
+    ):
         block_score = 0.95
-        js_score = max(js_score, 0.85)  # Force JS dependency escalation for challenge pages
+        js_score = max(
+            js_score, 0.85
+        )  # Force JS dependency escalation for challenge pages
 
     static_score = round(1.0 - js_score, 2)
 
@@ -125,5 +152,5 @@ def classify_page(
         detected_apis=detected_apis,
         has_canvas=has_canvas,
         has_svg=has_svg,
-        tables_count=tables_count
+        tables_count=tables_count,
     )

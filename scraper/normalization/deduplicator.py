@@ -24,6 +24,7 @@ class Deduplicator:
         """Level 2: Content-level hash (BLAKE3 fallback to SHA256)."""
         try:
             import blake3
+
             return blake3.blake3(content_bytes).hexdigest()
         except ImportError:
             return hashlib.sha256(content_bytes).hexdigest()
@@ -49,7 +50,7 @@ class Deduplicator:
         fingerprint = 0
         for i in range(64):
             if v[i] >= 0:
-                fingerprint |= (1 << i)
+                fingerprint |= 1 << i
 
         return fingerprint
 
@@ -92,6 +93,7 @@ class Deduplicator:
     def compute_hashes(self, text: str):
         """Computes content hash and SimHash for a given text."""
         from collections import namedtuple
+
         HashResult = namedtuple("HashResult", ["blake3_hash", "simhash_64"])
         content_bytes = text.encode("utf-8")
         b3 = self.hash_content(content_bytes)

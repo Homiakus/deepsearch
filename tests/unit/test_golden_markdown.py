@@ -1,6 +1,5 @@
 """Golden fixture tests for Markdown & Table extraction pipelines (§12)."""
 
-import pytest
 from scraper.extraction.markdown import process_markdown_pipeline
 from scraper.extraction.table_extractor import extract_tables_from_html
 

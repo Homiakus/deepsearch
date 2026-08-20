@@ -7,7 +7,7 @@ into Zotero and reference managers.
 import os
 import json
 import time
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
 from urllib.parse import urlparse
 
 from scraper.extraction.engine import ExtractionResult
@@ -35,7 +35,6 @@ class ZoteroLibraryExporter:
             title = getattr(ext, "title", None) or f"Document {idx} ({domain})"
             abstract = (ext.clean_markdown or ext.fit_markdown or "")[:500]
 
-
             item = {
                 "id": f"deepsearch_ref_{idx:03d}",
                 "type": "webpage",
@@ -44,7 +43,9 @@ class ZoteroLibraryExporter:
                 "container-title": domain,
                 "abstract": abstract,
                 "accessed": {
-                    "date-parts": [[now_parts.tm_year, now_parts.tm_mon, now_parts.tm_mday]]
+                    "date-parts": [
+                        [now_parts.tm_year, now_parts.tm_mon, now_parts.tm_mday]
+                    ]
                 },
                 "keyword": f"deepsearch, {query}".strip(", "),
                 "language": "en",
@@ -70,21 +71,25 @@ class ZoteroLibraryExporter:
         for idx, ext in enumerate(extractions, 1):
             domain = urlparse(ext.url).hostname or "web"
             title = ext.title or f"Document {idx}"
-            abstract = (ext.clean_markdown or ext.fit_markdown or "")[:600].replace("\n", " ")
+            abstract = (ext.clean_markdown or ext.fit_markdown or "")[:600].replace(
+                "\n", " "
+            )
 
-            ris_lines.extend([
-                "TY  - ELEC",
-                f"ID  - deepsearch_{idx:03d}",
-                f"TI  - {title}",
-                f"UR  - {ext.url}",
-                f"PB  - {domain}",
-                f"AB  - {abstract}",
-                f"Y2  - {now_date_str}",
-                f"KW  - deepsearch",
-                f"KW  - {query}",
-                "ER  - ",
-                "",
-            ])
+            ris_lines.extend(
+                [
+                    "TY  - ELEC",
+                    f"ID  - deepsearch_{idx:03d}",
+                    f"TI  - {title}",
+                    f"UR  - {ext.url}",
+                    f"PB  - {domain}",
+                    f"AB  - {abstract}",
+                    f"Y2  - {now_date_str}",
+                    "KW  - deepsearch",
+                    f"KW  - {query}",
+                    "ER  - ",
+                    "",
+                ]
+            )
 
         out_path = os.path.join(self.output_dir, filename)
         with open(out_path, "w", encoding="utf-8") as f:

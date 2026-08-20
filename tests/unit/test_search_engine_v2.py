@@ -1,8 +1,7 @@
 """Unit tests for SearchEngine V2 & Structure-aware Chunking (DS-SI65 - DS-SI69)."""
 
-import pytest
 from unittest.mock import MagicMock
-from scraper.search.search_engine import SearchEngine, SearchExplainTrace
+from scraper.search.search_engine import SearchEngine
 from scraper.search.chunking import structure_chunker
 from scraper.storage.vector_store import VectorStoreManager
 from scraper.application.models import FeatureAvailabilityState
@@ -23,7 +22,9 @@ Photopolymers are light-activated resins commonly used in SLA 3D printing.
 
 Post-curing increases the tensile strength and modulus of the printed part.
 """
-    chunks = structure_chunker.chunk_markdown(md, "doc_01", "https://example.com/resins", title="Photopolymers Guide")
+    chunks = structure_chunker.chunk_markdown(
+        md, "doc_01", "https://example.com/resins", title="Photopolymers Guide"
+    )
     assert len(chunks) >= 2
     assert any("Introduction to Photopolymers" in c.heading_path for c in chunks)
     assert any("Exposure Parameters" in c.heading_path for c in chunks)
@@ -46,7 +47,7 @@ def test_search_engine_hybrid_with_explanation():
                 "text": "Standard 405nm resin photoinitiator chemistry for SLA 3D printing.",
                 "source_type": "OFFICIAL_DOC",
                 "authority_score": 0.90,
-            }
+            },
         }
     ]
 

@@ -37,7 +37,9 @@ class SemanticPreRanker:
         return candidate.semantic_score
 
     @classmethod
-    def rank_candidates(cls, candidates: List[SourceCandidate], intent: ResearchIntent) -> List[SourceCandidate]:
+    def rank_candidates(
+        cls, candidates: List[SourceCandidate], intent: ResearchIntent
+    ) -> List[SourceCandidate]:
         for c in candidates:
             cls.score_candidate(c, intent)
         return sorted(candidates, key=lambda c: c.semantic_score, reverse=True)

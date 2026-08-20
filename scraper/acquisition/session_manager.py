@@ -22,19 +22,22 @@ class SessionManager:
     def __init__(self):
         self._sessions: Dict[str, SessionData] = {}
 
-    def create_session(self, headers: Optional[Dict[str, str]] = None, proxy: Optional[str] = None) -> SessionData:
-        sess = SessionData(
-            cookies={},
-            headers=headers or {},
-            proxy_url=proxy
-        )
+    def create_session(
+        self, headers: Optional[Dict[str, str]] = None, proxy: Optional[str] = None
+    ) -> SessionData:
+        sess = SessionData(cookies={}, headers=headers or {}, proxy_url=proxy)
         self._sessions[sess.session_id] = sess
         return sess
 
     def get_session(self, session_id: str) -> Optional[SessionData]:
         return self._sessions.get(session_id)
 
-    def update_session(self, session_id: str, cookies: Optional[Dict[str, str]] = None, success: bool = True):
+    def update_session(
+        self,
+        session_id: str,
+        cookies: Optional[Dict[str, str]] = None,
+        success: bool = True,
+    ):
         sess = self._sessions.get(session_id)
         if sess:
             sess.request_count += 1

@@ -8,6 +8,7 @@ from scraper.visual.pixel_rag import PixelRAGPipeline
 
 try:
     from PIL import Image, ImageDraw
+
     PIL_AVAILABLE = True
 except ImportError:
     PIL_AVAILABLE = False

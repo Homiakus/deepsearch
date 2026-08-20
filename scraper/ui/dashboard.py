@@ -1,5 +1,6 @@
 """Web UI HTML Dashboard Renderer (§58 Dashboard, Live Crawl, Page Inspector, §59 Extraction Studio, Visual Search)."""
 
+
 def render_dashboard_html() -> str:
     return """<!DOCTYPE html>
 <html lang="en">

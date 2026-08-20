@@ -1,7 +1,6 @@
 """Unit tests for Distributed Request Queue Adapter."""
 
 import pytest
-import asyncio
 from scraper.control.distributed_queue import (
     InMemoryDistributedQueue,
     get_distributed_queue,
@@ -12,9 +11,17 @@ from scraper.control.scheduler import CrawlRequest, RequestState
 @pytest.mark.asyncio
 async def test_in_memory_distributed_queue_lifecycle():
     queue = InMemoryDistributedQueue(max_capacity=10)
-    
-    req1 = CrawlRequest(url="https://example.com/page1", canonical_url="https://example.com/page1", domain="example.com")
-    req2 = CrawlRequest(url="https://example.com/page2", canonical_url="https://example.com/page2", domain="example.com")
+
+    req1 = CrawlRequest(
+        url="https://example.com/page1",
+        canonical_url="https://example.com/page1",
+        domain="example.com",
+    )
+    req2 = CrawlRequest(
+        url="https://example.com/page2",
+        canonical_url="https://example.com/page2",
+        domain="example.com",
+    )
 
     # 1. Push
     assert await queue.push(req1) is True

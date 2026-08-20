@@ -6,25 +6,24 @@ with bounded concurrency, isolated contexts, SSRF enforcement, and health monito
 
 import asyncio
 import time
-from typing import Optional, Dict, Any, List
 
-from scraper.acquisition.capabilities import BackendDescriptor, BrowserCapabilities, CapabilityLevel
+from scraper.acquisition.capabilities import (
+    BackendDescriptor,
+    BrowserCapabilities,
+    CapabilityLevel,
+)
 from scraper.acquisition.models import (
     AcquisitionRequest,
     AcquisitionResult,
     CostReport,
     FailureRecord,
-    ArtifactReference,
 )
 from scraper.acquisition.quality import AcquisitionQualityEvaluator
 from scraper.acquisition.browser_pool import BrowserPoolManager, BrowserResponse
-from scraper.exceptions import BrowserPoolError
 
-try:
-    from playwright.async_api import async_playwright
-    PLAYWRIGHT_AVAILABLE = True
-except ImportError:
-    PLAYWRIGHT_AVAILABLE = False
+import importlib.util
+
+PLAYWRIGHT_AVAILABLE = importlib.util.find_spec("playwright") is not None
 
 
 class PlaywrightBackend:
@@ -35,7 +34,9 @@ class PlaywrightBackend:
         self.contexts_per_browser = contexts_per_browser
         self.max_concurrency = max_browsers * contexts_per_browser
         self._semaphore = asyncio.Semaphore(self.max_concurrency)
-        self._pool = BrowserPoolManager(max_browsers=max_browsers, contexts_per_browser=contexts_per_browser)
+        self._pool = BrowserPoolManager(
+            max_browsers=max_browsers, contexts_per_browser=contexts_per_browser
+        )
         self._quality_evaluator = AcquisitionQualityEvaluator()
 
         self._descriptor = BackendDescriptor(
@@ -102,13 +103,16 @@ class PlaywrightBackend:
                     quality=quality,
                     cost=cost,
                     elapsed_sec=elapsed,
-                    capabilities_used=["html", "javascript", "dom_mutation"] + (["screenshot"] if res.screenshot_bytes else []),
+                    capabilities_used=["html", "javascript", "dom_mutation"]
+                    + (["screenshot"] if res.screenshot_bytes else []),
                 )
 
             except Exception as exc:
                 elapsed = time.time() - start_t
                 failure = FailureRecord(
-                    failure_class="transient" if "timeout" in str(exc).lower() else "permanent",
+                    failure_class="transient"
+                    if "timeout" in str(exc).lower()
+                    else "permanent",
                     message=str(exc),
                     retryable="timeout" in str(exc).lower(),
                 )

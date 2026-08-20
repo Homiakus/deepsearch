@@ -9,10 +9,32 @@ from selectolax.parser import HTMLParser
 def _clean_dom_tree(parser: HTMLParser) -> None:
     """Strip navigation, header/footer boilerplate, sidebars, popups, and script/style tags."""
     selectors = [
-        "nav", "header", "footer", "aside", "sidebar", "script", "style", "noscript",
-        "iframe", "form", ".nav", ".navbar", ".header", ".footer", ".sidebar",
-        ".cookie", ".banner", ".ad", ".ads", ".social", ".share", ".comments",
-        ".login", ".auth", ".tags-box", ".top-tags"
+        "nav",
+        "header",
+        "footer",
+        "aside",
+        "sidebar",
+        "script",
+        "style",
+        "noscript",
+        "iframe",
+        "form",
+        ".nav",
+        ".navbar",
+        ".header",
+        ".footer",
+        ".sidebar",
+        ".cookie",
+        ".banner",
+        ".ad",
+        ".ads",
+        ".social",
+        ".share",
+        ".comments",
+        ".login",
+        ".auth",
+        ".tags-box",
+        ".top-tags",
     ]
     for tag in parser.css(", ".join(selectors)):
         tag.decompose()
@@ -52,9 +74,7 @@ def process_markdown_pipeline(raw_html: str) -> Tuple[str, str, str]:
 
     # 1. Raw Markdown (Full HTML conversion with basic tag stripping)
     raw_markdown = markdownify.markdownify(
-        raw_html,
-        heading_style="ATX",
-        strip=["script", "style", "noscript", "iframe"]
+        raw_html, heading_style="ATX", strip=["script", "style", "noscript", "iframe"]
     )
     raw_markdown = _sanitize_markdown(raw_markdown)
 
@@ -62,7 +82,10 @@ def process_markdown_pipeline(raw_html: str) -> Tuple[str, str, str]:
     clean_markdown = ""
     try:
         import trafilatura
-        extracted_traf = trafilatura.extract(raw_html, include_links=True, include_images=False, output_format="markdown")
+
+        extracted_traf = trafilatura.extract(
+            raw_html, include_links=True, include_images=False, output_format="markdown"
+        )
         if extracted_traf and len(extracted_traf.strip()) > 150:
             clean_markdown = _sanitize_markdown(extracted_traf)
     except Exception:
@@ -70,7 +93,9 @@ def process_markdown_pipeline(raw_html: str) -> Tuple[str, str, str]:
 
     if not clean_markdown:
         parser = HTMLParser(raw_html)
-        main_container = parser.css_first("main, article, div.container, div.content, #content, body")
+        main_container = parser.css_first(
+            "main, article, div.container, div.content, #content, body"
+        )
         if main_container:
             container_html = main_container.html or ""
             container_parser = HTMLParser(container_html)
@@ -83,7 +108,7 @@ def process_markdown_pipeline(raw_html: str) -> Tuple[str, str, str]:
         clean_markdown = markdownify.markdownify(
             clean_html,
             heading_style="ATX",
-            strip=["script", "style", "noscript", "iframe", "form"]
+            strip=["script", "style", "noscript", "iframe", "form"],
         )
         clean_markdown = _sanitize_markdown(clean_markdown)
 

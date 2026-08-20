@@ -29,7 +29,9 @@ class PixelRAGPipeline:
         self.vlm_engine = vlm_engine or VLMEmbeddingEngine()
         self._indexed_tiles: Dict[str, Tuple[VisualTile, VisualEmbedding]] = {}
 
-    def process_page_screenshot(self, page_id: str, screenshot_bytes: bytes) -> List[VisualTile]:
+    def process_page_screenshot(
+        self, page_id: str, screenshot_bytes: bytes
+    ) -> List[VisualTile]:
         """Generate screenshot tiles and index them with VLM embeddings (§40)."""
         tiles = generate_screenshot_tiles(page_id, screenshot_bytes)
         for tile in tiles:
@@ -50,7 +52,7 @@ class PixelRAGPipeline:
         q_vec = self.vlm_engine.embed_query(query)
         scored: List[PixelRAGResult] = []
 
-        for (tile, emb) in self._indexed_tiles.values():
+        for tile, emb in self._indexed_tiles.values():
             sim = self.vlm_engine.compute_similarity(q_vec, emb.vector)
             scored.append(
                 PixelRAGResult(
@@ -65,4 +67,3 @@ class PixelRAGPipeline:
 
         scored.sort(key=lambda x: x.score, reverse=True)
         return scored[:top_k]
-

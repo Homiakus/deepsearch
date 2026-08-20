@@ -26,7 +26,9 @@ class RobotsPolicyManager:
         rp.parse(robots_content.splitlines())
         self._parsers[domain] = rp
 
-    def evaluate(self, url: str, domain: Optional[str] = None, user_agent: Optional[str] = None) -> tuple[bool, RobotsDecision]:
+    def evaluate(
+        self, url: str, domain: Optional[str] = None, user_agent: Optional[str] = None
+    ) -> tuple[bool, RobotsDecision]:
         """Evaluates whether URL is allowed, returning boolean flag and typed provenance decision."""
         if not self.respect:
             return True, RobotsDecision.POLICY_OVERRIDE
@@ -44,7 +46,9 @@ class RobotsPolicyManager:
         decision = RobotsDecision.ALLOWED if can_fetch else RobotsDecision.BLOCKED
         return can_fetch, decision
 
-    def is_allowed(self, url: str, domain: Optional[str] = None, user_agent: Optional[str] = None) -> bool:
+    def is_allowed(
+        self, url: str, domain: Optional[str] = None, user_agent: Optional[str] = None
+    ) -> bool:
         allowed, _ = self.evaluate(url, domain, user_agent)
         return allowed
 

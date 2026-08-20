@@ -6,7 +6,7 @@ import httpx
 from typing import List
 from selectolax.parser import HTMLParser
 from scraper.config import settings
-from scraper.discovery.providers.base import DiscoveryProvider, ProviderDescriptor, ProviderSearchRequest
+from scraper.discovery.providers.base import ProviderDescriptor, ProviderSearchRequest
 from scraper.search.candidates import SourceCandidate
 
 logger = logging.getLogger(__name__)
@@ -23,12 +23,18 @@ class AnnasArchiveProvider:
     )
 
     async def search(self, request: ProviderSearchRequest) -> List[SourceCandidate]:
-        base_url = getattr(settings, "annas_archive_url", "https://annas-archive.cc").rstrip("/")
+        base_url = getattr(
+            settings, "annas_archive_url", "https://annas-archive.cc"
+        ).rstrip("/")
         encoded = urllib.parse.quote(request.query)
         candidates = []
         seen_urls = set()
         headers = {
-            "User-Agent": getattr(settings.robots, "user_agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
+            "User-Agent": getattr(
+                settings.robots,
+                "user_agent",
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+            )
         }
 
         endpoints = [
@@ -37,15 +43,24 @@ class AnnasArchiveProvider:
         ]
 
         try:
-            async with httpx.AsyncClient(timeout=request.timeout_sec, trust_env=False) as client:
+            async with httpx.AsyncClient(
+                timeout=request.timeout_sec, trust_env=False
+            ) as client:
                 for ep in endpoints:
                     res = await client.get(ep, headers=headers, follow_redirects=True)
                     if res.status_code == 200 and res.text:
                         parser = HTMLParser(res.text)
                         for a in parser.css("a"):
                             href = a.attributes.get("href") or ""
-                            if any(k in href for k in ["/book/", "/article/", "/md5/", "/db/"]):
-                                full_url = href if href.startswith("http") else f"{base_url}{href}"
+                            if any(
+                                k in href
+                                for k in ["/book/", "/article/", "/md5/", "/db/"]
+                            ):
+                                full_url = (
+                                    href
+                                    if href.startswith("http")
+                                    else f"{base_url}{href}"
+                                )
                                 if full_url not in seen_urls:
                                     seen_urls.add(full_url)
                                     text_title = a.text(strip=True) or request.query
@@ -58,7 +73,9 @@ class AnnasArchiveProvider:
                                             provider=self.descriptor.name,
                                             provider_rank=len(candidates) + 1,
                                             source_type="PRIMARY_RESEARCH",
-                                            goal_ids=[request.goal_id] if request.goal_id else [],
+                                            goal_ids=[request.goal_id]
+                                            if request.goal_id
+                                            else [],
                                             authority_prior=0.85,
                                         )
                                     )
@@ -67,6 +84,10 @@ class AnnasArchiveProvider:
                     if len(candidates) >= request.max_results:
                         break
         except Exception as exc:
-            logger.warning("AnnasArchiveProvider search error for query '%s': %s", request.query, exc)
+            logger.warning(
+                "AnnasArchiveProvider search error for query '%s': %s",
+                request.query,
+                exc,
+            )
 
         return candidates

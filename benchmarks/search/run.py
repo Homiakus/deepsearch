@@ -1,8 +1,6 @@
 """Search Benchmark Runner and Baseline Generator (DS-SI00, DS-SI70)."""
 
 import json
-import os
-import sys
 from pathlib import Path
 from typing import Dict, Any, List
 
@@ -33,7 +31,9 @@ def run_benchmark():
 
     gt_map = {item["query_id"]: item for item in ground_truth}
 
-    print(f"Loaded {len(queries)} benchmark queries and {len(ground_truth)} ground truth entries.")
+    print(
+        f"Loaded {len(queries)} benchmark queries and {len(ground_truth)} ground truth entries."
+    )
 
     results = []
     for q in queries:
@@ -53,15 +53,17 @@ def run_benchmark():
         domains = [u.split("/")[2] if "//" in u else "unknown" for u in retrieved]
         diversity = compute_source_diversity(domains)
 
-        results.append({
-            "query_id": qid,
-            "query": q["query"],
-            "recall@10": rec10,
-            "precision@10": prec10,
-            "mrr": mrr,
-            "ndcg@10": ndcg,
-            "diversity": diversity,
-        })
+        results.append(
+            {
+                "query_id": qid,
+                "query": q["query"],
+                "recall@10": rec10,
+                "precision@10": prec10,
+                "mrr": mrr,
+                "ndcg@10": ndcg,
+                "diversity": diversity,
+            }
+        )
 
     avg_recall = sum(r["recall@10"] for r in results) / max(len(results), 1)
     avg_prec = sum(r["precision@10"] for r in results) / max(len(results), 1)

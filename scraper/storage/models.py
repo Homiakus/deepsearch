@@ -20,20 +20,26 @@ class ProjectModel(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utc_now
+    )
 
 
 class JobModel(Base):
     __tablename__ = "jobs"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    project_id: Mapped[Optional[str]] = mapped_column(ForeignKey("projects.id"), nullable=True)
+    project_id: Mapped[Optional[str]] = mapped_column(
+        ForeignKey("projects.id"), nullable=True
+    )
     status: Mapped[str] = mapped_column(String(50), default="RUNNING")
     mode: Mapped[str] = mapped_column(String(50), default="balanced")
     pages_processed: Mapped[int] = mapped_column(Integer, default=0)
     bytes_downloaded: Mapped[int] = mapped_column(Integer, default=0)
     browser_escalation_ratio: Mapped[float] = mapped_column(Float, default=0.0)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utc_now
+    )
 
 
 class PageModel(Base):
@@ -47,7 +53,9 @@ class PageModel(Base):
     strategy_used: Mapped[str] = mapped_column(String(50))
     raw_content_hash: Mapped[str] = mapped_column(String(64))
     quality_score: Mapped[float] = mapped_column(Float, default=1.0)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utc_now
+    )
 
 
 class RecordModel(Base):
@@ -57,7 +65,9 @@ class RecordModel(Base):
     page_id: Mapped[str] = mapped_column(ForeignKey("pages.id"))
     schema_name: Mapped[Optional[str]] = mapped_column(String(100))
     data: Mapped[dict] = mapped_column(JSON)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utc_now
+    )
 
 
 class ErrorModel(Base):
@@ -68,4 +78,6 @@ class ErrorModel(Base):
     url: Mapped[str] = mapped_column(Text)
     category: Mapped[str] = mapped_column(String(50))  # Taxonomy (§53)
     error_message: Mapped[str] = mapped_column(Text)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utc_now
+    )

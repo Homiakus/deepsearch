@@ -27,12 +27,12 @@ def sanitize_media_filename(url: str, prefix: str = "doc") -> str:
         return f"{prefix}_{accid}.pdf"
 
     # Check PMC ID in path
-    pmc_match = re.search(r'PMC\d+', url, re.IGNORECASE)
+    pmc_match = re.search(r"PMC\d+", url, re.IGNORECASE)
     if pmc_match:
         return f"{prefix}_{pmc_match.group(0).upper()}.pdf"
 
     basename = os.path.basename(parsed.path)
-    ext_match = re.search(r'(\.[a-zA-Z0-9]{2,5})$', basename)
+    ext_match = re.search(r"(\.[a-zA-Z0-9]{2,5})$", basename)
 
     if ext_match:
         ext = ext_match.group(1).lower()
@@ -40,8 +40,8 @@ def sanitize_media_filename(url: str, prefix: str = "doc") -> str:
         # Default extension based on prefix hint
         ext = ".jpg" if "img" in prefix or "media" in prefix else ".pdf"
 
-    clean_name = re.sub(r'[^a-zA-Z0-9_-]', '_', basename.replace(ext, ''))
-    clean_name = clean_name.strip('_')[:40] or "file"
+    clean_name = re.sub(r"[^a-zA-Z0-9_-]", "_", basename.replace(ext, ""))
+    clean_name = clean_name.strip("_")[:40] or "file"
 
     return f"{prefix}_{clean_name}{ext}"
 
@@ -52,7 +52,7 @@ async def download_media_file(
     filename_prefix: str = "doc",
     max_bytes: int = 50 * 1024 * 1024,
     timeout_sec: float = 20.0,
-    caption: str = ""
+    caption: str = "",
 ) -> Optional[Dict[str, Any]]:
     """Downloads binary file asynchronously with size limits, SHA-256, and image dimension extraction."""
     os.makedirs(output_dir, exist_ok=True)
@@ -61,11 +61,11 @@ async def download_media_file(
 
     user_agent = getattr(settings.robots, "user_agent", "")
     if not user_agent or user_agent == "DeepSearch/1.0":
-        user_agent = "DeepSearchBot/1.0 (https://deepsearch.org; contact@deepsearch.org)"
+        user_agent = (
+            "DeepSearchBot/1.0 (https://deepsearch.org; contact@deepsearch.org)"
+        )
 
-    headers = {
-        "User-Agent": user_agent
-    }
+    headers = {"User-Agent": user_agent}
 
     try:
         transport = httpx.AsyncHTTPTransport(retries=1)
@@ -73,7 +73,7 @@ async def download_media_file(
             transport=transport,
             timeout=timeout_sec,
             follow_redirects=True,
-            trust_env=False
+            trust_env=False,
         ) as client:
             res = await client.get(url, headers=headers)
             if res.status_code != 200:
@@ -94,9 +94,12 @@ async def download_media_file(
             width, height = None, None
 
             # Extract image dimensions if content is an image
-            if content_type.startswith("image/") or any(target_path.lower().endswith(ext) for ext in IMAGE_EXTENSIONS):
+            if content_type.startswith("image/") or any(
+                target_path.lower().endswith(ext) for ext in IMAGE_EXTENSIONS
+            ):
                 try:
                     from PIL import Image
+
                     with Image.open(io.BytesIO(content)) as img:
                         width, height = img.size
                 except Exception:
@@ -111,9 +114,8 @@ async def download_media_file(
                 "content_type": content_type,
                 "width": width,
                 "height": height,
-                "caption": caption
+                "caption": caption,
             }
 
     except Exception:
         return None
-

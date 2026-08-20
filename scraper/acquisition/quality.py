@@ -5,7 +5,7 @@ and suggesting optimal backend escalation paths.
 """
 
 import re
-from typing import Dict, Any, List, Optional
+from typing import Dict, List, Optional
 from scraper.acquisition.models import QualityReport
 
 
@@ -95,8 +95,12 @@ class AcquisitionQualityEvaluator:
 
         if text_len < expected_min_text_chars:
             score -= 0.3
-            completeness = min(completeness, max(0.1, text_len / max(expected_min_text_chars, 1)))
-            reasons.append(f"Low useful text characters: {text_len} < {expected_min_text_chars}")
+            completeness = min(
+                completeness, max(0.1, text_len / max(expected_min_text_chars, 1))
+            )
+            reasons.append(
+                f"Low useful text characters: {text_len} < {expected_min_text_chars}"
+            )
             if not suggested_escalation and not blocked:
                 suggested_escalation = "servo"
 

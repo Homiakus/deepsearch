@@ -2,7 +2,7 @@
 
 import hashlib
 import logging
-from typing import List, Optional
+from typing import List
 
 logger = logging.getLogger(__name__)
 
@@ -10,7 +10,9 @@ logger = logging.getLogger(__name__)
 class FastEmbedEngine:
     """Provides local dense vector embeddings using fastembed with fallback."""
 
-    def __init__(self, model_name: str = "BAAI/bge-small-en-v1.5", dimension: int = 384):
+    def __init__(
+        self, model_name: str = "BAAI/bge-small-en-v1.5", dimension: int = 384
+    ):
         self.model_name = model_name
         self.dimension = dimension
         self._model = None
@@ -20,6 +22,7 @@ class FastEmbedEngine:
         if not self._initialized:
             try:
                 from fastembed import TextEmbedding
+
                 self._model = TextEmbedding(model_name=self.model_name)
             except Exception as e:
                 logger.warning("FastEmbed not initialized (will use fallback): %s", e)

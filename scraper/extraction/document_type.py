@@ -76,7 +76,13 @@ class DocumentTypeClassifier:
         "/category/",
         "/tag/",
     )
-    LOGIN_PATH_MARKERS = ("/login", "/signin", "/sign-in", "/account/login", "/accounts/login")
+    LOGIN_PATH_MARKERS = (
+        "/login",
+        "/signin",
+        "/sign-in",
+        "/account/login",
+        "/accounts/login",
+    )
 
     @staticmethod
     def _useful_text(text: str) -> str:
@@ -108,10 +114,14 @@ class DocumentTypeClassifier:
                 link_density=link_density,
             )
 
-        if status_code in (401, 403, 429) or any(marker in lower_text for marker in cls.BLOCK_MARKERS):
+        if status_code in (401, 403, 429) or any(
+            marker in lower_text for marker in cls.BLOCK_MARKERS
+        ):
             if status_code in (401, 403, 429):
                 signals.append(f"status:{status_code}")
-            signals.extend(marker for marker in cls.BLOCK_MARKERS if marker in lower_text)
+            signals.extend(
+                marker for marker in cls.BLOCK_MARKERS if marker in lower_text
+            )
             return DocumentClassification(
                 document_type=DocumentType.BLOCK_PAGE,
                 accepted=False,
@@ -121,10 +131,14 @@ class DocumentTypeClassifier:
                 link_density=link_density,
             )
 
-        if status_code >= 400 or any(marker in lower_text for marker in cls.ERROR_MARKERS):
+        if status_code >= 400 or any(
+            marker in lower_text for marker in cls.ERROR_MARKERS
+        ):
             if status_code >= 400:
                 signals.append(f"status:{status_code}")
-            signals.extend(marker for marker in cls.ERROR_MARKERS if marker in lower_text)
+            signals.extend(
+                marker for marker in cls.ERROR_MARKERS if marker in lower_text
+            )
             return DocumentClassification(
                 document_type=DocumentType.ERROR_PAGE,
                 accepted=False,
@@ -135,11 +149,15 @@ class DocumentTypeClassifier:
             )
 
         login_signal_count = sum(marker in lower_text for marker in cls.LOGIN_MARKERS)
-        has_login_form = "password" in lower_text and ("email" in lower_text or "username" in lower_text)
+        has_login_form = "password" in lower_text and (
+            "email" in lower_text or "username" in lower_text
+        )
         if any(marker in path for marker in cls.LOGIN_PATH_MARKERS) or (
             login_signal_count >= 3 and (len(useful_text) < 1200 or has_login_form)
         ):
-            signals.extend(marker for marker in cls.LOGIN_MARKERS if marker in lower_text)
+            signals.extend(
+                marker for marker in cls.LOGIN_MARKERS if marker in lower_text
+            )
             return DocumentClassification(
                 document_type=DocumentType.LOGIN,
                 accepted=False,
@@ -150,7 +168,10 @@ class DocumentTypeClassifier:
             )
 
         if any(marker in lower_text for marker in cls.JS_MARKERS) or (
-            len(useful_text) < 300 and re.search(r"<(?:div|main)[^>]+(?:id|class)=[\"'](?:root|app|__next)", lower_text)
+            len(useful_text) < 300
+            and re.search(
+                r"<(?:div|main)[^>]+(?:id|class)=[\"'](?:root|app|__next)", lower_text
+            )
         ):
             signals.extend(marker for marker in cls.JS_MARKERS if marker in lower_text)
             if len(useful_text) < 300:
@@ -165,7 +186,10 @@ class DocumentTypeClassifier:
             )
 
         path_is_listing = any(marker in path for marker in cls.LISTING_PATH_MARKERS)
-        query_is_listing = any(key in parsed.query.lower() for key in ("searchtype=", "query=", "page=", "offset="))
+        query_is_listing = any(
+            key in parsed.query.lower()
+            for key in ("searchtype=", "query=", "page=", "offset=")
+        )
         if path_is_listing or query_is_listing or link_density >= 0.65:
             if path_is_listing:
                 signals.append("listing_path")
@@ -192,7 +216,10 @@ class DocumentTypeClassifier:
                 link_density=link_density,
             )
 
-        if "html" not in (content_type or "").lower() and "text" not in (content_type or "").lower():
+        if (
+            "html" not in (content_type or "").lower()
+            and "text" not in (content_type or "").lower()
+        ):
             signals.append(f"content_type:{content_type}")
 
         if len(useful_text) < 120:

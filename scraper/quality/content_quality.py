@@ -19,7 +19,9 @@ class ContentQualityEvaluator:
         r"security check",
     ]
 
-    def evaluate_text(self, text: str, raw_html: Optional[str] = None) -> ContentQualityReport:
+    def evaluate_text(
+        self, text: str, raw_html: Optional[str] = None
+    ) -> ContentQualityReport:
         if not text or len(text.strip()) == 0:
             return ContentQualityReport(
                 decision=QualityDecision.ESCALATE,

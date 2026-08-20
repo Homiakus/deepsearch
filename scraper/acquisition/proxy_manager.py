@@ -15,7 +15,9 @@ class ProxyMode(str, Enum):
 class ProxyManager:
     """Manages proxy rotation and proxy session mapping (§28)."""
 
-    def __init__(self, proxies: Optional[List[str]] = None, mode: ProxyMode = ProxyMode.DIRECT):
+    def __init__(
+        self, proxies: Optional[List[str]] = None, mode: ProxyMode = ProxyMode.DIRECT
+    ):
         self.proxies = proxies or []
         self.mode = mode
         self._iterator = itertools.cycle(self.proxies) if self.proxies else None

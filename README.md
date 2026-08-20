@@ -4,7 +4,7 @@
 
 [English](README.md) • [Русский](README.ru.md)
 
-[![CI / Unit Tests](https://img.shields.io/badge/tests-54%20passed-brightgreen.svg)](tests/)
+[![CI / Unit Tests](https://img.shields.io/badge/tests-136%20passed-brightgreen.svg)](tests/)
 [![Python Version](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13-blue.svg)](pyproject.toml)
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![MCP Server](https://img.shields.io/badge/MCP-FastMCP%20stdio-purple.svg)](docs/MCP_GUIDE.md)
@@ -27,8 +27,10 @@ Target URL / Search Query
 ┌────────────────────────────────────────────────────────────────────────┐
 │                       Autonomous Research Engine                       │
 │                                                                        │
-│   • Multi-Source Discovery: ArXiv, Europe PMC, PubMed, Wikipedia, Anna │
-│   • Media Pipeline: Topic image scoring (5–25 images) & PDF extraction │
+│   • Discovery: OpenAlex, Crossref, Semantic Scholar, Europe PMC,       │
+│     PubMed, ArXiv, Regional Academic, Wikipedia, Anna's Archive        │
+│   • Acquisition: Open Access direct PDF resolver & unpaywall fallbacks │
+│   • Media Pipeline: Topic image scoring, PDF figure & chart extraction │
 │   • Dual-Format Output: files/ (links & media) + rag/ (LLM dataset)    │
 └───────────────────────────────────┬────────────────────────────────────┘
                                     │

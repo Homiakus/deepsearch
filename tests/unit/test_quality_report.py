@@ -33,21 +33,25 @@ def _source(url: str, title: str, source_type: str = "PRIMARY_RESEARCH"):
 
 def test_quality_report_marks_single_domain_corpus_insufficient():
     evaluator = SourceQualityEvaluator()
-    report = evaluator.evaluate([
-        _source("https://arxiv.org/abs/1.1", "Ragas evaluation benchmark"),
-        _source("https://arxiv.org/abs/2.2", "Faithfulness evaluation"),
-    ])
+    report = evaluator.evaluate(
+        [
+            _source("https://arxiv.org/abs/1.1", "Ragas evaluation benchmark"),
+            _source("https://arxiv.org/abs/2.2", "Faithfulness evaluation"),
+        ]
+    )
     assert report["passed"] is False
     assert "MIN_INDEPENDENT_DOMAINS" in report["missing_requirements"]
     assert report["summary"]["direct_evidence_count"] == 2
 
 
 def test_quality_report_passes_diverse_evidence_corpus():
-    report = SourceQualityEvaluator().evaluate([
-        _source("https://arxiv.org/abs/1.1", "Ragas evaluation benchmark"),
-        _source("https://link.springer.com/article/2", "Faithfulness evaluation"),
-        _source("https://europepmc.org/article/PMC/3", "RAG clinical evaluation"),
-    ])
+    report = SourceQualityEvaluator().evaluate(
+        [
+            _source("https://arxiv.org/abs/1.1", "Ragas evaluation benchmark"),
+            _source("https://link.springer.com/article/2", "Faithfulness evaluation"),
+            _source("https://europepmc.org/article/PMC/3", "RAG clinical evaluation"),
+        ]
+    )
     assert report["passed"] is True
     assert report["summary"]["independent_domain_count"] == 3
 
@@ -61,7 +65,9 @@ def test_quality_gate_rejects_run_with_block_pages_and_low_precision():
             "direct_evidence_rate": 0.5,
         },
         "sources": [],
-        "rejections": [{"document_type": "BLOCK_PAGE", "reason_code": "BLOCK_OR_ACCESS_DENIED"}],
+        "rejections": [
+            {"document_type": "BLOCK_PAGE", "reason_code": "BLOCK_OR_ACCESS_DENIED"}
+        ],
     }
     result = evaluate_quality_gate_report(report)
     assert result["passed"] is False

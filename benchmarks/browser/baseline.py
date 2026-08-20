@@ -7,7 +7,6 @@ import asyncio
 import logging
 import os
 import psutil
-import sys
 import time
 from typing import Dict, Any, List
 import yaml
@@ -86,7 +85,9 @@ async def run_baseline(corpus_path: str, max_items: int = 50) -> List[Dict[str, 
     for u in urls:
         r = await measure_url_acquisition(u, fetcher)
         results.append(r)
-        print(f"  [{r['status_code']}] {r['url']} -> {r['elapsed_ms']:.1f}ms (quality: {r['quality_score']:.2f})")
+        print(
+            f"  [{r['status_code']}] {r['url']} -> {r['elapsed_ms']:.1f}ms (quality: {r['quality_score']:.2f})"
+        )
 
     await fetcher.close()
     return results

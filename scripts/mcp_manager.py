@@ -18,7 +18,7 @@ def start_server():
     """Starts the DeepSearch MCP server over stdio transport."""
     env = os.environ.copy()
     env["PYTHONPATH"] = str(WORKSPACE_ROOT)
-    
+
     # Prefer uv run python if available
     cmd = [sys.executable, "-m", "scraper.mcp.server"]
     print(f"[MCP Manager] Starting DeepSearch MCP Server: {' '.join(cmd)}")
@@ -44,7 +44,7 @@ def health_check():
         stderr=subprocess.PIPE,
         cwd=str(WORKSPACE_ROOT),
         env=env,
-        text=True
+        text=True,
     )
 
     init_req = {
@@ -54,20 +54,13 @@ def health_check():
         "params": {
             "protocolVersion": "2024-11-05",
             "capabilities": {},
-            "clientInfo": {"name": "deepsearch-mcp-healthcheck", "version": "1.0.0"}
-        }
+            "clientInfo": {"name": "deepsearch-mcp-healthcheck", "version": "1.0.0"},
+        },
     }
 
-    initialized_notification = {
-        "jsonrpc": "2.0",
-        "method": "notifications/initialized"
-    }
+    initialized_notification = {"jsonrpc": "2.0", "method": "notifications/initialized"}
 
-    list_tools_req = {
-        "jsonrpc": "2.0",
-        "id": 2,
-        "method": "tools/list"
-    }
+    list_tools_req = {"jsonrpc": "2.0", "id": 2, "method": "tools/list"}
 
     try:
         # Write JSON-RPC requests
@@ -98,14 +91,20 @@ def health_check():
         proc.wait(timeout=3)
 
         print("\n=== MCP Server Health Check Status ===")
-        print(f"Status: OK [SUCCESS]")
+        print("Status: OK [SUCCESS]")
         print(f"Server Name: {server_info.get('name', 'deepsearch')}")
         print(f"Server Version: {server_info.get('version', 'unknown')}")
         print(f"Registered MCP Tools ({len(tools_found)}):")
         for tool_name in tools_found:
             print(f"  - {tool_name}")
 
-        expected_tools = {"deepsearch_research", "deepsearch_discover", "deepsearch_inspect", "deepsearch_extract", "deepsearch_search"}
+        expected_tools = {
+            "deepsearch_research",
+            "deepsearch_discover",
+            "deepsearch_inspect",
+            "deepsearch_extract",
+            "deepsearch_search",
+        }
         missing = expected_tools - set(tools_found)
         if missing:
             print(f"\n[WARNING] Missing expected tools: {missing}")
@@ -134,8 +133,8 @@ def generate_configs():
                     "run",
                     "python",
                     "-m",
-                    "scraper.mcp.server"
-                ]
+                    "scraper.mcp.server",
+                ],
             }
         }
     }
@@ -146,9 +145,7 @@ def generate_configs():
                 "command": python_exe,
                 "args": ["-m", "scraper.mcp.server"],
                 "cwd": workspace_str,
-                "env": {
-                    "PYTHONPATH": workspace_str
-                }
+                "env": {"PYTHONPATH": workspace_str},
             }
         }
     }
@@ -164,13 +161,21 @@ def generate_configs():
     print(json.dumps(raw_python_config, indent=2))
     print("\n[Save locations]:")
     print("  - Claude Desktop Windows: %APPDATA%\\Claude\\claude_desktop_config.json")
-    print("  - Claude Desktop macOS:   ~/Library/Application Support/Claude/claude_desktop_config.json")
+    print(
+        "  - Claude Desktop macOS:   ~/Library/Application Support/Claude/claude_desktop_config.json"
+    )
     print("  - Cursor / VS Code:       .mcp/mcp.json in workspace or settings.json\n")
 
 
 def main():
-    parser = argparse.ArgumentParser(description="DeepSearch MCP Server Manager & Config Generator")
-    parser.add_argument("command", choices=["start", "test", "health", "config"], help="Command to execute")
+    parser = argparse.ArgumentParser(
+        description="DeepSearch MCP Server Manager & Config Generator"
+    )
+    parser.add_argument(
+        "command",
+        choices=["start", "test", "health", "config"],
+        help="Command to execute",
+    )
 
     args = parser.parse_args()
 

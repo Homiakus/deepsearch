@@ -1,7 +1,7 @@
 """Maximal Marginal Relevance (MMR) & Domain Diversity Selector (DS-SI45, DS-SI46)."""
 
 import re
-from typing import Dict, List, Set
+from typing import Dict, List
 from scraper.search.rerank.base import RerankedPassage
 
 
@@ -12,7 +12,9 @@ class DiversitySelector:
         self.lambda_param = lambda_param  # 0 = max diversity, 1 = max relevance
         self.max_per_domain = max_per_domain
 
-    def select_diverse(self, candidates: List[RerankedPassage], top_k: int = 10) -> List[RerankedPassage]:
+    def select_diverse(
+        self, candidates: List[RerankedPassage], top_k: int = 10
+    ) -> List[RerankedPassage]:
         if len(candidates) <= top_k:
             return candidates
 
@@ -25,7 +27,11 @@ class DiversitySelector:
             best_mmr_score = -999.0
 
             for idx, cand in enumerate(remaining):
-                dom = cand.fused_result.hit.url.split("/")[2] if "//" in cand.fused_result.hit.url else "unknown"
+                dom = (
+                    cand.fused_result.hit.url.split("/")[2]
+                    if "//" in cand.fused_result.hit.url
+                    else "unknown"
+                )
                 if domain_counts.get(dom, 0) >= self.max_per_domain:
                     # Domain cap penalty
                     dom_penalty = 0.3
@@ -34,15 +40,23 @@ class DiversitySelector:
 
                 # Max similarity to already selected
                 max_sim_to_selected = 0.0
-                cand_tokens = set(re.findall(r'\w+', cand.fused_result.hit.text.lower()))
+                cand_tokens = set(
+                    re.findall(r"\w+", cand.fused_result.hit.text.lower())
+                )
                 for s in selected:
-                    s_tokens = set(re.findall(r'\w+', s.fused_result.hit.text.lower()))
-                    jaccard = len(cand_tokens.intersection(s_tokens)) / max(len(cand_tokens.union(s_tokens)), 1)
+                    s_tokens = set(re.findall(r"\w+", s.fused_result.hit.text.lower()))
+                    jaccard = len(cand_tokens.intersection(s_tokens)) / max(
+                        len(cand_tokens.union(s_tokens)), 1
+                    )
                     if jaccard > max_sim_to_selected:
                         max_sim_to_selected = jaccard
 
                 # MMR score = lambda * Relevance - (1 - lambda) * MaxSim - DomainPenalty
-                mmr_score = (self.lambda_param * cand.rerank_score) - ((1.0 - self.lambda_param) * max_sim_to_selected) - dom_penalty
+                mmr_score = (
+                    (self.lambda_param * cand.rerank_score)
+                    - ((1.0 - self.lambda_param) * max_sim_to_selected)
+                    - dom_penalty
+                )
 
                 if mmr_score > best_mmr_score:
                     best_mmr_score = mmr_score
@@ -51,7 +65,11 @@ class DiversitySelector:
             if best_idx >= 0:
                 chosen = remaining.pop(best_idx)
                 selected.append(chosen)
-                dom = chosen.fused_result.hit.url.split("/")[2] if "//" in chosen.fused_result.hit.url else "unknown"
+                dom = (
+                    chosen.fused_result.hit.url.split("/")[2]
+                    if "//" in chosen.fused_result.hit.url
+                    else "unknown"
+                )
                 domain_counts[dom] = domain_counts.get(dom, 0) + 1
             else:
                 break

@@ -5,13 +5,15 @@ Provides batch dense embeddings with in-memory hashing cache and FastEmbed suppo
 
 import hashlib
 import logging
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 logger = logging.getLogger(__name__)
 
 
 class DenseEmbeddingEngine:
-    def __init__(self, model_name: str = "BAAI/bge-small-en-v1.5", dimension: int = 384):
+    def __init__(
+        self, model_name: str = "BAAI/bge-small-en-v1.5", dimension: int = 384
+    ):
         self.model_name = model_name
         self.dimension = dimension
         self._model = None
@@ -22,6 +24,7 @@ class DenseEmbeddingEngine:
         if not self._initialized:
             try:
                 from fastembed import TextEmbedding
+
                 self._model = TextEmbedding(model_name=self.model_name)
             except Exception as e:
                 logger.warning("FastEmbed dense model initialization fallback: %s", e)
@@ -50,7 +53,10 @@ class DenseEmbeddingEngine:
         # Fallback deterministic pseudo-embedding
         vec = [0.0] * self.dimension
         for word in text.lower().split():
-            idx = int(hashlib.md5(word.encode("utf-8")).hexdigest()[:8], 16) % self.dimension
+            idx = (
+                int(hashlib.md5(word.encode("utf-8")).hexdigest()[:8], 16)
+                % self.dimension
+            )
             vec[idx] += 1.0
 
         norm = sum(x * x for x in vec) ** 0.5

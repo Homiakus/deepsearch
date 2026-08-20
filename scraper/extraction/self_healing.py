@@ -33,11 +33,16 @@ class SelfHealingSelector:
             text=text[:200],
             nearby_text=nearby_text,
             dom_path=dom_path,
-            semantic_role=attrs.get("role")
+            semantic_role=attrs.get("role"),
         )
 
     @classmethod
-    def match_element(cls, raw_html: str, selector: str, fingerprint: Optional[ElementFingerprint] = None) -> Optional[Node]:
+    def match_element(
+        cls,
+        raw_html: str,
+        selector: str,
+        fingerprint: Optional[ElementFingerprint] = None,
+    ) -> Optional[Node]:
         """Tries primary CSS selector first; if missing, searches for closest fingerprint match (§60)."""
         parser = HTMLParser(raw_html)
         primary_node = parser.css_first(selector)
@@ -57,7 +62,9 @@ class SelfHealingSelector:
             score = 0.0
 
             # Match attribute overlap
-            common_attrs = set(fingerprint.attributes.keys()) & set(cand_fp.attributes.keys())
+            common_attrs = set(fingerprint.attributes.keys()) & set(
+                cand_fp.attributes.keys()
+            )
             if common_attrs:
                 score += 0.4 * (len(common_attrs) / max(1, len(fingerprint.attributes)))
 
@@ -66,7 +73,11 @@ class SelfHealingSelector:
                 score += 0.4
 
             # Match nearby context
-            if fingerprint.nearby_text and cand_fp.nearby_text and fingerprint.nearby_text in cand_fp.nearby_text:
+            if (
+                fingerprint.nearby_text
+                and cand_fp.nearby_text
+                and fingerprint.nearby_text in cand_fp.nearby_text
+            ):
                 score += 0.2
 
             if score > best_score and score >= 0.5:

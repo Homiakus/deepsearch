@@ -8,7 +8,10 @@ from scraper.application.activities.acquisition import run_acquisition_activity
 from scraper.application.activities.extraction import run_extraction_activity
 from scraper.application.activities.normalization import run_normalization_activity
 from scraper.application.activities.indexing import run_indexing_activity
-from scraper.application.activities.evidence import run_evidence_activity, run_coverage_evaluation_activity
+from scraper.application.activities.evidence import (
+    run_evidence_activity,
+    run_coverage_evaluation_activity,
+)
 from scraper.application.activities.export import run_export_activity
 
 
@@ -46,7 +49,12 @@ async def run_rank_seeds_activity(input_data: Dict[str, Any]) -> ActivityResult:
 
 async def run_complete_research_activity(input_data: Dict[str, Any]) -> ActivityResult:
     return ActivityResult(
-        data={"research_outcome": {"status": "SUCCESS", "message": "Research pipeline completed."}},
+        data={
+            "research_outcome": {
+                "status": "SUCCESS",
+                "message": "Research pipeline completed.",
+            }
+        },
         usage=ResourceUsage(),
         quality={"final_quality": 1.0},
     )

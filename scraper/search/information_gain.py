@@ -1,6 +1,6 @@
 """Information Gain and Redundancy Scoring Engine (DS-SI57, DS-SI58)."""
 
-from typing import List, Set
+from typing import Set
 from scraper.research.goals import ResearchGoalGraph
 from scraper.search.candidates import SourceCandidate
 

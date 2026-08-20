@@ -5,7 +5,6 @@ from scraper.application.context import ResearchExecutionContext
 from scraper.application.activities import (
     run_normalize_query_activity,
     run_plan_research_activity,
-    run_rank_seeds_activity,
     run_normalization_activity,
     run_indexing_activity,
     run_evidence_activity,
@@ -40,7 +39,9 @@ def test_research_execution_context():
 
 @pytest.mark.asyncio
 async def test_normalize_and_plan_activity():
-    norm_res = await run_normalize_query_activity({"query": "  Deep Learning in Medicine  "})
+    norm_res = await run_normalize_query_activity(
+        {"query": "  Deep Learning in Medicine  "}
+    )
     assert norm_res.data["normalized_query"] == "Deep Learning in Medicine"
 
     plan_res = await run_plan_research_activity(norm_res.data)
@@ -49,12 +50,20 @@ async def test_normalize_and_plan_activity():
 
 @pytest.mark.asyncio
 async def test_normalization_and_indexing_activity():
-    norm_res = await run_normalization_activity({
-        "extracted_docs": [
-            {"url": "https://example.com/1", "clean_markdown": "Sample text for chunking and indexing test 1"},
-            {"url": "https://example.com/1", "clean_markdown": "Sample text for chunking and indexing test 1"},
-        ]
-    })
+    norm_res = await run_normalization_activity(
+        {
+            "extracted_docs": [
+                {
+                    "url": "https://example.com/1",
+                    "clean_markdown": "Sample text for chunking and indexing test 1",
+                },
+                {
+                    "url": "https://example.com/1",
+                    "clean_markdown": "Sample text for chunking and indexing test 1",
+                },
+            ]
+        }
+    )
     assert norm_res.data["total_normalized"] == 1
     assert norm_res.data["duplicates_removed"] == 1
 

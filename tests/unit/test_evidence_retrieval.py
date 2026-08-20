@@ -60,5 +60,7 @@ def test_evidence_store_claim_corroboration():
 @pytest.mark.asyncio
 async def test_visual_evidence_disabled_by_default():
     extractor = VisualEvidenceExtractor(enabled=False)
-    res = await extractor.extract_visual_evidence(b"dummy_bytes", "https://example.com/chart.png")
+    res = await extractor.extract_visual_evidence(
+        b"dummy_bytes", "https://example.com/chart.png"
+    )
     assert res == []

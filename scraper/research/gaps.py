@@ -4,8 +4,8 @@ Identifies under-covered goals, weakly supported claims, and unresolved contradi
 """
 
 from typing import List
-from pydantic import BaseModel, Field
-from scraper.research.goals import ResearchGoalGraph, GoalStatus
+from pydantic import BaseModel
+from scraper.research.goals import ResearchGoalGraph
 from scraper.evidence.store import EvidenceStore
 
 
@@ -21,7 +21,9 @@ class GapAnalyzer:
     """Analyzes evidence graph and goal graph to generate actionable research gaps."""
 
     @staticmethod
-    def identify_gaps(goal_graph: ResearchGoalGraph, store: EvidenceStore) -> List[ResearchGap]:
+    def identify_gaps(
+        goal_graph: ResearchGoalGraph, store: EvidenceStore
+    ) -> List[ResearchGap]:
         gaps: List[ResearchGap] = []
 
         # 1. Uncovered Subgoals

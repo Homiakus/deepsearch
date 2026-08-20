@@ -1,7 +1,7 @@
 """Source Candidate Models (DS-SI11)."""
 
 import urllib.parse
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 from pydantic import BaseModel, Field
 
 
@@ -26,7 +26,7 @@ class SourceCandidate(BaseModel):
     expected_cost: float = 1.0
     expected_extractability: float = 0.9
     risk_score: float = 0.0
-    provider_metadata: Dict[str, str] = Field(default_factory=dict)
+    provider_metadata: Dict[str, Any] = Field(default_factory=dict)
 
     def model_post_init(self, __context):
         if not self.domain and self.url:

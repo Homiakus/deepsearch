@@ -1,7 +1,6 @@
 """Unit tests for S3 / MinIO CAS Adapter."""
 
 import os
-import pytest
 from unittest.mock import MagicMock
 from scraper.storage.s3_cas import S3ContentAddressableStore
 from scraper.storage.cas import get_cas_store, ContentAddressableStore

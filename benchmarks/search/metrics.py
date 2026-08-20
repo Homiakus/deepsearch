@@ -4,7 +4,9 @@ import math
 from typing import List, Dict, Set, Any
 
 
-def compute_recall_at_k(retrieved: List[str], ground_truth: Set[str], k: int = 10) -> float:
+def compute_recall_at_k(
+    retrieved: List[str], ground_truth: Set[str], k: int = 10
+) -> float:
     """Computes Recall@K: fraction of relevant URLs found in top-K."""
     if not ground_truth:
         return 1.0
@@ -13,7 +15,9 @@ def compute_recall_at_k(retrieved: List[str], ground_truth: Set[str], k: int = 1
     return len(found) / len(ground_truth)
 
 
-def compute_precision_at_k(retrieved: List[str], ground_truth: Set[str], k: int = 10) -> float:
+def compute_precision_at_k(
+    retrieved: List[str], ground_truth: Set[str], k: int = 10
+) -> float:
     """Computes Precision@K: fraction of top-K results that are relevant."""
     if k <= 0:
         return 0.0
@@ -30,18 +34,20 @@ def compute_mrr(retrieved: List[str], ground_truth: Set[str]) -> float:
     return 0.0
 
 
-def compute_ndcg_at_k(retrieved: List[str], relevance_grades: Dict[str, float], k: int = 10) -> float:
+def compute_ndcg_at_k(
+    retrieved: List[str], relevance_grades: Dict[str, float], k: int = 10
+) -> float:
     """Computes Normalized Discounted Cumulative Gain (nDCG@K)."""
     dcg = 0.0
     for rank, url in enumerate(retrieved[:k], start=1):
         rel = relevance_grades.get(url, 0.0)
-        dcg += (2.0 ** rel - 1.0) / math.log2(rank + 1.0)
+        dcg += (2.0**rel - 1.0) / math.log2(rank + 1.0)
 
     # Ideal DCG
     ideal_rels = sorted(relevance_grades.values(), reverse=True)[:k]
     idcg = 0.0
     for rank, rel in enumerate(ideal_rels, start=1):
-        idcg += (2.0 ** rel - 1.0) / math.log2(rank + 1.0)
+        idcg += (2.0**rel - 1.0) / math.log2(rank + 1.0)
 
     if idcg <= 0.0:
         return 1.0 if dcg == 0.0 else 0.0
@@ -66,7 +72,9 @@ def compute_source_diversity(domains: List[str]) -> float:
     return entropy / max_entropy if max_entropy > 0 else 1.0
 
 
-def compute_near_duplicate_ratio(fingerprints: List[int], hamming_thresh: int = 3) -> float:
+def compute_near_duplicate_ratio(
+    fingerprints: List[int], hamming_thresh: int = 3
+) -> float:
     """Computes ratio of near-duplicate items in a set of SimHash fingerprints."""
     if len(fingerprints) <= 1:
         return 0.0
@@ -110,11 +118,18 @@ def evaluate_quality_gate_report(
     rejected = int(summary.get("rejected_candidate_count", 0))
     total = accepted + rejected
     block_rejections = sum(
-        1 for item in report.get("rejections", [])
-        if str(item.get("document_type", "")).upper() in {"BLOCK_PAGE", "LOGIN", "JS_SHELL", "ERROR_PAGE"}
+        1
+        for item in report.get("rejections", [])
+        if str(item.get("document_type", "")).upper()
+        in {"BLOCK_PAGE", "LOGIN", "JS_SHELL", "ERROR_PAGE"}
         or "BLOCK" in str(item.get("reason_code", "")).upper()
     )
-    direct_rate = float(summary.get("direct_evidence_rate", compute_direct_evidence_rate(report.get("sources", []))))
+    direct_rate = float(
+        summary.get(
+            "direct_evidence_rate",
+            compute_direct_evidence_rate(report.get("sources", [])),
+        )
+    )
     block_rate = block_rejections / max(total, 1)
     checks = {
         "direct_evidence_rate": direct_rate >= min_direct_evidence_rate,

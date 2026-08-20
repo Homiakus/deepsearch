@@ -57,6 +57,10 @@ class ResearchIntent(BaseModel):
     constraints: List[Constraint] = Field(default_factory=list)
     languages: List[str] = Field(default_factory=lambda: ["en", "ru"])
     freshness_requirement: FreshnessRequirement = FreshnessRequirement.NONE
-    source_preferences: List[SourcePreference] = Field(default_factory=lambda: [SourcePreference.ALL])
-    evidence_requirements: EvidenceRequirements = Field(default_factory=EvidenceRequirements)
+    source_preferences: List[SourcePreference] = Field(
+        default_factory=lambda: [SourcePreference.ALL]
+    )
+    evidence_requirements: EvidenceRequirements = Field(
+        default_factory=EvidenceRequirements
+    )
     ambiguity: float = 0.0

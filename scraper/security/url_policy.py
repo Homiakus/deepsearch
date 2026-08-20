@@ -29,9 +29,17 @@ class URLSecurityPolicy:
         allowed_protocols: Optional[List[str]] = None,
         max_response_size: Optional[int] = None,
     ):
-        self.block_private_ips = block_private_ips if block_private_ips is not None else settings.security.block_private_ips
-        self.allowed_protocols = allowed_protocols or settings.security.allowed_protocols
-        self.max_response_size = max_response_size or settings.security.max_response_size_bytes
+        self.block_private_ips = (
+            block_private_ips
+            if block_private_ips is not None
+            else settings.security.block_private_ips
+        )
+        self.allowed_protocols = (
+            allowed_protocols or settings.security.allowed_protocols
+        )
+        self.max_response_size = (
+            max_response_size or settings.security.max_response_size_bytes
+        )
 
     def is_ip_blocked(self, ip_str: str) -> bool:
         """Checks if an IP string belongs to private, loopback, or reserved subnets."""
@@ -39,7 +47,13 @@ class URLSecurityPolicy:
             ip = ipaddress.ip_address(ip_str)
             if not self.block_private_ips:
                 return False
-            if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved or ip.is_multicast:
+            if (
+                ip.is_private
+                or ip.is_loopback
+                or ip.is_link_local
+                or ip.is_reserved
+                or ip.is_multicast
+            ):
                 return True
             for cidr in self.BLOCKED_CIDRS:
                 if ip in cidr:
@@ -61,7 +75,9 @@ class URLSecurityPolicy:
         # Direct IP check
         try:
             if self.is_ip_blocked(hostname):
-                raise SSRFBlockedError(f"Target host {hostname} is in a blocked private/loopback network")
+                raise SSRFBlockedError(
+                    f"Target host {hostname} is in a blocked private/loopback network"
+                )
         except ValueError:
             pass
 
@@ -72,7 +88,9 @@ class URLSecurityPolicy:
                 for res in addr_info:
                     ip_candidate = res[4][0]
                     if self.is_ip_blocked(ip_candidate):
-                        raise SSRFBlockedError(f"Host {hostname} resolved to blocked IP {ip_candidate}")
+                        raise SSRFBlockedError(
+                            f"Host {hostname} resolved to blocked IP {ip_candidate}"
+                        )
             except socket.gaierror:
                 # DNS failure can be handled downstream by fetcher
                 pass

@@ -28,6 +28,7 @@ class SourceNode(BaseModel):
 
 class SourceLineage(BaseModel):
     """Tracks publisher relationships and distinguishes copies from independent corroboration."""
+
     sources: Dict[str, SourceNode] = Field(default_factory=dict)
     primary_source_ids: List[str] = Field(default_factory=list)
 
@@ -76,6 +77,9 @@ class SourceLineage(BaseModel):
         """Counts only genuinely independent source domains."""
         indep_domains = set()
         for s in self.sources.values():
-            if s.relation_to_root in (LineageRelation.PRIMARY_SOURCE, LineageRelation.INDEPENDENT_CORROBORATION):
+            if s.relation_to_root in (
+                LineageRelation.PRIMARY_SOURCE,
+                LineageRelation.INDEPENDENT_CORROBORATION,
+            ):
                 indep_domains.add(s.domain)
         return len(indep_domains)

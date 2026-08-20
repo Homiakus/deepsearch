@@ -47,6 +47,6 @@ def test_table_extraction():
     assert t.headers == ["Name", "Price"]
     assert t.json_data == [
         {"Name": "Item A", "Price": "10"},
-        {"Name": "Item B", "Price": "20"}
+        {"Name": "Item B", "Price": "20"},
     ]
     assert "| Name | Price |" in t.markdown

@@ -62,7 +62,9 @@ class InMemoryDistributedQueue(DistributedQueueAdapter):
     def __init__(self, max_capacity: int = 50000):
         self.max_capacity = max_capacity
         self._queue: List[Tuple[str, CrawlRequest]] = []
-        self._pending: Dict[str, Tuple[str, CrawlRequest, float]] = {}  # msg_id -> (consumer, req, lease_time)
+        self._pending: Dict[
+            str, Tuple[str, CrawlRequest, float]
+        ] = {}  # msg_id -> (consumer, req, lease_time)
         self._ack_count = 0
         self._nack_count = 0
         self._msg_counter = 0
@@ -157,6 +159,7 @@ class RedisStreamsDistributedQueue(DistributedQueueAdapter):
     async def _get_client(self):
         if self._redis is None:
             import redis.asyncio as redis
+
             self._redis = redis.from_url(self.redis_url, decode_responses=True)
             try:
                 await self._redis.xgroup_create(
@@ -214,8 +217,12 @@ class RedisStreamsDistributedQueue(DistributedQueueAdapter):
                                 req.lease_expires_at = time.time() + 60.0
                                 results.append((msg_id, req))
                             except Exception as parse_err:
-                                logger.error(f"Error parsing CrawlRequest payload {msg_id}: {parse_err}")
-                                await client.xack(self.stream_key, self.group_name, msg_id)
+                                logger.error(
+                                    f"Error parsing CrawlRequest payload {msg_id}: {parse_err}"
+                                )
+                                await client.xack(
+                                    self.stream_key, self.group_name, msg_id
+                                )
             return results
         except Exception as e:
             logger.error(f"Failed to read from Redis stream group: {e}")
@@ -234,7 +241,9 @@ class RedisStreamsDistributedQueue(DistributedQueueAdapter):
         try:
             client = await self._get_client()
             if requeue:
-                msgs = await client.xrange(self.stream_key, min=message_id, max=message_id)
+                msgs = await client.xrange(
+                    self.stream_key, min=message_id, max=message_id
+                )
                 if msgs:
                     _, fields = msgs[0]
                     raw_payload = fields.get("payload")
@@ -243,7 +252,9 @@ class RedisStreamsDistributedQueue(DistributedQueueAdapter):
                         req = CrawlRequest(**req_dict)
                         req.attempt += 1
                         if req.attempt <= req.max_attempts:
-                            await client.xadd(self.stream_key, {"payload": req.model_dump_json()})
+                            await client.xadd(
+                                self.stream_key, {"payload": req.model_dump_json()}
+                            )
             await client.xack(self.stream_key, self.group_name, message_id)
             return True
         except Exception as e:

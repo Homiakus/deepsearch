@@ -1,8 +1,8 @@
 """Goal Coverage & Evidence Sufficiency Analyzer (DS-SI55, DS-SI56)."""
 
-from typing import Dict, List
+from typing import List
 from pydantic import BaseModel, Field
-from scraper.research.goals import ResearchGoal, ResearchGoalGraph, GoalStatus
+from scraper.research.goals import ResearchGoalGraph, GoalStatus
 from scraper.evidence.store import EvidenceStore
 
 
@@ -28,7 +28,9 @@ class GoalCoverageAnalyzer:
     """Analyzes goal coverage and assesses whether evidence sufficiency criteria are met."""
 
     @staticmethod
-    def analyze(goal_graph: ResearchGoalGraph, store: EvidenceStore) -> OverallCoverageAssessment:
+    def analyze(
+        goal_graph: ResearchGoalGraph, store: EvidenceStore
+    ) -> OverallCoverageAssessment:
         reports: List[GoalCoverageReport] = []
         contradictions = store.get_contradictions()
 
@@ -54,7 +56,9 @@ class GoalCoverageAnalyzer:
             # Score formula: 50% claims presence, 30% independent sources, 20% type coverage
             c_claims = min(1.0, total_claims / 3.0) if total_claims > 0 else 0.0
             c_sources = min(1.0, indep_count / 2.0) if indep_count > 0 else 0.0
-            c_types = 1.0 - (len(missing) / max(len(req_types), 1)) if req_types else 1.0
+            c_types = (
+                1.0 - (len(missing) / max(len(req_types), 1)) if req_types else 1.0
+            )
 
             coverage = round(0.50 * c_claims + 0.30 * c_sources + 0.20 * c_types, 3)
             goal_graph.update_coverage(goal.id, coverage, source_count=indep_count)

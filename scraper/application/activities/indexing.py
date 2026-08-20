@@ -34,11 +34,16 @@ async def run_indexing_activity(input_data: Dict[str, Any]) -> ActivityResult:
             if vector_store.client:
                 try:
                     from scraper.retrieval.embeddings import embedding_engine
+
                     vec = embedding_engine.embed_text_dense(para)
                     vector_store.upsert_text_embedding(
                         doc_id=chunk_id,
                         vector=vec,
-                        payload={"url": url, "text": para, "document_id": doc.get("blake3_hash", "")},
+                        payload={
+                            "url": url,
+                            "text": para,
+                            "document_id": doc.get("blake3_hash", ""),
+                        },
                     )
                 except Exception:
                     pass

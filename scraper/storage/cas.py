@@ -7,6 +7,7 @@ from scraper.config import settings
 
 try:
     import zstandard as zstd
+
     ZSTD_AVAILABLE = True
 except ImportError:
     ZSTD_AVAILABLE = False
@@ -60,6 +61,6 @@ def get_cas_store(backend: Optional[str] = None) -> ContentAddressableStore:
     selected = backend or settings.cas_backend
     if selected.lower() == "s3":
         from scraper.storage.s3_cas import S3ContentAddressableStore
+
         return S3ContentAddressableStore()
     return ContentAddressableStore()
-

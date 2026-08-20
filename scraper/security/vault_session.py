@@ -17,6 +17,7 @@ from scraper.config import settings
 
 try:
     from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
     CRYPTO_AVAILABLE = True
 except ImportError:
     CRYPTO_AVAILABLE = False
@@ -57,7 +58,9 @@ class SessionVault:
         if not CRYPTO_AVAILABLE:
             # Fallback XOR cipher for environments without cryptography lib
             return base64.b64encode(
-                bytes([b ^ self._key[i % len(self._key)] for i, b in enumerate(plaintext)])
+                bytes(
+                    [b ^ self._key[i % len(self._key)] for i, b in enumerate(plaintext)]
+                )
             )
         aesgcm = AESGCM(self._key)
         nonce = os.urandom(12)

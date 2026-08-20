@@ -9,6 +9,7 @@ from scraper.acquisition.capabilities import BrowserCapabilities
 
 class ArtifactReference(BaseModel):
     """Content-Addressable Storage (CAS) reference to an acquisition artifact (DS-RB26)."""
+
     content_hash: str
     uri: str
     media_type: str = "text/html"
@@ -18,6 +19,7 @@ class ArtifactReference(BaseModel):
 
 class QualityReport(BaseModel):
     """Quality signals evaluated from page acquisition (DS-RB05)."""
+
     score: float = 1.0
     completeness: float = 1.0
     blocked: bool = False
@@ -28,6 +30,7 @@ class QualityReport(BaseModel):
 
 class CostReport(BaseModel):
     """Resource consumption accounting for acquisition run (DS-RB32)."""
+
     base_cost: float = 1.0
     execution_time_ms: float = 0.0
     memory_mb: float = 0.0
@@ -37,6 +40,7 @@ class CostReport(BaseModel):
 
 class FailureRecord(BaseModel):
     """Failure diagnostics when acquisition cannot complete cleanly (DS-RB31)."""
+
     failure_class: str  # transient, rate_limit, permanent, security, quality
     message: str
     retryable: bool = False
@@ -46,9 +50,12 @@ class FailureRecord(BaseModel):
 
 class AcquisitionRequest(BaseModel):
     """Normalized request for page acquisition across any backend."""
+
     url: str
     canonical_url: Optional[str] = None
-    required_capabilities: BrowserCapabilities = Field(default_factory=BrowserCapabilities.create_minimal)
+    required_capabilities: BrowserCapabilities = Field(
+        default_factory=BrowserCapabilities.create_minimal
+    )
     optional_capabilities: Optional[BrowserCapabilities] = None
     mode: str = "balanced"  # fast, balanced, research, complete
     budget_max_ms: float = 30000.0
@@ -61,6 +68,7 @@ class AcquisitionRequest(BaseModel):
 
 class AcquisitionResult(BaseModel):
     """Uniform result returned from any acquisition backend."""
+
     requested_url: str
     final_url: str
     backend: str

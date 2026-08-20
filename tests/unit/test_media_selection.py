@@ -40,7 +40,7 @@ def test_score_and_rank_images_topic_relevance():
             "alt": "Landscape view",
             "source_domain": "scenery.com",
             "width": 800,
-            "height": 600
+            "height": 600,
         },
         {
             "url": "https://commons.wikimedia.org/wiki/File:Laser_cutting_head.jpg",
@@ -48,7 +48,7 @@ def test_score_and_rank_images_topic_relevance():
             "alt": "Laser cutting speed experiment",
             "source_domain": "commons.wikimedia.org",
             "width": 1024,
-            "height": 768
+            "height": 768,
         },
         {
             "url": "https://example.com/logo.png",
@@ -56,8 +56,8 @@ def test_score_and_rank_images_topic_relevance():
             "alt": "banner logo",
             "source_domain": "example.com",
             "width": 50,
-            "height": 50
-        }
+            "height": 50,
+        },
     ]
 
     ranked = score_and_rank_images(candidates, query=query, min_count=1, max_count=5)
@@ -79,17 +79,21 @@ def test_score_and_rank_images_min_max_bounds():
             "alt": f"Quantum circuit {i}",
             "source_domain": "arxiv.org",
             "width": 800,
-            "height": 600
+            "height": 600,
         }
         for i in range(30)
     ]
 
     # Target 5 to 25 range
-    ranked_25 = score_and_rank_images(candidates, query=query, min_count=5, max_count=25)
+    ranked_25 = score_and_rank_images(
+        candidates, query=query, min_count=5, max_count=25
+    )
     assert len(ranked_25) == 25
 
     # Target 5 to 10 range
-    ranked_10 = score_and_rank_images(candidates, query=query, min_count=5, max_count=10)
+    ranked_10 = score_and_rank_images(
+        candidates, query=query, min_count=5, max_count=10
+    )
     assert len(ranked_10) == 10
 
 

@@ -8,7 +8,7 @@ import asyncio
 import time
 import uuid
 from enum import Enum
-from typing import Dict, List, Optional, Set
+from typing import Dict, List, Optional
 from pydantic import BaseModel, Field
 from scraper.search.candidates import SourceCandidate
 from scraper.search.features import CandidateFeatureVector
@@ -92,7 +92,8 @@ class RankedFrontier:
                 candidate=candidate,
                 priority=priority,
                 depth=depth,
-                goal_id=goal_id or (candidate.goal_ids[0] if candidate.goal_ids else None),
+                goal_id=goal_id
+                or (candidate.goal_ids[0] if candidate.goal_ids else None),
                 state=CandidateState.QUEUED,
                 features=features,
             )
@@ -104,18 +105,26 @@ class RankedFrontier:
             self._condition.notify_all()
             return True
 
-    async def lease_next(self, lease_duration_sec: float = 30.0) -> Optional[FrontierItem]:
+    async def lease_next(
+        self, lease_duration_sec: float = 30.0
+    ) -> Optional[FrontierItem]:
         """Leases the highest priority candidate respecting domain concurrency limits (DS-SI26)."""
         async with self._condition:
             now = time.time()
 
             # Clean expired leases
             for item in self._items_by_id.values():
-                if item.state == CandidateState.LEASED and item.lease_expires_at and item.lease_expires_at < now:
+                if (
+                    item.state == CandidateState.LEASED
+                    and item.lease_expires_at
+                    and item.lease_expires_at < now
+                ):
                     item.state = CandidateState.QUEUED
                     item.lease_expires_at = None
                     dom = item.candidate.domain
-                    self._active_per_domain[dom] = max(0, self._active_per_domain.get(dom, 1) - 1)
+                    self._active_per_domain[dom] = max(
+                        0, self._active_per_domain.get(dom, 1) - 1
+                    )
                     if item not in self._queue:
                         self._queue.append(item)
                         self._queue.sort(key=lambda it: it.priority, reverse=True)
@@ -160,13 +169,17 @@ class RankedFrontier:
 
             item = self._items_by_id[item_id]
             dom = item.candidate.domain
-            self._active_per_domain[dom] = max(0, self._active_per_domain.get(dom, 1) - 1)
+            self._active_per_domain[dom] = max(
+                0, self._active_per_domain.get(dom, 1) - 1
+            )
             item.lease_expires_at = None
             item.updated_at = time.time()
 
             if is_transient_error and item.attempt < item.max_attempts:
                 item.state = CandidateState.RETRY
-                item.priority = max(0.05, item.priority - 0.10)  # Gentle penalty on retry
+                item.priority = max(
+                    0.05, item.priority - 0.10
+                )  # Gentle penalty on retry
                 item.error_message = error
                 self._queue.append(item)
                 self._queue.sort(key=lambda it: it.priority, reverse=True)

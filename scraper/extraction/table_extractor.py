@@ -44,14 +44,14 @@ def extract_tables_from_html(raw_html: str) -> List[TableData]:
 
         if not headers and rows:
             # Fallback headers if th tag was missing
-            headers = [f"col_{i+1}" for i in range(len(rows[0]))]
+            headers = [f"col_{i + 1}" for i in range(len(rows[0]))]
 
         # 1. JSON representation
         json_data = []
         for r in rows:
             row_dict = {}
             for i, val in enumerate(r):
-                key = headers[i] if i < len(headers) else f"col_{i+1}"
+                key = headers[i] if i < len(headers) else f"col_{i + 1}"
                 row_dict[key] = val
             json_data.append(row_dict)
 
@@ -72,14 +72,16 @@ def extract_tables_from_html(raw_html: str) -> List[TableData]:
             md_lines.append("| " + " | ".join(r) + " |")
         md_str = "\n".join(md_lines)
 
-        tables.append(TableData(
-            table_index=idx,
-            headers=headers,
-            rows=rows,
-            html=table_html,
-            json_data=json_data,
-            csv=csv_str,
-            markdown=md_str
-        ))
+        tables.append(
+            TableData(
+                table_index=idx,
+                headers=headers,
+                rows=rows,
+                html=table_html,
+                json_data=json_data,
+                csv=csv_str,
+                markdown=md_str,
+            )
+        )
 
     return tables

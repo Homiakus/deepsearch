@@ -5,8 +5,18 @@ import re
 from typing import Set
 
 TRACKING_PARAMS: Set[str] = {
-    "utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content",
-    "fbclid", "gclid", "msclkid", "mc_eid", "_ga", "ref", "source"
+    "utm_source",
+    "utm_medium",
+    "utm_campaign",
+    "utm_term",
+    "utm_content",
+    "fbclid",
+    "gclid",
+    "msclkid",
+    "mc_eid",
+    "_ga",
+    "ref",
+    "source",
 }
 
 HTTPS_UPGRADE_DOMAINS: Set[str] = {

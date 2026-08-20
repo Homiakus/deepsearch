@@ -14,14 +14,20 @@ class EvidenceExtractor:
     """Extracts factual claims and quotation spans from retrieved passages."""
 
     @staticmethod
-    def extract_from_passages(passages: List[FusedResult], goal_id: str = None) -> Tuple[List[Claim], List[EvidenceItem]]:
+    def extract_from_passages(
+        passages: List[FusedResult], goal_id: str = None
+    ) -> Tuple[List[Claim], List[EvidenceItem]]:
         claims: List[Claim] = []
         evidence_items: List[EvidenceItem] = []
 
         for p in passages:
             hit = p.hit
             text = hit.text
-            sentences = [s.strip() for s in re.split(r'(?<=[.!?])\s+', text) if len(s.strip()) > 30]
+            sentences = [
+                s.strip()
+                for s in re.split(r"(?<=[.!?])\s+", text)
+                if len(s.strip()) > 30
+            ]
 
             for s in sentences[:3]:  # Top informative sentences per passage
                 clm = Claim(

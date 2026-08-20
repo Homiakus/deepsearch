@@ -5,7 +5,7 @@ import urllib.parse
 import httpx
 from typing import List
 from selectolax.parser import HTMLParser
-from scraper.discovery.providers.base import DiscoveryProvider, ProviderDescriptor, ProviderSearchRequest
+from scraper.discovery.providers.base import ProviderDescriptor, ProviderSearchRequest
 from scraper.search.candidates import SourceCandidate
 
 logger = logging.getLogger(__name__)
@@ -29,7 +29,9 @@ class WebSearchProvider:
         }
         candidates = []
         try:
-            async with httpx.AsyncClient(timeout=request.timeout_sec, trust_env=False) as client:
+            async with httpx.AsyncClient(
+                timeout=request.timeout_sec, trust_env=False
+            ) as client:
                 res = await client.get(url, headers=headers, follow_redirects=True)
                 if res.status_code == 200 and res.text:
                     parser = HTMLParser(res.text)
@@ -43,11 +45,16 @@ class WebSearchProvider:
                                 snippet_text = a.text(strip=True)
                                 if href:
                                     if "uddg=" in href:
-                                        qs = urllib.parse.parse_qs(urllib.parse.urlparse(href).query)
+                                        qs = urllib.parse.parse_qs(
+                                            urllib.parse.urlparse(href).query
+                                        )
                                         target_url = qs.get("uddg", [None])[0]
                                         if target_url:
                                             href = urllib.parse.unquote(target_url)
-                                    if href.startswith("http") and "duckduckgo.com" not in href:
+                                    if (
+                                        href.startswith("http")
+                                        and "duckduckgo.com" not in href
+                                    ):
                                         candidates.append(
                                             SourceCandidate(
                                                 url=href,
@@ -57,13 +64,17 @@ class WebSearchProvider:
                                                 provider=self.descriptor.name,
                                                 provider_rank=idx,
                                                 source_type="OFFICIAL_DOC",
-                                                goal_ids=[request.goal_id] if request.goal_id else [],
+                                                goal_ids=[request.goal_id]
+                                                if request.goal_id
+                                                else [],
                                                 authority_prior=0.70,
                                             )
                                         )
                         if len(candidates) >= request.max_results:
                             break
         except Exception as exc:
-            logger.warning("WebSearchProvider search error for query '%s': %s", request.query, exc)
+            logger.warning(
+                "WebSearchProvider search error for query '%s': %s", request.query, exc
+            )
 
         return candidates

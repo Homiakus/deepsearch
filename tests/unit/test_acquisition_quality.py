@@ -1,6 +1,5 @@
 """Unit tests for AcquisitionQualityEvaluator (DS-RB05, DS-RB41)."""
 
-import pytest
 from scraper.acquisition.quality import AcquisitionQualityEvaluator
 
 

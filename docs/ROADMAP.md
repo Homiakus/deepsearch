@@ -29,4 +29,8 @@
 - [x] **Real-time Streaming Research Web UI**: SSE (Server-Sent Events) live crawling telemetry and interactive visual dashboard.
 - [x] **Automated OpenAPI Client SDK Generation**: Automated TypeScript and Go client SDK generator from `docs/openapi.yaml`.
 - [x] **Obsidian / Zotero Exporter Plugin**: Direct export of research pipeline archives to Obsidian Knowledge Vaults with [[Wikilinks]] and Zotero CSL-JSON / RIS libraries.
+- [x] **Expanded Academic Discovery Providers (v1.2.0)**: Integrated OpenAlex, Crossref, Semantic Scholar, Europe PMC, PubMed, Regional Academic (eLibrary/SciELO), and Anna's Archive discovery.
+- [x] **Direct Open Access PDF Resolver (v1.2.0)**: Unpaywall and DOI-based automated PDF retrieval from PMC Open Access, ArXiv, MDPI, BioMed Central, and publisher direct streams.
+- [x] **Visual PDF Figure & Chart Extractor (v1.2.0)**: High-resolution raster and vector image extraction from scientific PDFs with bounding-box OCR captions and layout alignment.
+- [x] **Enhanced Text Normalization & Linguistic Cleansing (v1.2.0)**: Unicode normalization (NFC/NFKC), dehyphenation, ligature expansion, and multi-language sentence boundary preservation.
 

@@ -7,7 +7,7 @@ evidence preferences, and domain requirements without rigid hardcoded routing.
 from typing import List, Tuple, Optional
 from scraper.discovery.providers.base import DiscoveryProvider, ProviderSearchRequest
 from scraper.discovery.providers.registry import ProviderRegistry, provider_registry
-from scraper.research.intent import ResearchIntent, FreshnessRequirement
+from scraper.research.intent import ResearchIntent
 from scraper.research.goals import ResearchGoal
 from scraper.search.query_models import SearchQueryVariant
 
@@ -31,9 +31,27 @@ class ProviderPolicy:
 
         q_lower = (intent.normalized_query or intent.original_query or "").lower()
         medical_keywords = {
-            "cancer", "tumor", "dna", "rna", "crispr", "clinical", "disease", "drug",
-            "trial", "therapy", "biopsy", "cell", "protein", "gene", "mutation",
-            "oncology", "patient", "syndrome", "inhibitor", "alopecia", "antibody"
+            "cancer",
+            "tumor",
+            "dna",
+            "rna",
+            "crispr",
+            "clinical",
+            "disease",
+            "drug",
+            "trial",
+            "therapy",
+            "biopsy",
+            "cell",
+            "protein",
+            "gene",
+            "mutation",
+            "oncology",
+            "patient",
+            "syndrome",
+            "inhibitor",
+            "alopecia",
+            "antibody",
         }
         has_medical_kw = any(kw in q_lower for kw in medical_keywords)
 
@@ -44,12 +62,13 @@ class ProviderPolicy:
         )
         is_academic = (
             "PRIMARY_RESEARCH" in goal.required_evidence_types
-            or intent.task_type in ("scientific", "medical", "general_research", "engineering")
+            or intent.task_type
+            in ("scientific", "medical", "general_research", "engineering")
             or True
         )
-        is_code = (
-            "SOURCE_CODE" in goal.required_evidence_types
-            or intent.task_type in ("technical", "code")
+        is_code = "SOURCE_CODE" in goal.required_evidence_types or intent.task_type in (
+            "technical",
+            "code",
         )
 
         batch_size = max_results_per_provider or min(max(5, target_pool_size // 2), 50)
@@ -62,39 +81,96 @@ class ProviderPolicy:
             if qv.provider_hint:
                 p = self.registry.get(qv.provider_hint)
                 if p:
-                    requests.append((p, ProviderSearchRequest(query=qv.query, goal_id=goal.id, max_results=batch_size, language=qv.language)))
+                    requests.append(
+                        (
+                            p,
+                            ProviderSearchRequest(
+                                query=qv.query,
+                                goal_id=goal.id,
+                                max_results=batch_size,
+                                language=qv.language,
+                            ),
+                        )
+                    )
 
             # 2. Domain & Evidence Matching
             if is_medical:
-                p_pmc = self.registry.get("europe_pmc")
-                p_pub = self.registry.get("pubmed")
-                if p_pmc and not any(r[0] == p_pmc for r in requests):
-                    requests.append((p_pmc, ProviderSearchRequest(query=qv.query, goal_id=goal.id, max_results=batch_size, language="en")))
-                if p_pub and not any(r[0] == p_pub for r in requests):
-                    requests.append((p_pub, ProviderSearchRequest(query=qv.query, goal_id=goal.id, max_results=batch_size, language="en")))
+                for prov_name in (
+                    "pubmed",
+                    "europe_pmc",
+                    "semantic_scholar",
+                    "openalex",
+                ):
+                    p = self.registry.get(prov_name)
+                    if p and not any(r[0] == p for r in requests):
+                        requests.append(
+                            (
+                                p,
+                                ProviderSearchRequest(
+                                    query=qv.query,
+                                    goal_id=goal.id,
+                                    max_results=batch_size,
+                                    language="en",
+                                ),
+                            )
+                        )
 
             if is_academic:
-                p_arxiv = self.registry.get("arxiv")
-                if p_arxiv and not any(r[0] == p_arxiv for r in requests):
-                    requests.append((p_arxiv, ProviderSearchRequest(query=qv.query, goal_id=goal.id, max_results=batch_size, language="en")))
+                for prov_name in (
+                    "semantic_scholar",
+                    "openalex",
+                    "crossref",
+                    "arxiv",
+                    "regional_academic",
+                ):
+                    p = self.registry.get(prov_name)
+                    if p and not any(r[0] == p for r in requests):
+                        requests.append(
+                            (
+                                p,
+                                ProviderSearchRequest(
+                                    query=qv.query,
+                                    goal_id=goal.id,
+                                    max_results=batch_size,
+                                    language=qv.language,
+                                ),
+                            )
+                        )
 
             if is_code:
                 p_gh = self.registry.get("github")
                 if p_gh and not any(r[0] == p_gh for r in requests):
-                    requests.append((p_gh, ProviderSearchRequest(query=qv.query, goal_id=goal.id, max_results=min(batch_size, 10), language="en")))
+                    requests.append(
+                        (
+                            p_gh,
+                            ProviderSearchRequest(
+                                query=qv.query,
+                                goal_id=goal.id,
+                                max_results=min(batch_size, 10),
+                                language="en",
+                            ),
+                        )
+                    )
 
-            # 3. Grounding & Open Web Fallback (WebSearch, Wikipedia & Anna's Archive)
-            p_web = self.registry.get("web_search")
-            if p_web and not any(r[0] == p_web for r in requests):
-                requests.append((p_web, ProviderSearchRequest(query=qv.query, goal_id=goal.id, max_results=min(batch_size, 15), language=qv.language)))
-
-            p_annas = self.registry.get("annas_archive")
-            if p_annas and not any(r[0] == p_annas for r in requests):
-                requests.append((p_annas, ProviderSearchRequest(query=qv.query, goal_id=goal.id, max_results=min(batch_size, 10), language=qv.language)))
-
-            p_wiki = self.registry.get("wikipedia")
-            if p_wiki and not any(r[0] == p_wiki for r in requests):
-                requests.append((p_wiki, ProviderSearchRequest(query=qv.query, goal_id=goal.id, max_results=min(batch_size, 5), language=qv.language)))
+            # 3. Grounding & Open Web Fallback (WebSearch, Anna's Archive & Wikipedia)
+            for prov_name, limit in [
+                ("web_search", 15),
+                ("annas_archive", 10),
+                ("wikipedia", 5),
+            ]:
+                p = self.registry.get(prov_name)
+                if p and not any(r[0] == p for r in requests):
+                    requests.append(
+                        (
+                            p,
+                            ProviderSearchRequest(
+                                query=qv.query,
+                                goal_id=goal.id,
+                                max_results=min(batch_size, limit),
+                                language=qv.language,
+                            ),
+                        )
+                    )
 
             if len(requests) >= max_requests_per_goal:
                 break

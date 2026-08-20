@@ -1,6 +1,6 @@
 """Discovery activity implementation (§4, DS-A09, DS-A22, DS-A23)."""
 
-from typing import Any, Dict, List
+from typing import Any, Dict
 from scraper.discovery.seed_finder import discover_diverse_seeds
 from scraper.orchestration.protocol import ActivityResult, ResourceUsage
 

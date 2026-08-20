@@ -3,11 +3,15 @@
 import asyncio
 import logging
 from typing import Dict, List, Optional
-from scraper.discovery.providers.base import DiscoveryProvider, ProviderDescriptor, ProviderSearchRequest
+from scraper.discovery.providers.base import DiscoveryProvider, ProviderSearchRequest
 from scraper.discovery.providers.wikipedia import WikipediaProvider
 from scraper.discovery.providers.arxiv import ArxivProvider
 from scraper.discovery.providers.europe_pmc import EuropePMCProvider
 from scraper.discovery.providers.pubmed import PubMedProvider
+from scraper.discovery.providers.semantic_scholar import SemanticScholarProvider
+from scraper.discovery.providers.openalex import OpenAlexProvider
+from scraper.discovery.providers.crossref import CrossRefProvider
+from scraper.discovery.providers.regional_academic import RegionalAcademicProvider
 from scraper.discovery.providers.github import GitHubProvider
 from scraper.discovery.providers.annas_archive import AnnasArchiveProvider
 from scraper.discovery.providers.web_search import WebSearchProvider
@@ -27,6 +31,10 @@ class ProviderRegistry:
         self.register(ArxivProvider())
         self.register(EuropePMCProvider())
         self.register(PubMedProvider())
+        self.register(SemanticScholarProvider())
+        self.register(OpenAlexProvider())
+        self.register(CrossRefProvider())
+        self.register(RegionalAcademicProvider())
         self.register(GitHubProvider())
         self.register(AnnasArchiveProvider())
         self.register(WebSearchProvider())
@@ -60,7 +68,9 @@ class ProviderRegistry:
                         metadata={"query": req.query, "goal_id": req.goal_id or ""},
                     )
                 try:
-                    results = await asyncio.wait_for(provider.search(req), timeout=req.timeout_sec)
+                    results = await asyncio.wait_for(
+                        provider.search(req), timeout=req.timeout_sec
+                    )
                     for c in results:
                         if trace:
                             trace.record(
@@ -68,11 +78,19 @@ class ProviderRegistry:
                                 entity_id=c.url,
                                 stage="discovery",
                                 decision="DISCOVERED",
-                                metadata={"provider": provider.descriptor.name, "goal_id": req.goal_id or ""},
+                                metadata={
+                                    "provider": provider.descriptor.name,
+                                    "goal_id": req.goal_id or "",
+                                },
                             )
                     return results
                 except Exception as exc:
-                    logger.warning("Provider %s failed for query '%s': %s", provider.descriptor.name, req.query, exc)
+                    logger.warning(
+                        "Provider %s failed for query '%s': %s",
+                        provider.descriptor.name,
+                        req.query,
+                        exc,
+                    )
                     return []
 
         tasks = [_run_single(p, r) for p, r in requests]

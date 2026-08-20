@@ -3,7 +3,6 @@
 Enables distributed, durable object storage for compressed crawl artifacts and media.
 """
 
-import io
 import os
 import hashlib
 import logging
@@ -14,6 +13,7 @@ logger = logging.getLogger(__name__)
 
 try:
     import zstandard as zstd
+
     ZSTD_AVAILABLE = True
 except ImportError:
     ZSTD_AVAILABLE = False
@@ -37,7 +37,9 @@ class S3ContentAddressableStore:
         self.access_key = access_key
         self.secret_key = secret_key
         self.region = region
-        self.local_cache_dir = local_cache_dir or os.path.join(settings.storage_path, "s3_cache")
+        self.local_cache_dir = local_cache_dir or os.path.join(
+            settings.storage_path, "s3_cache"
+        )
         os.makedirs(self.local_cache_dir, exist_ok=True)
 
         if ZSTD_AVAILABLE:
@@ -78,7 +80,9 @@ class S3ContentAddressableStore:
                 client.create_bucket(Bucket=self.bucket_name)
                 self._bucket_verified = True
             except Exception as create_err:
-                logger.warning(f"Could not head/create S3 bucket '{self.bucket_name}': {create_err}")
+                logger.warning(
+                    f"Could not head/create S3 bucket '{self.bucket_name}': {create_err}"
+                )
 
     def _get_s3_key(self, content_hash: str) -> str:
         prefix = content_hash[:2]
@@ -110,10 +114,15 @@ class S3ContentAddressableStore:
                 Bucket=self.bucket_name,
                 Key=s3_key,
                 Body=compressed,
-                Metadata={"uncompressed-length": str(len(content)), "sha256": content_hash},
+                Metadata={
+                    "uncompressed-length": str(len(content)),
+                    "sha256": content_hash,
+                },
             )
         except Exception as e:
-            logger.warning(f"Failed to upload {content_hash} to S3 CAS ({e}), saved to local cache")
+            logger.warning(
+                f"Failed to upload {content_hash} to S3 CAS ({e}), saved to local cache"
+            )
 
         return content_hash, len(content)
 

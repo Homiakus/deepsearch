@@ -1,13 +1,11 @@
 """Multi-Source Seed Discovery Engine with Provider Registry Integration (DS-SI08, DS-SI82)."""
 
 import logging
-import urllib.parse
 from typing import List, Optional
 
-from scraper.config import settings
-from scraper.discovery.providers.registry import provider_registry, ProviderRegistry
+from scraper.discovery.providers.registry import provider_registry
 from scraper.discovery.providers.base import ProviderSearchRequest
-from scraper.research.intent import ResearchIntent, FreshnessRequirement
+from scraper.research.intent import ResearchIntent
 from scraper.research.query_normalizer import normalize_query
 from scraper.research.entities import extract_entities_from_query
 from scraper.research.decomposer import decompose_intent
@@ -62,8 +60,12 @@ async def discover_diverse_seeds(
     if not discovered:
         p_wiki = provider_registry.get("wikipedia")
         if p_wiki:
-            wiki_candidates = await p_wiki.search(ProviderSearchRequest(query=query, max_results=3, language="en"))
-            discovered.extend([c.url for c in wiki_candidates if c.url not in discovered])
+            wiki_candidates = await p_wiki.search(
+                ProviderSearchRequest(query=query, max_results=3, language="en")
+            )
+            discovered.extend(
+                [c.url for c in wiki_candidates if c.url not in discovered]
+            )
 
     # Deduplicate while preserving order
     seen = set()
@@ -73,7 +75,9 @@ async def discover_diverse_seeds(
             seen.add(u)
             final_seeds.append(u)
 
-    logger.info("Discovered %d diverse seed URLs for query '%s'", len(final_seeds), query)
+    logger.info(
+        "Discovered %d diverse seed URLs for query '%s'", len(final_seeds), query
+    )
     return final_seeds
 
 
@@ -81,15 +85,21 @@ async def discover_diverse_seeds(
 async def fetch_arxiv_seeds(query: str, max_results: int = 5) -> List[str]:
     p = provider_registry.get("arxiv")
     if p:
-        candidates = await p.search(ProviderSearchRequest(query=query, max_results=max_results))
+        candidates = await p.search(
+            ProviderSearchRequest(query=query, max_results=max_results)
+        )
         return [c.url for c in candidates]
     return []
 
 
-async def fetch_wikipedia_search_seeds(query: str, lang: str = "en", max_results: int = 5) -> List[str]:
+async def fetch_wikipedia_search_seeds(
+    query: str, lang: str = "en", max_results: int = 5
+) -> List[str]:
     p = provider_registry.get("wikipedia")
     if p:
-        candidates = await p.search(ProviderSearchRequest(query=query, max_results=max_results, language=lang))
+        candidates = await p.search(
+            ProviderSearchRequest(query=query, max_results=max_results, language=lang)
+        )
         return [c.url for c in candidates]
     return []
 
@@ -97,7 +107,9 @@ async def fetch_wikipedia_search_seeds(query: str, lang: str = "en", max_results
 async def fetch_europe_pmc_seeds(query: str, max_results: int = 5) -> List[str]:
     p = provider_registry.get("europe_pmc")
     if p:
-        candidates = await p.search(ProviderSearchRequest(query=query, max_results=max_results))
+        candidates = await p.search(
+            ProviderSearchRequest(query=query, max_results=max_results)
+        )
         return [c.url for c in candidates]
     return []
 
@@ -105,7 +117,9 @@ async def fetch_europe_pmc_seeds(query: str, max_results: int = 5) -> List[str]:
 async def fetch_pubmed_seeds(query: str, max_results: int = 5) -> List[str]:
     p = provider_registry.get("pubmed")
     if p:
-        candidates = await p.search(ProviderSearchRequest(query=query, max_results=max_results))
+        candidates = await p.search(
+            ProviderSearchRequest(query=query, max_results=max_results)
+        )
         return [c.url for c in candidates]
     return []
 
@@ -113,6 +127,8 @@ async def fetch_pubmed_seeds(query: str, max_results: int = 5) -> List[str]:
 async def fetch_annas_archive_seeds(query: str, max_results: int = 5) -> List[str]:
     p = provider_registry.get("annas_archive")
     if p:
-        candidates = await p.search(ProviderSearchRequest(query=query, max_results=max_results))
+        candidates = await p.search(
+            ProviderSearchRequest(query=query, max_results=max_results)
+        )
         return [c.url for c in candidates]
     return []

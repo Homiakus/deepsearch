@@ -1,10 +1,8 @@
 """Unit tests for Query Intelligence & Research Goals (DS-SI02 - DS-SI07)."""
 
-import pytest
-from scraper.research.intent import ResearchIntent, FreshnessRequirement
+from scraper.research.intent import ResearchIntent
 from scraper.research.query_normalizer import normalize_query
 from scraper.research.entities import extract_entities_from_query
-from scraper.research.goals import ResearchGoal, ResearchGoalGraph, GoalStatus
 from scraper.research.decomposer import decompose_intent
 from scraper.search.query_generator import QueryGenerator
 
@@ -63,3 +61,21 @@ def test_query_generator_variants_budget():
     assert len(variants) > 0
     assert len(variants) <= 10
     assert all(v.query and v.goal_id for v in variants)
+
+
+def test_query_generator_cross_lingual_mapping():
+    q = "жидкостная биопсия колоректальный рак онкология"
+    norm = normalize_query(q)
+    intent = ResearchIntent(
+        original_query=q,
+        normalized_query=norm.normalized_text,
+        task_type="medical",
+    )
+    goal_graph = decompose_intent(intent)
+    q_gen = QueryGenerator(max_queries_per_goal=4, max_total_query_variants=16)
+    variants = q_gen.generate_variants(intent, goal_graph)
+
+    queries_text = [v.query.lower() for v in variants]
+    assert any(
+        "liquid biopsy" in t or "colorectal" in t or "ctdna" in t for t in queries_text
+    )

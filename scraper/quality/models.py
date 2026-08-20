@@ -1,7 +1,7 @@
 """Quality evaluation models and decision states (§52, DS-A19)."""
 
 from enum import Enum
-from typing import Optional, Dict, Any
+from typing import Dict, Any
 from pydantic import BaseModel, Field
 
 

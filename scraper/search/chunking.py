@@ -5,7 +5,6 @@ and contextual relationships for parent-child retrieval.
 """
 
 import hashlib
-import re
 import uuid
 from typing import List, Optional
 from pydantic import BaseModel, Field
@@ -54,7 +53,12 @@ class StructureAwareChunker:
         section_id = f"sec_{uuid.uuid4().hex[:8]}"
 
         import urllib.parse
-        domain = urllib.parse.urlparse(source_url).netloc.lower() if "//" in source_url else ""
+
+        domain = (
+            urllib.parse.urlparse(source_url).netloc.lower()
+            if "//" in source_url
+            else ""
+        )
 
         def _flush():
             nonlocal current_paragraphs, current_words

@@ -39,16 +39,12 @@ class ExtractionResult(BaseModel):
     extraction_completeness: float = 1.0
 
 
-
 class ExtractionEngine:
     """Orchestrates E0-E4 extraction strategies (§31)."""
 
     @classmethod
     def extract_from_html(
-        cls,
-        url: str,
-        raw_html: str,
-        selectors: Optional[Dict[str, str]] = None
+        cls, url: str, raw_html: str, selectors: Optional[Dict[str, str]] = None
     ) -> ExtractionResult:
         # 1. Process Markdown Pipeline (§35)
         raw_md, clean_md, fit_md = process_markdown_pipeline(raw_html)
@@ -64,10 +60,7 @@ class ExtractionEngine:
                 if node:
                     val = node.text().strip()
                     records[field_name] = FieldProvenance(
-                        value=val,
-                        confidence=0.95,
-                        source_url=url,
-                        selector=selector
+                        value=val, confidence=0.95, source_url=url, selector=selector
                     )
 
         return ExtractionResult(
@@ -77,5 +70,5 @@ class ExtractionEngine:
             fit_markdown=fit_md,
             extracted_records=records,
             tables=tables,
-            extraction_strategy="E1_DETERMINISTIC"
+            extraction_strategy="E1_DETERMINISTIC",
         )

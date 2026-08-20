@@ -14,6 +14,7 @@ from scraper.application.models import (
     ResearchResult,
     RunLifecycleState,
 )
+
 logger = logging.getLogger(__name__)
 
 
@@ -39,7 +40,7 @@ class ResearchApplicationService(Protocol):
 
 class DefaultResearchApplicationService:
     """Production implementation of ResearchApplicationService.
-    
+
     Provides unified lifecycle handling, durable run tracking, and bridges
     execution to activities / Axiom ADGO orchestration.
     """
@@ -56,7 +57,11 @@ class DefaultResearchApplicationService:
             existing_run_id = self._idempotency_map[request.idempotency_key]
             existing_status = self._runs.get(existing_run_id)
             if existing_status:
-                logger.info("Reusing existing run %s for idempotency key %s", existing_run_id, request.idempotency_key)
+                logger.info(
+                    "Reusing existing run %s for idempotency key %s",
+                    existing_run_id,
+                    request.idempotency_key,
+                )
                 return ResearchHandle(
                     run_id=existing_run_id,
                     idempotency_key=request.idempotency_key,
@@ -97,7 +102,10 @@ class DefaultResearchApplicationService:
             status.progress = 0.15
             status.updated_at = datetime.now(timezone.utc)
 
-            from scraper.pipeline.search_pipeline import DeepSearchPipeline, DeepSearchPipelineOptions
+            from scraper.pipeline.search_pipeline import (
+                DeepSearchPipeline,
+                DeepSearchPipelineOptions,
+            )
 
             output_archive = request.output_archive_path
             if not output_archive and request.output_archive_path is None:

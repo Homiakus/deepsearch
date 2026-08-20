@@ -1,6 +1,5 @@
 """Unit tests for Content-Addressable Storage (§44) and Zstandard Compression (§45)."""
 
-import os
 import shutil
 import tempfile
 from scraper.storage.cas import ContentAddressableStore

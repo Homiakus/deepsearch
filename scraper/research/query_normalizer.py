@@ -6,7 +6,7 @@ without destructive stemming.
 
 import re
 import unicodedata
-from typing import List, Set, Tuple
+from typing import List, Set
 from pydantic import BaseModel, Field
 
 
@@ -22,12 +22,17 @@ class NormalizedQuery(BaseModel):
 
 # Regex patterns for non-destructive entity and identifier preservation
 RE_QUOTED = re.compile(r'["«]([^"»]+)["»]')
-RE_DOI = re.compile(r'\b10\.\d{4,9}/[-._;()/:A-Za-z0-9]+\b')
-RE_PMID = re.compile(r'\b(?:PMID:?\s*|PMC)(\d+)\b', re.IGNORECASE)
-RE_GOST = re.compile(r'\bГОСТ\s*[\d.-]+(?::\d+)?\b', re.IGNORECASE)
-RE_API_SYMBOL = re.compile(r'\b[A-Z][a-zA-Z0-9_]+::[A-Za-z0-9_]+\b|\b[A-Z]{2,}_[A-Z0-9_]+\b')
-RE_VERSION = re.compile(r'\bv?\d+\.\d+(?:\.\d+)?(?:-[a-zA-Z0-9]+)?\b')
-RE_UNITS = re.compile(r'\b\d+(?:\.\d+)?\s*(?:nm|mm|cm|m|kg|g|mg|hz|khz|mhz|ghz|rpm|v|w|a|%)\b', re.IGNORECASE)
+RE_DOI = re.compile(r"\b10\.\d{4,9}/[-._;()/:A-Za-z0-9]+\b")
+RE_PMID = re.compile(r"\b(?:PMID:?\s*|PMC)(\d+)\b", re.IGNORECASE)
+RE_GOST = re.compile(r"\bГОСТ\s*[\d.-]+(?::\d+)?\b", re.IGNORECASE)
+RE_API_SYMBOL = re.compile(
+    r"\b[A-Z][a-zA-Z0-9_]+::[A-Za-z0-9_]+\b|\b[A-Z]{2,}_[A-Z0-9_]+\b"
+)
+RE_VERSION = re.compile(r"\bv?\d+\.\d+(?:\.\d+)?(?:-[a-zA-Z0-9]+)?\b")
+RE_UNITS = re.compile(
+    r"\b\d+(?:\.\d+)?\s*(?:nm|mm|cm|m|kg|g|mg|hz|khz|mhz|ghz|rpm|v|w|a|%)\b",
+    re.IGNORECASE,
+)
 
 
 def normalize_query(query: str) -> NormalizedQuery:
@@ -57,11 +62,11 @@ def normalize_query(query: str) -> NormalizedQuery:
         identifiers.add(match.group(0))
 
     # 4. Whitespace cleanup
-    clean_text = re.sub(r'\s+', ' ', nfkc).strip()
+    clean_text = re.sub(r"\s+", " ", nfkc).strip()
 
     # 5. Language detection markers
-    has_cyrillic = bool(re.search(r'[\u0400-\u04FF]', clean_text))
-    has_latin = bool(re.search(r'[a-zA-Z]', clean_text))
+    has_cyrillic = bool(re.search(r"[\u0400-\u04FF]", clean_text))
+    has_latin = bool(re.search(r"[a-zA-Z]", clean_text))
 
     languages = []
     if has_latin:

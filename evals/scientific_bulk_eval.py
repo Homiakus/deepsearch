@@ -6,7 +6,6 @@ and RAG chunking metrics.
 """
 
 import os
-import sys
 import json
 import time
 import asyncio
@@ -14,7 +13,10 @@ from pathlib import Path
 from typing import Dict, Any, List
 
 from scraper.config import ExecutionMode
-from scraper.pipeline.search_pipeline import DeepSearchPipeline, DeepSearchPipelineOptions
+from scraper.pipeline.search_pipeline import (
+    DeepSearchPipeline,
+    DeepSearchPipelineOptions,
+)
 
 TEST_SUITE = [
     {
@@ -68,12 +70,18 @@ async def run_scientific_evaluation():
     suite_results: List[Dict[str, Any]] = []
 
     print("=" * 80, flush=True)
-    print("STARTING HETEROGENEOUS SCIENTIFIC RESEARCH & BULK GATHERING EVALUATION", flush=True)
+    print(
+        "STARTING HETEROGENEOUS SCIENTIFIC RESEARCH & BULK GATHERING EVALUATION",
+        flush=True,
+    )
     print(f"Total experiments: {len(TEST_SUITE)}", flush=True)
     print("=" * 80, flush=True)
 
     for idx, test_case in enumerate(TEST_SUITE, start=1):
-        print(f"\n[{idx}/{len(TEST_SUITE)}] Running Experiment: {test_case['topic']}", flush=True)
+        print(
+            f"\n[{idx}/{len(TEST_SUITE)}] Running Experiment: {test_case['topic']}",
+            flush=True,
+        )
         print(f"  Query: '{test_case['query']}'", flush=True)
         print(f"  Target Max Pages: {test_case['max_pages']}", flush=True)
 
@@ -123,7 +131,11 @@ async def run_scientific_evaluation():
                 p = s.get("provider", "unknown")
                 providers[p] = providers.get(p, 0) + 1
 
-            zip_size_bytes = os.path.getsize(archive_zip_path) if os.path.exists(archive_zip_path) else 0
+            zip_size_bytes = (
+                os.path.getsize(archive_zip_path)
+                if os.path.exists(archive_zip_path)
+                else 0
+            )
 
             exp_result = {
                 "id": test_case["id"],
@@ -152,42 +164,66 @@ async def run_scientific_evaluation():
             # Persist intermediate report
             report_file = output_dir / "scientific_bulk_eval_report.json"
             with open(report_file, "w", encoding="utf-8") as f:
-                json.dump({
-                    "generated_at": time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime()),
-                    "total_experiments": len(TEST_SUITE),
-                    "completed_experiments": len(suite_results),
-                    "successful_experiments": sum(1 for r in suite_results if "error" not in r),
-                    "experiments": suite_results,
-                }, f, indent=2, ensure_ascii=False)
+                json.dump(
+                    {
+                        "generated_at": time.strftime(
+                            "%Y-%m-%d %H:%M:%S UTC", time.gmtime()
+                        ),
+                        "total_experiments": len(TEST_SUITE),
+                        "completed_experiments": len(suite_results),
+                        "successful_experiments": sum(
+                            1 for r in suite_results if "error" not in r
+                        ),
+                        "experiments": suite_results,
+                    },
+                    f,
+                    indent=2,
+                    ensure_ascii=False,
+                )
 
             print(f"  [COMPLETED] in {elapsed:.1f}s", flush=True)
             print(f"    - Accepted Documents: {total_docs}", flush=True)
             print(f"    - RAG Chunks: {total_chunks}", flush=True)
             print(f"    - PDFs Downloaded: {total_pdfs}", flush=True)
             print(f"    - Independent Domains: {independent_domains}", flush=True)
-            print(f"    - Quality Gate: {quality_report.get('status', 'UNKNOWN')} (Passed: {res.quality_gate_passed})", flush=True)
-            print(f"    - Archive Size: {zip_size_bytes / (1024 * 1024):.2f} MB", flush=True)
+            print(
+                f"    - Quality Gate: {quality_report.get('status', 'UNKNOWN')} (Passed: {res.quality_gate_passed})",
+                flush=True,
+            )
+            print(
+                f"    - Archive Size: {zip_size_bytes / (1024 * 1024):.2f} MB",
+                flush=True,
+            )
 
         except Exception as exc:
             elapsed = time.time() - start_time
             print(f"  [FAILED] in {elapsed:.1f}s: {exc}", flush=True)
-            suite_results.append({
-                "id": test_case["id"],
-                "topic": test_case["topic"],
-                "query": test_case["query"],
-                "error": str(exc),
-                "elapsed_seconds": round(elapsed, 2),
-            })
+            suite_results.append(
+                {
+                    "id": test_case["id"],
+                    "topic": test_case["topic"],
+                    "query": test_case["query"],
+                    "error": str(exc),
+                    "elapsed_seconds": round(elapsed, 2),
+                }
+            )
 
     # Save summary report
     report_file = output_dir / "scientific_bulk_eval_report.json"
     with open(report_file, "w", encoding="utf-8") as f:
-        json.dump({
-            "generated_at": time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime()),
-            "total_experiments": len(TEST_SUITE),
-            "successful_experiments": sum(1 for r in suite_results if "error" not in r),
-            "experiments": suite_results,
-        }, f, indent=2, ensure_ascii=False)
+        json.dump(
+            {
+                "generated_at": time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime()),
+                "total_experiments": len(TEST_SUITE),
+                "successful_experiments": sum(
+                    1 for r in suite_results if "error" not in r
+                ),
+                "experiments": suite_results,
+            },
+            f,
+            indent=2,
+            ensure_ascii=False,
+        )
 
     print("\n" + "=" * 80)
     print("EVALUATION SUITE COMPLETED")

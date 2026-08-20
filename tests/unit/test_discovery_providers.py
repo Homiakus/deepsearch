@@ -1,7 +1,6 @@
 """Unit tests for Discovery Providers and Provider Registry (DS-SI08 - DS-SI11)."""
 
 import pytest
-from unittest.mock import AsyncMock, patch
 from scraper.discovery.providers.registry import ProviderRegistry, provider_registry
 from scraper.discovery.providers.base import ProviderSearchRequest, ProviderDescriptor
 from scraper.search.candidates import SourceCandidate
@@ -42,8 +41,14 @@ async def test_provider_registry_and_parallel_search():
     assert reg.get("mock_search") is not None
 
     reqs = [
-        (mock_p, ProviderSearchRequest(query="test query 1", goal_id="g1", max_results=3)),
-        (mock_p, ProviderSearchRequest(query="test query 2", goal_id="g2", max_results=2)),
+        (
+            mock_p,
+            ProviderSearchRequest(query="test query 1", goal_id="g1", max_results=3),
+        ),
+        (
+            mock_p,
+            ProviderSearchRequest(query="test query 2", goal_id="g2", max_results=2),
+        ),
     ]
 
     results = await reg.search_parallel(reqs, max_concurrency=2)
@@ -68,4 +73,28 @@ def test_provider_policy_planning():
     planned = policy.plan_provider_requests(intent, goal, qv)
     assert len(planned) > 0
     provider_names = [p.descriptor.name for p, r in planned]
-    assert "europe_pmc" in provider_names or "pubmed" in provider_names or "wikipedia" in provider_names
+    assert any(
+        name in provider_names
+        for name in ("semantic_scholar", "openalex", "crossref", "europe_pmc", "pubmed")
+    )
+
+
+@pytest.mark.asyncio
+async def test_sota_academic_providers_registered():
+    assert provider_registry.get("semantic_scholar") is not None
+    assert provider_registry.get("openalex") is not None
+    assert provider_registry.get("crossref") is not None
+    assert provider_registry.get("regional_academic") is not None
+
+    sem_scholar = provider_registry.get("semantic_scholar")
+    assert "semanticscholar.org" in sem_scholar.descriptor.supported_domains
+
+    openalex = provider_registry.get("openalex")
+    assert "openalex.org" in openalex.descriptor.supported_domains
+
+    crossref = provider_registry.get("crossref")
+    assert "api.crossref.org" in crossref.descriptor.supported_domains
+
+    regional = provider_registry.get("regional_academic")
+    assert "cyberleninka.ru" in regional.descriptor.supported_domains
+    assert "hal.science" in regional.descriptor.supported_domains

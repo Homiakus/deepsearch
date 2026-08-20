@@ -10,7 +10,9 @@ class CandidateNormalizer:
     """Normalizes candidate URLs, titles, and dates while preserving provider agreement signals."""
 
     @staticmethod
-    def normalize_candidates(candidates: List[SourceCandidate]) -> List[SourceCandidate]:
+    def normalize_candidates(
+        candidates: List[SourceCandidate],
+    ) -> List[SourceCandidate]:
         merged: Dict[str, SourceCandidate] = {}
 
         for c in candidates:
@@ -47,7 +49,9 @@ class CandidateNormalizer:
                     existing.snippet = c.snippet
                 # Best provider rank
                 existing.provider_rank = min(existing.provider_rank, c.provider_rank)
-                existing.authority_prior = max(existing.authority_prior, c.authority_prior)
+                existing.authority_prior = max(
+                    existing.authority_prior, c.authority_prior
+                )
                 existing.provider_metadata.update(c.provider_metadata)
 
         return list(merged.values())

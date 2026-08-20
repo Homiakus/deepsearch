@@ -6,7 +6,7 @@ Preserves DOM document order and contextual metadata without set-randomization.
 import urllib.parse
 import xml.etree.ElementTree as ET
 from typing import List, Optional, Set
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from selectolax.parser import HTMLParser
 
 
@@ -58,7 +58,13 @@ def extract_discovered_links(raw_html: str, base_url: str) -> List[DiscoveredLin
             classes = (cur.attributes.get("class") or "").lower()
             cur_id = (cur.attributes.get("id") or "").lower()
 
-            if tag == "nav" or "nav" in classes or "menu" in classes or "header" in tag or "header" in classes:
+            if (
+                tag == "nav"
+                or "nav" in classes
+                or "menu" in classes
+                or "header" in tag
+                or "header" in classes
+            ):
                 is_nav = True
             if tag == "footer" or "footer" in classes:
                 is_foot = True
@@ -93,7 +99,7 @@ def extract_discovered_links(raw_html: str, base_url: str) -> List[DiscoveredLin
 def extract_links_from_html(raw_html: str, base_url: str) -> List[str]:
     """Extracts list of unique URLs in deterministic DOM order (DS-SI12)."""
     links = extract_discovered_links(raw_html, base_url)
-    return [l.url for l in links]
+    return [link.url for link in links]
 
 
 def extract_sitemap_urls(sitemap_xml: str) -> List[str]:

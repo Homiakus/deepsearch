@@ -1,6 +1,6 @@
 """Evidence Graph Representation (DS-SI51)."""
 
-from typing import Dict, List
+from typing import Dict
 from pydantic import BaseModel, Field
 from scraper.evidence.models import Claim, EvidenceItem, EvidenceRelation
 

@@ -11,7 +11,7 @@ class TokenBucket:
     """Token bucket algorithm per host."""
 
     def __init__(self, rate: float, capacity: float):
-        self.rate = rate          # Tokens added per second
+        self.rate = rate  # Tokens added per second
         self.capacity = capacity  # Maximum bucket capacity
         self.tokens = capacity
         self.last_update = time.monotonic()
@@ -62,7 +62,9 @@ class HostStats:
             self.requests_success += 1
             # Slowly restore RPS if host is stable
             if self.current_rps < settings.limits.default_host_rps:
-                self.current_rps = min(settings.limits.default_host_rps, self.current_rps * 1.05)
+                self.current_rps = min(
+                    settings.limits.default_host_rps, self.current_rps * 1.05
+                )
                 self.bucket.rate = self.current_rps
 
         elif status in (429, 503):
@@ -88,7 +90,7 @@ class HostRateLimiter:
                 self._hosts[host] = HostStats(
                     host=host,
                     rps=settings.limits.default_host_rps,
-                    concurrency=settings.limits.max_host_concurrency
+                    concurrency=settings.limits.max_host_concurrency,
                 )
             return self._hosts[host]
 
@@ -109,6 +111,6 @@ class HostRateLimiter:
 
     async def calculate_backoff(self, attempt: int) -> float:
         """Exponential backoff with full jitter (§23)."""
-        base_backoff = min(60.0, (2 ** attempt))
+        base_backoff = min(60.0, (2**attempt))
         jitter = random.uniform(0.5, 1.5)
         return base_backoff * jitter

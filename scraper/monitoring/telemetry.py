@@ -5,16 +5,28 @@ from typing import Dict, Any
 from prometheus_client import Counter, Gauge
 
 # Prometheus Metrics (§68)
-REQUESTS_TOTAL = Counter("scraper_requests_total", "Total requests attempted", ["method", "strategy"])
+REQUESTS_TOTAL = Counter(
+    "scraper_requests_total", "Total requests attempted", ["method", "strategy"]
+)
 REQUESTS_SUCCESS = Counter("scraper_requests_success", "Total successful requests")
 REQUESTS_FAILED = Counter("scraper_requests_failed", "Total failed requests")
-BYTES_DOWNLOADED = Counter("scraper_bytes_downloaded_total", "Total network bytes downloaded")
-USEFUL_BYTES = Counter("scraper_useful_bytes_total", "Total useful text bytes extracted")
+BYTES_DOWNLOADED = Counter(
+    "scraper_bytes_downloaded_total", "Total network bytes downloaded"
+)
+USEFUL_BYTES = Counter(
+    "scraper_useful_bytes_total", "Total useful text bytes extracted"
+)
 
-BROWSER_ESCALATIONS = Counter("scraper_browser_escalations_total", "Total browser escalations")
+BROWSER_ESCALATIONS = Counter(
+    "scraper_browser_escalations_total", "Total browser escalations"
+)
 QUEUE_DEPTH_GAUGE = Gauge("scraper_queue_depth", "Current URL queue depth")
-BROWSER_ESCALATION_RATIO_GAUGE = Gauge("scraper_browser_escalation_ratio", "Browser Escalation Ratio (§69)")
-USEFUL_DATA_RATIO_GAUGE = Gauge("scraper_useful_data_ratio", "Useful Data / Downloaded Byte Ratio (§70)")
+BROWSER_ESCALATION_RATIO_GAUGE = Gauge(
+    "scraper_browser_escalation_ratio", "Browser Escalation Ratio (§69)"
+)
+USEFUL_DATA_RATIO_GAUGE = Gauge(
+    "scraper_useful_data_ratio", "Useful Data / Downloaded Byte Ratio (§70)"
+)
 
 
 class TelemetryTracker:
@@ -29,7 +41,9 @@ class TelemetryTracker:
         self.useful_bytes = 0
         self.start_time = time.time()
 
-    def record_request(self, strategy: str, bytes_downloaded: int, useful_text_bytes: int = 0):
+    def record_request(
+        self, strategy: str, bytes_downloaded: int, useful_text_bytes: int = 0
+    ):
         self.total_requests += 1
         self.total_bytes += bytes_downloaded
         self.useful_bytes += useful_text_bytes
@@ -75,7 +89,7 @@ class TelemetryTracker:
             "browser_escalation_ratio_percent": self.get_browser_escalation_ratio(),
             "useful_data_ratio": self.get_useful_data_ratio(),
             "pages_per_second": round(self.total_requests / elapsed, 2),
-            "total_bytes_downloaded": self.total_bytes
+            "total_bytes_downloaded": self.total_bytes,
         }
 
 

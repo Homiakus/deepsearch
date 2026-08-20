@@ -20,28 +20,34 @@ impl UrlPolicy {
             )));
         }
 
-        // 2. Host presence
-        let host = parsed
-            .host_str()
-            .ok_or_else(|| AcquisitionError::InvalidUrl("Missing host in URL".to_string()))?;
-
-        // 3. Localhost names
-        let host_lower = host.to_lowercase();
-        if host_lower == "localhost"
-            || host_lower.ends_with(".localhost")
-            || host_lower == "local"
-            || host_lower.ends_with(".local")
-            || host_lower.ends_with(".internal")
-        {
-            return Err(AcquisitionError::SecurityViolation(format!(
-                "Access to local host '{}' is blocked by security policy.",
-                host
-            )));
-        }
-
-        // 4. If host is direct IP, check private ranges
-        if let Ok(ip) = host.parse::<IpAddr>() {
-            Self::validate_ip(ip)?;
+        // 2. Host presence & validation
+        match parsed.host() {
+            Some(url::Host::Ipv4(ipv4)) => {
+                Self::validate_ip(IpAddr::V4(ipv4))?;
+            }
+            Some(url::Host::Ipv6(ipv6)) => {
+                Self::validate_ip(IpAddr::V6(ipv6))?;
+            }
+            Some(url::Host::Domain(host)) => {
+                let host_lower = host.to_lowercase();
+                if host_lower == "localhost"
+                    || host_lower.ends_with(".localhost")
+                    || host_lower == "local"
+                    || host_lower.ends_with(".local")
+                    || host_lower.ends_with(".internal")
+                {
+                    return Err(AcquisitionError::SecurityViolation(format!(
+                        "Access to local host '{}' is blocked by security policy.",
+                        host
+                    )));
+                }
+                if let Ok(ip) = host.parse::<IpAddr>() {
+                    Self::validate_ip(ip)?;
+                }
+            }
+            None => {
+                return Err(AcquisitionError::InvalidUrl("Missing host in URL".to_string()));
+            }
         }
 
         Ok(parsed)

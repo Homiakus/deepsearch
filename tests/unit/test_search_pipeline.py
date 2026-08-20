@@ -1,8 +1,6 @@
 """Unit tests for DeepSearch Pipeline and Dual Archive Exporter."""
 
 import os
-import json
-import zipfile
 import tempfile
 import pytest
 from unittest.mock import AsyncMock, patch
@@ -10,7 +8,10 @@ from unittest.mock import AsyncMock, patch
 from scraper.config import ExecutionMode
 from scraper.acquisition.engine import CapturedArtifact, AdaptiveAcquisitionEngine
 from scraper.acquisition.page_classifier import PageIntelligence
-from scraper.pipeline.search_pipeline import DeepSearchPipeline, DeepSearchPipelineOptions
+from scraper.pipeline.search_pipeline import (
+    DeepSearchPipeline,
+    DeepSearchPipelineOptions,
+)
 from scraper.storage.archive_exporter import ArchiveExporter, SearchRunMetadata
 
 
@@ -18,12 +19,18 @@ from scraper.storage.archive_exporter import ArchiveExporter, SearchRunMetadata
 def mock_acquisition_engine():
     engine = AdaptiveAcquisitionEngine()
 
-    async def mock_acquire(url, canonical_url, mode=ExecutionMode.BALANCED, cached_content=None, take_screenshot=False):
+    async def mock_acquire(
+        url,
+        canonical_url,
+        mode=ExecutionMode.BALANCED,
+        cached_content=None,
+        take_screenshot=False,
+    ):
         pi = PageIntelligence(
             content_type="text/html",
             static_score=0.9,
             js_dependency_score=0.1,
-            content_quality=0.95
+            content_quality=0.95,
         )
         html_content = f"<html><body><h1>Title for {url}</h1><p>Sample content for research topic on artificial intelligence and neural algorithms.</p><a href='{url}/subpage'>Sublink</a></body></html>"
         return CapturedArtifact(
@@ -34,7 +41,7 @@ def mock_acquisition_engine():
             content_type="text/html",
             raw_content=html_content.encode("utf-8"),
             text_content=html_content,
-            page_intelligence=pi
+            page_intelligence=pi,
         )
 
     engine.acquire_page = AsyncMock(side_effect=mock_acquire)
@@ -53,7 +60,10 @@ async def test_search_pipeline_execution(mock_acquisition_engine):
         enable_media_archiving=False,
     )
 
-    with patch("scraper.discovery.providers.registry.ProviderRegistry.search_parallel", new_callable=AsyncMock) as mock_search:
+    with patch(
+        "scraper.discovery.providers.registry.ProviderRegistry.search_parallel",
+        new_callable=AsyncMock,
+    ) as mock_search:
         mock_search.return_value = []
         pipeline = DeepSearchPipeline(acquisition_engine=mock_acquisition_engine)
         result = await pipeline.execute(opts)
@@ -74,12 +84,15 @@ async def test_archive_exporter_files_and_rag_structure(mock_acquisition_engine)
         domain="physics.org",
         preferred_sources=["https://physics.org/quantum"],
         depth=1,
-        max_pages=2
+        max_pages=2,
     )
     exporter = ArchiveExporter(metadata=meta)
 
-    art = await mock_acquisition_engine.acquire_page("https://physics.org/quantum", "https://physics.org/quantum")
+    art = await mock_acquisition_engine.acquire_page(
+        "https://physics.org/quantum", "https://physics.org/quantum"
+    )
     from scraper.extraction.engine import ExtractionEngine
+
     ext = ExtractionEngine.extract_from_html(art.url, art.text_content)
 
     fake_media = [
@@ -93,14 +106,16 @@ async def test_archive_exporter_files_and_rag_structure(mock_acquisition_engine)
             "width": 800,
             "height": 600,
             "caption": "Quantum State Diagram",
-            "relevance_score": 0.95
+            "relevance_score": 0.95,
         }
     ]
     with open(fake_media[0]["file_path"], "wb") as f:
         f.write(b"PNG_FAKE_BYTES")
 
     with tempfile.TemporaryDirectory() as tmp_dir:
-        dir_out = exporter.build_archive_structure([(art, ext)], output_dir=tmp_dir, media_files=fake_media)
+        dir_out = exporter.build_archive_structure(
+            [(art, ext)], output_dir=tmp_dir, media_files=fake_media
+        )
 
         # 1. Verify files/
         files_folder = os.path.join(dir_out, "files")

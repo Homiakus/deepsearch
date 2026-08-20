@@ -16,19 +16,23 @@ async def run_evidence_activity(input_data: Dict[str, Any]) -> ActivityResult:
         text = chunk.get("text", "")
         if len(text) > 60:
             claim_id = f"claim_{uuid.uuid4().hex[:8]}"
-            claims.append({
-                "id": claim_id,
-                "text": text[:200],
-                "confidence": 0.85,
-                "status": "SUPPORTED",
-            })
-            evidence_items.append({
-                "claim_id": claim_id,
-                "source_url": chunk.get("document_url"),
-                "chunk_id": chunk.get("chunk_id"),
-                "relation": "SUPPORTS",
-                "quote": text[:150],
-            })
+            claims.append(
+                {
+                    "id": claim_id,
+                    "text": text[:200],
+                    "confidence": 0.85,
+                    "status": "SUPPORTED",
+                }
+            )
+            evidence_items.append(
+                {
+                    "claim_id": claim_id,
+                    "source_url": chunk.get("document_url"),
+                    "chunk_id": chunk.get("chunk_id"),
+                    "relation": "SUPPORTS",
+                    "quote": text[:150],
+                }
+            )
 
     return ActivityResult(
         data={
@@ -44,7 +48,9 @@ async def run_evidence_activity(input_data: Dict[str, Any]) -> ActivityResult:
     )
 
 
-async def run_coverage_evaluation_activity(input_data: Dict[str, Any]) -> ActivityResult:
+async def run_coverage_evaluation_activity(
+    input_data: Dict[str, Any],
+) -> ActivityResult:
     """Evaluates coverage sufficiency and information gain."""
     graph = input_data.get("evidence_graph", {})
     claims_count = graph.get("claims_count", 0)

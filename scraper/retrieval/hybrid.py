@@ -45,7 +45,9 @@ def reciprocal_rank_fusion(
             metadata_map[hit.id] = hit.metadata
 
     # Deterministic sorting by score descending, then by id ascending to resolve ties
-    sorted_items = sorted(scores.items(), key=lambda item: (-round(item[1], 6), item[0]))
+    sorted_items = sorted(
+        scores.items(), key=lambda item: (-round(item[1], 6), item[0])
+    )
 
     results = []
     for doc_id, score in sorted_items[:top_n]:

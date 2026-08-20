@@ -4,7 +4,7 @@ Combines lexical, semantic, authority, freshness, and cost features into
 a calibrated ranking score with clear explainability.
 """
 
-from typing import Dict, List, Tuple
+from typing import Dict, List
 from pydantic import BaseModel, Field
 from scraper.research.intent import ResearchIntent
 from scraper.search.candidates import SourceCandidate
@@ -53,13 +53,21 @@ class CandidateRanker:
         # 1. Feature extraction
         lex_score = lexical_preranker.score_candidate(candidate, intent)
         sem_score = semantic_preranker.score_candidate(candidate, intent)
-        auth_score = calculate_authority_prior(candidate.domain, candidate.source_type, intent.task_type)
-        fresh_score = calculate_freshness_score(candidate.published_at, intent.freshness_requirement)
-        cost = estimate_acquisition_cost(candidate.url, candidate.domain, candidate.provider)
+        auth_score = calculate_authority_prior(
+            candidate.domain, candidate.source_type, intent.task_type
+        )
+        fresh_score = calculate_freshness_score(
+            candidate.published_at, intent.freshness_requirement
+        )
+        cost = estimate_acquisition_cost(
+            candidate.url, candidate.domain, candidate.provider
+        )
 
         # Provider agreement bonus
         num_providers = len(candidate.found_by_providers)
-        agreement_score = min(1.0, (num_providers - 1) * 0.5) if num_providers > 1 else 0.0
+        agreement_score = (
+            min(1.0, (num_providers - 1) * 0.5) if num_providers > 1 else 0.0
+        )
 
         # Domain diversity penalty
         dom_seen = domain_counts.get(candidate.domain, 0)
@@ -70,7 +78,9 @@ class CandidateRanker:
         features = CandidateFeatureVector(
             lexical_relevance=lex_score,
             semantic_relevance=sem_score,
-            identifier_match=1.0 if any(e.name.lower() in candidate.url.lower() for e in intent.entities) else 0.0,
+            identifier_match=1.0
+            if any(e.name.lower() in candidate.url.lower() for e in intent.entities)
+            else 0.0,
             provider_agreement_score=agreement_score,
             authority_prior=auth_score,
             freshness_score=fresh_score,

@@ -1,7 +1,6 @@
 """Epistemic Authority Evaluator (DS-SI48, DS-SI49)."""
 
 from scraper.search.source_policy import calculate_authority_prior
-from scraper.search.source_types import SourceType
 
 
 class AuthorityEvaluator:

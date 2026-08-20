@@ -9,8 +9,14 @@ from scraper.search.candidates import SourceCandidate
 async def test_ranked_frontier_priority_and_lease():
     frontier = RankedFrontier(max_capacity=100)
 
-    c_low = SourceCandidate(url="https://site.org/low", canonical_url="https://site.org/low", provider="web")
-    c_high = SourceCandidate(url="https://site.org/high", canonical_url="https://site.org/high", provider="pubmed")
+    c_low = SourceCandidate(
+        url="https://site.org/low", canonical_url="https://site.org/low", provider="web"
+    )
+    c_high = SourceCandidate(
+        url="https://site.org/high",
+        canonical_url="https://site.org/high",
+        provider="pubmed",
+    )
 
     await frontier.add_candidate(c_low, priority=0.2)
     await frontier.add_candidate(c_high, priority=0.9)
@@ -32,13 +38,19 @@ async def test_ranked_frontier_priority_and_lease():
 @pytest.mark.asyncio
 async def test_ranked_frontier_retry_semantics():
     frontier = RankedFrontier(max_capacity=100)
-    c = SourceCandidate(url="https://timeout-domain.com/item", canonical_url="https://timeout-domain.com/item", provider="web")
+    c = SourceCandidate(
+        url="https://timeout-domain.com/item",
+        canonical_url="https://timeout-domain.com/item",
+        provider="web",
+    )
 
     await frontier.add_candidate(c, priority=0.8)
     item = await frontier.lease_next(lease_duration_sec=10.0)
 
     # Transient error retry
-    await frontier.mark_state(item.id, CandidateState.RETRY, error="ReadTimeout", is_transient_error=True)
+    await frontier.mark_state(
+        item.id, CandidateState.RETRY, error="ReadTimeout", is_transient_error=True
+    )
     assert frontier.size() == 1
 
     # Lease again after retry

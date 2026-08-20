@@ -4,7 +4,7 @@ import logging
 from typing import Optional, Dict, Any, List
 import httpx
 
-from scraper.acquisition.capabilities import BackendDescriptor, BrowserCapabilities
+from scraper.acquisition.capabilities import BackendDescriptor
 from scraper.acquisition.models import AcquisitionRequest, AcquisitionResult
 
 logger = logging.getLogger(__name__)
@@ -20,7 +20,9 @@ class RustWorkerClient:
 
     async def _get_client(self) -> httpx.AsyncClient:
         if self._client is None or self._client.is_closed:
-            self._client = httpx.AsyncClient(base_url=self.base_url, timeout=self.timeout)
+            self._client = httpx.AsyncClient(
+                base_url=self.base_url, timeout=self.timeout
+            )
         return self._client
 
     async def health(self) -> Dict[str, Any]:

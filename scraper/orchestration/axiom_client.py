@@ -23,7 +23,12 @@ class AxiomClient:
 
     PROTOCOL_VERSION = "adgo-worker-v1"
 
-    def __init__(self, base_url: str = "http://localhost:8081", token: Optional[str] = "adgo-dev-token", timeout: float = 10.0):
+    def __init__(
+        self,
+        base_url: str = "http://localhost:8081",
+        token: Optional[str] = "adgo-dev-token",
+        timeout: float = 10.0,
+    ):
         self.base_url = base_url.rstrip("/")
         self.token = token
         self.timeout = timeout
@@ -52,7 +57,9 @@ class AxiomClient:
             if resp.status_code == 200:
                 data = resp.json()
                 return RemoteWorkItem.model_validate(data)
-            logger.warning("Poll returned unexpected status: %s %s", resp.status_code, resp.text)
+            logger.warning(
+                "Poll returned unexpected status: %s %s", resp.status_code, resp.text
+            )
             return None
         except httpx.RequestError as exc:
             logger.debug("Coordinator poll network exception: %s", exc)
@@ -68,24 +75,36 @@ class AxiomClient:
             logger.warning("Failed to send heartbeat: %s", exc)
             return False
 
-    async def complete(self, token: WorkToken, result: ActivityResult, duration_nanos: int) -> bool:
+    async def complete(
+        self, token: WorkToken, result: ActivityResult, duration_nanos: int
+    ) -> bool:
         """Commit successful activity completion."""
-        req = CompleteHTTPRequest(token=token, result=result, durationNanos=duration_nanos)
+        req = CompleteHTTPRequest(
+            token=token, result=result, durationNanos=duration_nanos
+        )
         try:
             resp = await self._client.post("/v1/complete", json=req.model_dump())
             if resp.status_code == 200:
                 return True
-            logger.warning("Complete rejected by coordinator: %s %s", resp.status_code, resp.text)
+            logger.warning(
+                "Complete rejected by coordinator: %s %s", resp.status_code, resp.text
+            )
             return False
         except httpx.RequestError as exc:
             logger.error("Failed to post completion: %s", exc)
             return False
 
-    async def fail(self, token: WorkToken, failure: RemoteFailure, duration_nanos: int) -> bool:
+    async def fail(
+        self, token: WorkToken, failure: RemoteFailure, duration_nanos: int
+    ) -> bool:
         """Report activity failure with classification."""
-        req = FailHTTPRequest(token=token, failure=failure, durationNanos=duration_nanos)
+        req = FailHTTPRequest(
+            token=token, failure=failure, durationNanos=duration_nanos
+        )
         try:
-            resp = await self._client.post("/v1/fail", json=req.model_dump(by_alias=True))
+            resp = await self._client.post(
+                "/v1/fail", json=req.model_dump(by_alias=True)
+            )
             return resp.status_code == 200
         except httpx.RequestError as exc:
             logger.error("Failed to post failure: %s", exc)

@@ -52,7 +52,7 @@ class AdaptiveAcquisitionEngine:
         canonical_url: str,
         mode: ExecutionMode = ExecutionMode.BALANCED,
         cached_content: Optional[bytes] = None,
-        take_screenshot: bool = False
+        take_screenshot: bool = False,
     ) -> CapturedArtifact:
         start_t = time.time()
 
@@ -69,13 +69,16 @@ class AdaptiveAcquisitionEngine:
                 raw_content=cached_content,
                 text_content=text,
                 page_intelligence=pi,
-                elapsed_sec=time.time() - start_t
+                elapsed_sec=time.time() - start_t,
             )
 
         # Capability-based Acquisition Backend path (if provided)
         if self.acquisition_backend:
             req_caps = BrowserCapabilities.minimal_http()
-            if take_screenshot or mode in (ExecutionMode.RESEARCH, ExecutionMode.COMPLETE):
+            if take_screenshot or mode in (
+                ExecutionMode.RESEARCH,
+                ExecutionMode.COMPLETE,
+            ):
                 req_caps.screenshot = CapabilityLevel.SUPPORTED
                 req_caps.javascript = CapabilityLevel.SUPPORTED
 
@@ -118,7 +121,9 @@ class AdaptiveAcquisitionEngine:
 
             # Fast mode or static score high enough without blocks => return L1 HTTP
             if mode == ExecutionMode.FAST or (
-                pi.js_dependency_score < settings.adaptive.browser_threshold and not take_screenshot and pi.block_score < 0.5
+                pi.js_dependency_score < settings.adaptive.browser_threshold
+                and not take_screenshot
+                and pi.block_score < 0.5
             ):
                 return CapturedArtifact(
                     url=http_res.url,
@@ -129,11 +134,15 @@ class AdaptiveAcquisitionEngine:
                     raw_content=http_res.content,
                     text_content=http_res.text,
                     page_intelligence=pi,
-                    elapsed_sec=http_res.elapsed_sec
+                    elapsed_sec=http_res.elapsed_sec,
                 )
 
             # L2: Direct API Discovery Check (§6.1 L2, §30)
-            if pi.api_score >= 0.7 and pi.detected_apis and settings.adaptive.api_preference:
+            if (
+                pi.api_score >= 0.7
+                and pi.detected_apis
+                and settings.adaptive.api_preference
+            ):
                 try:
                     api_res = await self.http_fetcher.fetch(pi.detected_apis[0])
                     if api_res.status_code == 200:
@@ -146,29 +155,40 @@ class AdaptiveAcquisitionEngine:
                             raw_content=api_res.content,
                             text_content=api_res.text,
                             page_intelligence=pi,
-                            elapsed_sec=api_res.elapsed_sec
+                            elapsed_sec=api_res.elapsed_sec,
                         )
                 except Exception as api_exc:
-                    logger.debug("L2 API probe failed for endpoint %s: %s", pi.detected_apis[0], api_exc)
+                    logger.debug(
+                        "L2 API probe failed for endpoint %s: %s",
+                        pi.detected_apis[0],
+                        api_exc,
+                    )
 
         # L3: Browser Escalation (Playwright Chromium) (§6.1 L3)
         try:
             browser_res: BrowserResponse = await asyncio.wait_for(
                 self.browser_pool.fetch_page(
                     url,
-                    visual_mode=take_screenshot or (mode in (ExecutionMode.RESEARCH, ExecutionMode.COMPLETE)),
-                    take_screenshot=take_screenshot
+                    visual_mode=take_screenshot
+                    or (mode in (ExecutionMode.RESEARCH, ExecutionMode.COMPLETE)),
+                    take_screenshot=take_screenshot,
                 ),
-                timeout=float(settings.adaptive.browser_navigation_timeout_seconds + 3.0)
+                timeout=float(
+                    settings.adaptive.browser_navigation_timeout_seconds + 3.0
+                ),
             )
             pi = classify_page(
                 browser_res.url,
                 browser_res.status_code,
                 browser_res.headers,
                 browser_res.content,
-                browser_res.network_requests
+                browser_res.network_requests,
             )
-            strategy = StrategyEscalation.VISUAL if browser_res.screenshot_bytes else StrategyEscalation.BROWSER
+            strategy = (
+                StrategyEscalation.VISUAL
+                if browser_res.screenshot_bytes
+                else StrategyEscalation.BROWSER
+            )
 
             return CapturedArtifact(
                 url=browser_res.url,
@@ -181,13 +201,19 @@ class AdaptiveAcquisitionEngine:
                 screenshot_bytes=browser_res.screenshot_bytes,
                 page_intelligence=pi,
                 network_logs=browser_res.network_requests,
-                elapsed_sec=time.time() - start_t
+                elapsed_sec=time.time() - start_t,
             )
         except Exception as e:
             # Fallback to HTTP if browser fails
             if http_res:
-                logger.warning("L3 Browser failed for %s, falling back to L1 HTTP result: %s", url, e)
-                pi = classify_page(url, http_res.status_code, http_res.headers, http_res.text)
+                logger.warning(
+                    "L3 Browser failed for %s, falling back to L1 HTTP result: %s",
+                    url,
+                    e,
+                )
+                pi = classify_page(
+                    url, http_res.status_code, http_res.headers, http_res.text
+                )
                 return CapturedArtifact(
                     url=http_res.url,
                     canonical_url=canonical_url,
@@ -197,6 +223,6 @@ class AdaptiveAcquisitionEngine:
                     raw_content=http_res.content,
                     text_content=http_res.text,
                     page_intelligence=pi,
-                    elapsed_sec=http_res.elapsed_sec
+                    elapsed_sec=http_res.elapsed_sec,
                 )
             raise AcquisitionError(f"Failed to acquire page {url}: {e}") from e

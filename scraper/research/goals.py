@@ -37,7 +37,9 @@ class ResearchGoalGraph(BaseModel):
             self.root_goal_id = goal.id
         return goal
 
-    def get_uncovered_goals(self, coverage_threshold: float = 0.8) -> List[ResearchGoal]:
+    def get_uncovered_goals(
+        self, coverage_threshold: float = 0.8
+    ) -> List[ResearchGoal]:
         """Returns goals that are below the target coverage threshold."""
         return [g for g in self.goals.values() if g.coverage < coverage_threshold]
 
@@ -54,4 +56,6 @@ class ResearchGoalGraph(BaseModel):
     def total_progress(self) -> float:
         if not self.goals:
             return 0.0
-        return sum(g.coverage * g.importance for g in self.goals.values()) / sum(g.importance for g in self.goals.values())
+        return sum(g.coverage * g.importance for g in self.goals.values()) / sum(
+            g.importance for g in self.goals.values()
+        )

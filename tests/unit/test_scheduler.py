@@ -11,13 +11,13 @@ async def test_frontier_add_and_lease():
         url="http://example.com/a",
         canonical_url="http://example.com/a",
         domain="example.com",
-        priority=10.0
+        priority=10.0,
     )
     req2 = CrawlRequest(
         url="http://example.com/b",
         canonical_url="http://example.com/b",
         domain="example.com",
-        priority=90.0  # Higher priority
+        priority=90.0,  # Higher priority
     )
 
     added1 = await frontier.add_request(req1)
@@ -29,7 +29,7 @@ async def test_frontier_add_and_lease():
     dup_req = CrawlRequest(
         url="http://example.com/a?utm_source=google",
         canonical_url="http://example.com/a",
-        domain="example.com"
+        domain="example.com",
     )
     assert await frontier.add_request(dup_req) is False
 

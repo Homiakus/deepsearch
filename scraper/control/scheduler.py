@@ -28,7 +28,9 @@ class CrawlRequest(BaseModel):
     canonical_url: str
     domain: str
     depth: int = 0
-    priority: float = 50.0  # Formula: relevance + depth + sitemap_priority - cost_estimate (§18)
+    priority: float = (
+        50.0  # Formula: relevance + depth + sitemap_priority - cost_estimate (§18)
+    )
     parent_id: Optional[str] = None
     method: str = "GET"
     attempt: int = 1
@@ -72,13 +74,19 @@ class RequestFrontier:
             self._condition.notify_all()
             return True
 
-    async def lease_request(self, lease_duration_sec: float = 60.0) -> Optional[CrawlRequest]:
+    async def lease_request(
+        self, lease_duration_sec: float = 60.0
+    ) -> Optional[CrawlRequest]:
         """Lease the highest priority available request (§15 at-least-once)."""
         async with self._condition:
             now = time.time()
             # First clean up expired leases
             for req in self._requests_by_id.values():
-                if req.state == RequestState.LEASED and req.lease_expires_at and req.lease_expires_at < now:
+                if (
+                    req.state == RequestState.LEASED
+                    and req.lease_expires_at
+                    and req.lease_expires_at < now
+                ):
                     req.state = RequestState.QUEUED
                     req.lease_expires_at = None
                     if req not in self._queue:
@@ -97,7 +105,9 @@ class RequestFrontier:
             req.lease_expires_at = now + lease_duration_sec
             return req
 
-    async def update_state(self, req_id: str, state: RequestState, error: Optional[str] = None):
+    async def update_state(
+        self, req_id: str, state: RequestState, error: Optional[str] = None
+    ):
         """Update request lifecycle state."""
         async with self._lock:
             if req_id in self._requests_by_id:
@@ -106,7 +116,11 @@ class RequestFrontier:
                 req.updated_at = time.time()
                 if error:
                     req.error_message = error
-                if state in (RequestState.DONE, RequestState.DEAD, RequestState.SKIPPED):
+                if state in (
+                    RequestState.DONE,
+                    RequestState.DEAD,
+                    RequestState.SKIPPED,
+                ):
                     req.lease_expires_at = None
 
     async def retry_request(self, req_id: str, delay_sec: float = 2.0):
@@ -120,7 +134,9 @@ class RequestFrontier:
                 else:
                     req.state = RequestState.QUEUED
                     req.lease_expires_at = None
-                    req.priority = max(0.0, req.priority - 5.0)  # Lower priority on retry
+                    req.priority = max(
+                        0.0, req.priority - 5.0
+                    )  # Lower priority on retry
                     self._queue.append(req)
                     self._queue.sort(key=lambda r: r.priority, reverse=True)
                     self._condition.notify_all()

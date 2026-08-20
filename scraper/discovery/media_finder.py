@@ -13,20 +13,47 @@ from selectolax.parser import HTMLParser
 
 logger = logging.getLogger(__name__)
 
-DOCUMENT_EXTENSIONS = {".pdf", ".docx", ".doc", ".xlsx", ".xls", ".pptx", ".csv", ".xml"}
+DOCUMENT_EXTENSIONS = {
+    ".pdf",
+    ".docx",
+    ".doc",
+    ".xlsx",
+    ".xls",
+    ".pptx",
+    ".csv",
+    ".xml",
+}
 DOCUMENT_PATH_PATTERNS = [
     r"/pdf/",
     r"ptpmcrender\.fcgi",
     r"/articles/PMC\d+/pdf",
     r"download=pdf",
     r"format=pdf",
-    r"/pdf$"
+    r"/pdf$",
 ]
 
 EXCLUDE_KEYWORDS = {
-    "logo", "avatar", "icon", "badge", "banner", "button", "footer", "header",
-    "nav", "tracking", "pixel", "cookie", "sprite", "spinner", "loader",
-    "social", "facebook", "twitter", "instagram", "linkedin", "share"
+    "logo",
+    "avatar",
+    "icon",
+    "badge",
+    "banner",
+    "button",
+    "footer",
+    "header",
+    "nav",
+    "tracking",
+    "pixel",
+    "cookie",
+    "sprite",
+    "spinner",
+    "loader",
+    "social",
+    "facebook",
+    "twitter",
+    "instagram",
+    "linkedin",
+    "share",
 }
 MIN_ACCEPTED_IMAGE_DIMENSION = 160
 MIN_ACCEPTED_IMAGE_RELEVANCE = 0.55
@@ -51,21 +78,29 @@ def extract_document_links(raw_html: str, base_url: str) -> List[str]:
 
         # Check extension
         has_doc_ext = any(path.endswith(ext) for ext in DOCUMENT_EXTENSIONS)
-        
+
         # Check URL pattern (e.g. ArXiv or PMC PDF renderers)
-        has_doc_pattern = any(re.search(pat, full_url, re.IGNORECASE) for pat in DOCUMENT_PATH_PATTERNS)
+        has_doc_pattern = any(
+            re.search(pat, full_url, re.IGNORECASE) for pat in DOCUMENT_PATH_PATTERNS
+        )
 
         if has_doc_ext or has_doc_pattern:
             discovered_docs.add(full_url)
 
     # Check base_url or raw_html for PMC ID (e.g. PMC13299106)
-    pmc_match = re.search(r'PMC\d+', base_url, re.IGNORECASE) or re.search(r'PMC\d+', raw_html)
+    pmc_match = re.search(r"PMC\d+", base_url, re.IGNORECASE) or re.search(
+        r"PMC\d+", raw_html
+    )
     if pmc_match:
         pmcid = pmc_match.group(0).upper()
-        discovered_docs.add(f"https://europepmc.org/backend/ptpmcrender.fcgi?accid={pmcid}&blobtype=pdf")
+        discovered_docs.add(
+            f"https://europepmc.org/backend/ptpmcrender.fcgi?accid={pmcid}&blobtype=pdf"
+        )
 
     # Check base_url for ArXiv ID (e.g. arxiv.org/abs/2301.12345)
-    arxiv_match = re.search(r'arxiv\.org/(?:abs|html)/(\d+\.\d+(?:v\d+)?)', base_url, re.IGNORECASE)
+    arxiv_match = re.search(
+        r"arxiv\.org/(?:abs|html)/(\d+\.\d+(?:v\d+)?)", base_url, re.IGNORECASE
+    )
     if arxiv_match:
         arxiv_id = arxiv_match.group(1)
         discovered_docs.add(f"https://arxiv.org/pdf/{arxiv_id}.pdf")
@@ -83,7 +118,11 @@ def extract_image_candidates(raw_html: str, base_url: str) -> List[Dict[str, Any
     seen_urls: Set[str] = set()
 
     for img in parser.css("img"):
-        src = img.attributes.get("src") or img.attributes.get("data-src") or img.attributes.get("data-original")
+        src = (
+            img.attributes.get("src")
+            or img.attributes.get("data-src")
+            or img.attributes.get("data-original")
+        )
         if not src or src.startswith("data:"):
             continue
 
@@ -110,9 +149,9 @@ def extract_image_candidates(raw_html: str, base_url: str) -> List[Dict[str, Any
         width, height = None, None
         try:
             if w_val:
-                width = int(re.sub(r'\D', '', w_val))
+                width = int(re.sub(r"\D", "", w_val))
             if h_val:
-                height = int(re.sub(r'\D', '', h_val))
+                height = int(re.sub(r"\D", "", h_val))
         except ValueError:
             pass
 
@@ -133,22 +172,26 @@ def extract_image_candidates(raw_html: str, base_url: str) -> List[Dict[str, Any
         caption = alt or title or figcaption or "Topic Image / Diagram"
 
         seen_urls.add(full_url)
-        candidates.append({
-            "url": full_url,
-            "caption": caption,
-            "alt": alt,
-            "title": title,
-            "figcaption": figcaption,
-            "width": width,
-            "height": height,
-            "source_domain": urllib.parse.urlparse(full_url).netloc,
-            "page_url": base_url
-        })
+        candidates.append(
+            {
+                "url": full_url,
+                "caption": caption,
+                "alt": alt,
+                "title": title,
+                "figcaption": figcaption,
+                "width": width,
+                "height": height,
+                "source_domain": urllib.parse.urlparse(full_url).netloc,
+                "page_url": base_url,
+            }
+        )
 
     return candidates
 
 
-async def fetch_wikimedia_topic_images(query: str, max_results: int = 10) -> List[Dict[str, Any]]:
+async def fetch_wikimedia_topic_images(
+    query: str, max_results: int = 10
+) -> List[Dict[str, Any]]:
     """Queries Wikimedia Commons API for open topic-relevant images using list=search."""
     if not query:
         return []
@@ -161,7 +204,9 @@ async def fetch_wikimedia_topic_images(query: str, max_results: int = 10) -> Lis
     )
 
     candidates: List[Dict[str, Any]] = []
-    headers = {"User-Agent": "DeepSearchBot/1.0 (https://deepsearch.org; contact@deepsearch.org) Python/3.13"}
+    headers = {
+        "User-Agent": "DeepSearchBot/1.0 (https://deepsearch.org; contact@deepsearch.org) Python/3.13"
+    }
 
     try:
         async with httpx.AsyncClient(timeout=6.0, trust_env=False) as client:
@@ -180,28 +225,37 @@ async def fetch_wikimedia_topic_images(query: str, max_results: int = 10) -> Lis
 
                     raw_title = file_title.replace("File:", "").replace("_", " ")
                     extmetadata = info.get("extmetadata", {})
-                    desc = extmetadata.get("ObjectName", {}).get("value") or extmetadata.get("ImageDescription", {}).get("value") or raw_title
-                    clean_desc = re.sub(r'<[^>]+>', '', str(desc)).strip()[:200] or raw_title
+                    desc = (
+                        extmetadata.get("ObjectName", {}).get("value")
+                        or extmetadata.get("ImageDescription", {}).get("value")
+                        or raw_title
+                    )
+                    clean_desc = (
+                        re.sub(r"<[^>]+>", "", str(desc)).strip()[:200] or raw_title
+                    )
 
-                    candidates.append({
-                        "url": img_url,
-                        "caption": clean_desc,
-                        "alt": raw_title,
-                        "title": raw_title,
-                        "figcaption": clean_desc,
-                        "width": info.get("width"),
-                        "height": info.get("height"),
-                        "source_domain": "commons.wikimedia.org",
-                        "page_url": info.get("descriptionurl", "")
-                    })
+                    candidates.append(
+                        {
+                            "url": img_url,
+                            "caption": clean_desc,
+                            "alt": raw_title,
+                            "title": raw_title,
+                            "figcaption": clean_desc,
+                            "width": info.get("width"),
+                            "height": info.get("height"),
+                            "source_domain": "commons.wikimedia.org",
+                            "page_url": info.get("descriptionurl", ""),
+                        }
+                    )
     except Exception as exc:
         logger.warning("Wikimedia Commons media search error for '%s': %s", query, exc)
 
     return candidates
 
 
-
-async def fetch_wikipedia_article_images(query: str, max_results: int = 10) -> List[Dict[str, Any]]:
+async def fetch_wikipedia_article_images(
+    query: str, max_results: int = 10
+) -> List[Dict[str, Any]]:
     """Queries Wikipedia API for topic article thumbnails and images."""
     if not query:
         return []
@@ -214,7 +268,9 @@ async def fetch_wikipedia_article_images(query: str, max_results: int = 10) -> L
     )
 
     candidates: List[Dict[str, Any]] = []
-    headers = {"User-Agent": "DeepSearchBot/1.0 (https://deepsearch.org; contact@deepsearch.org) Python/3.13"}
+    headers = {
+        "User-Agent": "DeepSearchBot/1.0 (https://deepsearch.org; contact@deepsearch.org) Python/3.13"
+    }
 
     try:
         async with httpx.AsyncClient(timeout=6.0, trust_env=False) as client:
@@ -227,36 +283,37 @@ async def fetch_wikipedia_article_images(query: str, max_results: int = 10) -> L
                     thumb = page_info.get("thumbnail", {})
                     if thumb and thumb.get("source"):
                         img_url = thumb["source"]
-                        candidates.append({
-                            "url": img_url,
-                            "caption": f"{title} - Main Diagram/Photo",
-                            "alt": title,
-                            "title": title,
-                            "figcaption": f"Illustration for {title}",
-                            "width": thumb.get("width"),
-                            "height": thumb.get("height"),
-                            "source_domain": "en.wikipedia.org",
-                            "page_url": f"https://en.wikipedia.org/wiki/{urllib.parse.quote(title.replace(' ', '_'))}"
-                        })
+                        candidates.append(
+                            {
+                                "url": img_url,
+                                "caption": f"{title} - Main Diagram/Photo",
+                                "alt": title,
+                                "title": title,
+                                "figcaption": f"Illustration for {title}",
+                                "width": thumb.get("width"),
+                                "height": thumb.get("height"),
+                                "source_domain": "en.wikipedia.org",
+                                "page_url": f"https://en.wikipedia.org/wiki/{urllib.parse.quote(title.replace(' ', '_'))}",
+                            }
+                        )
     except Exception as exc:
         logger.warning("Wikipedia article media search error for '%s': %s", query, exc)
 
     return candidates
 
 
-
 def score_and_rank_images(
     candidates: List[Dict[str, Any]],
     query: str,
     min_count: int = 5,
-    max_count: int = 25
+    max_count: int = 25,
 ) -> List[Dict[str, Any]]:
     """Scores candidate images by relevance to the query topic and ranks top min_count..max_count items."""
     if not candidates:
         return []
 
     # Clean and tokenize query terms
-    query_terms = [t.lower() for t in re.findall(r'\w+', query) if len(t) > 2]
+    query_terms = [t.lower() for t in re.findall(r"\w+", query) if len(t) > 2]
 
     scored_images: List[Dict[str, Any]] = []
     seen_urls: Set[str] = set()
@@ -283,7 +340,9 @@ def score_and_rank_images(
             continue
         w = item.get("width")
         h = item.get("height")
-        if (w is not None and w < MIN_ACCEPTED_IMAGE_DIMENSION) or (h is not None and h < MIN_ACCEPTED_IMAGE_DIMENSION):
+        if (w is not None and w < MIN_ACCEPTED_IMAGE_DIMENSION) or (
+            h is not None and h < MIN_ACCEPTED_IMAGE_DIMENSION
+        ):
             continue
 
         # 1. Topic Lexical Matching
@@ -294,7 +353,18 @@ def score_and_rank_images(
 
         # 2. Source Domain Authority
         domain = item.get("source_domain", "").lower()
-        if any(d in domain for d in ["wikimedia", "wikipedia", "pubmed", "ncbi", "arxiv", "nature.com", "sciencedirect"]):
+        if any(
+            d in domain
+            for d in [
+                "wikimedia",
+                "wikipedia",
+                "pubmed",
+                "ncbi",
+                "arxiv",
+                "nature.com",
+                "sciencedirect",
+            ]
+        ):
             score += 0.15
 
         # 3. Dimensions & Aspect Ratio Heuristics
@@ -328,7 +398,9 @@ def score_and_rank_images(
     return scored_images[:target_count]
 
 
-def is_accepted_media_file(media_info: Dict[str, Any], candidate: Optional[Dict[str, Any]] = None) -> bool:
+def is_accepted_media_file(
+    media_info: Dict[str, Any], candidate: Optional[Dict[str, Any]] = None
+) -> bool:
     """Validates downloaded media, including dimensions and topic score."""
     candidate = candidate or {}
     width = media_info.get("width") or candidate.get("width")
@@ -337,7 +409,10 @@ def is_accepted_media_file(media_info: Dict[str, Any], candidate: Optional[Dict[
         return False
     if height is not None and height < MIN_ACCEPTED_IMAGE_DIMENSION:
         return False
-    if media_info.get("relevance_score", candidate.get("relevance_score", 0.0)) < MIN_ACCEPTED_IMAGE_RELEVANCE:
+    if (
+        media_info.get("relevance_score", candidate.get("relevance_score", 0.0))
+        < MIN_ACCEPTED_IMAGE_RELEVANCE
+    ):
         return False
     combined_text = " ".join(
         str(candidate.get(key, "")) for key in ("caption", "alt", "title", "figcaption")
@@ -345,10 +420,14 @@ def is_accepted_media_file(media_info: Dict[str, Any], candidate: Optional[Dict[
     return not any(kw in combined_text for kw in EXCLUDE_KEYWORDS)
 
 
-def extract_relevant_images(raw_html: str, base_url: str, max_images: int = 5) -> List[Dict[str, str]]:
+def extract_relevant_images(
+    raw_html: str, base_url: str, max_images: int = 5
+) -> List[Dict[str, str]]:
     """Legacy helper for backwards compatibility. Returns top images extracted from HTML."""
     candidates = extract_image_candidates(raw_html, base_url)
     if not candidates:
         return []
-    ranked = score_and_rank_images(candidates, query="", min_count=1, max_count=max_images)
+    ranked = score_and_rank_images(
+        candidates, query="", min_count=1, max_count=max_images
+    )
     return [{"url": img["url"], "caption": img["caption"]} for img in ranked]

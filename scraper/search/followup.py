@@ -28,7 +28,9 @@ class FollowupQueryGenerator:
                     )
                 )
             elif gap.gap_type == "UNCOVERED_GOAL":
-                clean_q = gap.target_topic.replace("Answer primary research question: ", "").replace("Investigate characteristics and properties of ", "")
+                clean_q = gap.target_topic.replace(
+                    "Answer primary research question: ", ""
+                ).replace("Investigate characteristics and properties of ", "")
                 followups.append(
                     SearchQueryVariant(
                         query=clean_q,

@@ -2,7 +2,7 @@
 
 import re
 from enum import Enum
-from typing import List, Optional
+from typing import List
 from scraper.research.intent import Entity
 
 
@@ -63,33 +63,71 @@ def extract_entities_from_query(query: str) -> List[Entity]:
 
     # 1. Regex-based pattern extractors
     # DOI
-    for m in re.finditer(r'\b10\.\d{4,9}/[-._;()/:A-Za-z0-9]+\b', query):
-        entities.append(Entity(name=m.group(0), entity_type=EntityClass.DOI.value, canonical_form=m.group(0)))
+    for m in re.finditer(r"\b10\.\d{4,9}/[-._;()/:A-Za-z0-9]+\b", query):
+        entities.append(
+            Entity(
+                name=m.group(0),
+                entity_type=EntityClass.DOI.value,
+                canonical_form=m.group(0),
+            )
+        )
 
     # PMID / PMC
-    for m in re.finditer(r'\b(?:PMID:?\s*|PMC)(\d+)\b', query, re.IGNORECASE):
-        entities.append(Entity(name=m.group(0), entity_type=EntityClass.PMID.value, canonical_form=m.group(0).upper()))
+    for m in re.finditer(r"\b(?:PMID:?\s*|PMC)(\d+)\b", query, re.IGNORECASE):
+        entities.append(
+            Entity(
+                name=m.group(0),
+                entity_type=EntityClass.PMID.value,
+                canonical_form=m.group(0).upper(),
+            )
+        )
 
     # Standards (GOST, ISO, RFC, IEEE)
-    for m in re.finditer(r'\b(ГОСТ|ISO|RFC|IEEE)\s*[\d.-]+(?::\d+)?\b', query, re.IGNORECASE):
-        entities.append(Entity(name=m.group(0), entity_type=EntityClass.STANDARD.value, canonical_form=m.group(0).upper()))
+    for m in re.finditer(
+        r"\b(ГОСТ|ISO|RFC|IEEE)\s*[\d.-]+(?::\d+)?\b", query, re.IGNORECASE
+    ):
+        entities.append(
+            Entity(
+                name=m.group(0),
+                entity_type=EntityClass.STANDARD.value,
+                canonical_form=m.group(0).upper(),
+            )
+        )
 
     # Software API symbols (UF_DRAW_*, function::symbol)
-    for m in re.finditer(r'\b[A-Z][a-zA-Z0-9_]+::[A-Za-z0-9_]+\b|\b[A-Z]{2,}_[A-Z0-9_]{3,}\b', query):
-        entities.append(Entity(name=m.group(0), entity_type=EntityClass.SOFTWARE_API.value, canonical_form=m.group(0)))
+    for m in re.finditer(
+        r"\b[A-Z][a-zA-Z0-9_]+::[A-Za-z0-9_]+\b|\b[A-Z]{2,}_[A-Z0-9_]{3,}\b", query
+    ):
+        entities.append(
+            Entity(
+                name=m.group(0),
+                entity_type=EntityClass.SOFTWARE_API.value,
+                canonical_form=m.group(0),
+            )
+        )
 
     # Versions
-    for m in re.finditer(r'\bv?\d+\.\d+(?:\.\d+)?\b', query):
-        entities.append(Entity(name=m.group(0), entity_type=EntityClass.VERSION.value, canonical_form=m.group(0)))
+    for m in re.finditer(r"\bv?\d+\.\d+(?:\.\d+)?\b", query):
+        entities.append(
+            Entity(
+                name=m.group(0),
+                entity_type=EntityClass.VERSION.value,
+                canonical_form=m.group(0),
+            )
+        )
 
     # 2. Dictionary-based recognizers
     for term, eclass in MEDICAL_TERMS.items():
         if term in q_lower:
-            entities.append(Entity(name=term, entity_type=eclass.value, canonical_form=term))
+            entities.append(
+                Entity(name=term, entity_type=eclass.value, canonical_form=term)
+            )
 
     for term, eclass in TECH_TERMS.items():
         if term in q_lower:
-            entities.append(Entity(name=term, entity_type=eclass.value, canonical_form=term))
+            entities.append(
+                Entity(name=term, entity_type=eclass.value, canonical_form=term)
+            )
 
     # Deduplicate entities by name
     seen = set()

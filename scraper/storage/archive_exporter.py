@@ -18,6 +18,7 @@ from pydantic import BaseModel, Field
 
 from scraper.acquisition.engine import CapturedArtifact
 from scraper.extraction.engine import ExtractionResult
+from scraper.normalization.text import recursive_sanitize, sanitize_unicode_string
 
 
 class SearchRunMetadata(BaseModel):
@@ -101,15 +102,17 @@ class ArchiveExporter:
             f"> Subject Domain: {self.metadata.domain or 'Global'}",
             f"> Sources: {', '.join(self.metadata.preferred_sources) if self.metadata.preferred_sources else 'All'}",
             f"> Total Documents: {len(results)}",
-            "\n---\n"
+            "\n---\n",
         ]
 
         structured_records = []
 
         for idx, (artifact, extraction) in enumerate(results, start=1):
-            domain_name = artifact.url.split("/")[2] if "//" in artifact.url else "domain"
+            domain_name = (
+                artifact.url.split("/")[2] if "//" in artifact.url else "domain"
+            )
             safe_title = f"doc_{idx:03d}_{domain_name.replace('.', '_')}"
-            
+
             # --- 1. User File Generation (`files/`) ---
             user_md_filename = f"{safe_title}.md"
             user_md_path = files_dir / user_md_filename
@@ -130,28 +133,38 @@ class ArchiveExporter:
             )
 
             if extraction.full_text_markdown:
-                user_content += f"\n\n## Full-text Evidence\n\n{extraction.full_text_markdown}\n"
+                user_content += (
+                    f"\n\n## Full-text Evidence\n\n{extraction.full_text_markdown}\n"
+                )
 
             if extraction.tables:
                 user_content += "\n\n## Extracted Tables\n\n"
                 for t_idx, table in enumerate(extraction.tables, start=1):
                     user_content += f"### Table {t_idx}\n{table.markdown}\n\n"
 
-            user_md_path.write_text(user_content, encoding="utf-8")
-            manifest_files.append({
-                "id": safe_title,
-                "file_path": f"files/{user_md_filename}",
-                "url": artifact.url,
-                "title": safe_title,
-                "strategy": artifact.strategy_used
-            })
+            user_md_path.write_text(
+                sanitize_unicode_string(user_content), encoding="utf-8"
+            )
+            manifest_files.append(
+                {
+                    "id": safe_title,
+                    "file_path": f"files/{user_md_filename}",
+                    "url": artifact.url,
+                    "title": safe_title,
+                    "strategy": artifact.strategy_used,
+                }
+            )
 
             # --- 2. LLM RAG Dataset Generation (`rag/`) ---
-            text_for_rag = extraction.full_text_markdown or extraction.fit_markdown or extraction.clean_markdown
+            text_for_rag = (
+                extraction.full_text_markdown
+                or extraction.fit_markdown
+                or extraction.clean_markdown
+            )
             chunks = self._chunk_text(text_for_rag)
 
             for c_idx, chunk_text in enumerate(chunks):
-                chunk_id = f"{safe_title}_c{c_idx+1:03d}"
+                chunk_id = f"{safe_title}_c{c_idx + 1:03d}"
                 token_est = int(len(chunk_text.split()) * 1.3)
                 rag_chunk = RAGChunk(
                     chunk_id=chunk_id,
@@ -171,7 +184,7 @@ class ArchiveExporter:
                         "published_at": extraction.published_at,
                         "document_type": extraction.document_type,
                         "full_text": bool(extraction.full_text_markdown),
-                    }
+                    },
                 )
                 all_rag_chunks.append(rag_chunk)
 
@@ -185,10 +198,15 @@ class ArchiveExporter:
 
             # Structured records
             if extraction.extracted_records:
-                structured_records.append({
-                    "url": artifact.url,
-                    "records": {k: v.model_dump() for k, v in extraction.extracted_records.items()}
-                })
+                structured_records.append(
+                    {
+                        "url": artifact.url,
+                        "records": {
+                            k: v.model_dump()
+                            for k, v in extraction.extracted_records.items()
+                        },
+                    }
+                )
 
         # --- 3. Process PDF Files (`pdfs/`) ---
         total_pdf_files = 0
@@ -199,15 +217,17 @@ class ArchiveExporter:
                 if src_file and os.path.exists(src_file) and filename:
                     dst_path = pdfs_dir / filename
                     shutil.copy2(src_file, dst_path)
-                    manifest_files.append({
-                        "id": filename,
-                        "file_path": f"pdfs/{filename}",
-                        "url": pdf_info.get("url", ""),
-                        "title": filename,
-                        "type": "pdf",
-                        "size_bytes": pdf_info.get("size_bytes", 0),
-                        "sha256": pdf_info.get("sha256", "")
-                    })
+                    manifest_files.append(
+                        {
+                            "id": filename,
+                            "file_path": f"pdfs/{filename}",
+                            "url": pdf_info.get("url", ""),
+                            "title": filename,
+                            "type": "pdf",
+                            "size_bytes": pdf_info.get("size_bytes", 0),
+                            "sha256": pdf_info.get("sha256", ""),
+                        }
+                    )
                     total_pdf_files += 1
 
         # --- 4. Process Topic Media Files (`media/`) ---
@@ -222,19 +242,21 @@ class ArchiveExporter:
                     shutil.copy2(src_file, dst_path)
                     caption = media_info.get("caption") or f"Topic Media {m_idx}"
                     score = media_info.get("relevance_score", 1.0)
-                    manifest_files.append({
-                        "id": f"media_{m_idx:03d}_{filename}",
-                        "file_path": f"media/{filename}",
-                        "url": media_info.get("url", ""),
-                        "title": caption,
-                        "type": "image",
-                        "relevance_score": score,
-                        "size_bytes": media_info.get("size_bytes", 0),
-                        "sha256": media_info.get("sha256", ""),
-                        "mime_type": media_info.get("content_type", ""),
-                        "width": media_info.get("width"),
-                        "height": media_info.get("height")
-                    })
+                    manifest_files.append(
+                        {
+                            "id": f"media_{m_idx:03d}_{filename}",
+                            "file_path": f"media/{filename}",
+                            "url": media_info.get("url", ""),
+                            "title": caption,
+                            "type": "image",
+                            "relevance_score": score,
+                            "size_bytes": media_info.get("size_bytes", 0),
+                            "sha256": media_info.get("sha256", ""),
+                            "mime_type": media_info.get("content_type", ""),
+                            "width": media_info.get("width"),
+                            "height": media_info.get("height"),
+                        }
+                    )
                     total_media_files += 1
                     rag_context_lines.append(
                         f"- ![Image {m_idx}: {caption}](media/{filename})  \n"
@@ -245,15 +267,44 @@ class ArchiveExporter:
         jsonl_path = rag_dir / "rag_chunks.jsonl"
         with open(jsonl_path, "w", encoding="utf-8") as f:
             for chunk in all_rag_chunks:
-                f.write(json.dumps(chunk.model_dump(), ensure_ascii=False) + "\n")
+                clean_chunk = recursive_sanitize(chunk.model_dump())
+                f.write(json.dumps(clean_chunk, ensure_ascii=False) + "\n")
+
+        # Save `rag/dataset.jsonl` (HuggingFace / LlamaIndex standardized format)
+        dataset_jsonl_path = rag_dir / "dataset.jsonl"
+        with open(dataset_jsonl_path, "w", encoding="utf-8") as f:
+            for chunk in all_rag_chunks:
+                record = {
+                    "id": chunk.chunk_id,
+                    "text": chunk.text,
+                    "metadata": {
+                        "query": self.metadata.query,
+                        "domain": self.metadata.domain or "Global",
+                        "source_url": chunk.source_url,
+                        "canonical_url": chunk.canonical_url,
+                        "title": chunk.title,
+                        "token_estimate": chunk.token_estimate,
+                        "relevance_score": chunk.relevance_score,
+                        **chunk.provenance,
+                    },
+                }
+                record = recursive_sanitize(record)
+                f.write(json.dumps(record, ensure_ascii=False) + "\n")
 
         # Save `rag/rag_context.md`
         context_path = rag_dir / "rag_context.md"
-        context_path.write_text("\n".join(rag_context_lines), encoding="utf-8")
+        context_path.write_text(
+            sanitize_unicode_string("\n".join(rag_context_lines)), encoding="utf-8"
+        )
 
         # Save `rag/rag_dataset.json`
         dataset_path = rag_dir / "rag_dataset.json"
-        dataset_path.write_text(json.dumps(structured_records, indent=2, ensure_ascii=False), encoding="utf-8")
+        dataset_path.write_text(
+            json.dumps(
+                recursive_sanitize(structured_records), indent=2, ensure_ascii=False
+            ),
+            encoding="utf-8",
+        )
 
         # Save `rag/vector_index.json`
         vector_index_path = rag_dir / "vector_index.json"
@@ -267,13 +318,16 @@ class ArchiveExporter:
                     "payload": {
                         "source_url": c.source_url,
                         "title": c.title,
-                        "text": c.text[:200]
-                    }
+                        "text": c.text[:200],
+                    },
                 }
                 for c in all_rag_chunks
-            ]
+            ],
         }
-        vector_index_path.write_text(json.dumps(vector_meta, indent=2, ensure_ascii=False), encoding="utf-8")
+        vector_index_path.write_text(
+            json.dumps(recursive_sanitize(vector_meta), indent=2, ensure_ascii=False),
+            encoding="utf-8",
+        )
 
         # --- 5. Root Manifest (`manifest.json`) ---
         rejection_records = rejections or []
@@ -281,11 +335,14 @@ class ArchiveExporter:
             rejection_path = out_path / "rejections.jsonl"
             with rejection_path.open("w", encoding="utf-8") as f:
                 for record in rejection_records:
-                    f.write(json.dumps(record, ensure_ascii=False) + "\n")
+                    clean_record = recursive_sanitize(record)
+                    f.write(json.dumps(clean_record, ensure_ascii=False) + "\n")
 
         if quality_report is not None:
             (out_path / "source_quality_report.json").write_text(
-                json.dumps(quality_report, indent=2, ensure_ascii=False),
+                json.dumps(
+                    recursive_sanitize(quality_report), indent=2, ensure_ascii=False
+                ),
                 encoding="utf-8",
             )
 
@@ -306,7 +363,10 @@ class ArchiveExporter:
             "media_quality": media_quality or {},
         }
         manifest_path = out_path / "manifest.json"
-        manifest_path.write_text(json.dumps(manifest_data, indent=2, ensure_ascii=False), encoding="utf-8")
+        manifest_path.write_text(
+            json.dumps(recursive_sanitize(manifest_data), indent=2, ensure_ascii=False),
+            encoding="utf-8",
+        )
 
         return str(out_path)
 
@@ -315,6 +375,8 @@ class ArchiveExporter:
         zip_path = Path(output_zip_path)
         if zip_path.suffix != ".zip":
             zip_path = zip_path.with_suffix(".zip")
+
+        zip_path.parent.mkdir(parents=True, exist_ok=True)
 
         with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zipf:
             root_path = Path(input_dir)
@@ -325,7 +387,6 @@ class ArchiveExporter:
 
         return str(zip_path)
 
-
     def export_obsidian_vault(
         self,
         results: List[Tuple[CapturedArtifact, ExtractionResult]],
@@ -334,6 +395,7 @@ class ArchiveExporter:
     ) -> str:
         """Export research results directly to an Obsidian Vault directory."""
         from scraper.storage.exporters.obsidian import ObsidianVaultExporter
+
         extractions = [ext for _, ext in results]
         exporter = ObsidianVaultExporter(output_dir)
         return exporter.export_vault(
@@ -350,8 +412,7 @@ class ArchiveExporter:
     ) -> Dict[str, str]:
         """Export research results to Zotero CSL-JSON and RIS files."""
         from scraper.storage.exporters.zotero import ZoteroLibraryExporter
+
         extractions = [ext for _, ext in results]
         exporter = ZoteroLibraryExporter(output_dir)
         return exporter.export_all(extractions, query=self.metadata.query)
-
-

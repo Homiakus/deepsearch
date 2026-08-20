@@ -26,19 +26,42 @@ class FeatureAvailabilityState(str, Enum):
 
 
 class ResearchRequest(BaseModel):
-    query: str = Field(..., min_length=1, description="Primary research query or statement")
-    domain: Optional[str] = Field(None, description="Domain / topic filter (e.g. biomed, engineering)")
-    preferred_sources: List[str] = Field(default_factory=list, description="Target initial URLs or domains")
+    query: str = Field(
+        ..., min_length=1, description="Primary research query or statement"
+    )
+    domain: Optional[str] = Field(
+        None, description="Domain / topic filter (e.g. biomed, engineering)"
+    )
+    preferred_sources: List[str] = Field(
+        default_factory=list, description="Target initial URLs or domains"
+    )
     depth: int = Field(default=3, ge=0, le=10, description="Max search and crawl depth")
     max_pages: int = Field(default=50, ge=1, le=5000, description="Max pages budget")
-    mode: ExecutionMode = Field(default=ExecutionMode.BALANCED, description="Execution mode")
-    min_media_count: int = Field(default=5, ge=0, description="Minimum relevant media assets to archive")
-    max_media_count: int = Field(default=25, ge=0, description="Maximum relevant media assets to archive")
-    enable_media_archiving: bool = Field(default=True, description="Download & archive relevant media files")
-    output_archive_path: Optional[str] = Field(default=None, description="Custom zip archive path")
-    idempotency_key: Optional[str] = Field(default=None, description="Client-provided idempotency key")
-    auto_discover: bool = Field(default=True, description="Enable automatic multi-provider seed discovery")
-    category: Optional[str] = Field(default=None, description="Domain category hint (science, news, engineering, medical)")
+    mode: ExecutionMode = Field(
+        default=ExecutionMode.BALANCED, description="Execution mode"
+    )
+    min_media_count: int = Field(
+        default=5, ge=0, description="Minimum relevant media assets to archive"
+    )
+    max_media_count: int = Field(
+        default=25, ge=0, description="Maximum relevant media assets to archive"
+    )
+    enable_media_archiving: bool = Field(
+        default=True, description="Download & archive relevant media files"
+    )
+    output_archive_path: Optional[str] = Field(
+        default=None, description="Custom zip archive path"
+    )
+    idempotency_key: Optional[str] = Field(
+        default=None, description="Client-provided idempotency key"
+    )
+    auto_discover: bool = Field(
+        default=True, description="Enable automatic multi-provider seed discovery"
+    )
+    category: Optional[str] = Field(
+        default=None,
+        description="Domain category hint (science, news, engineering, medical)",
+    )
 
 
 class ResearchHandle(BaseModel):

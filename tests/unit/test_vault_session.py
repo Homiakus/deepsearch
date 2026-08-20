@@ -1,8 +1,6 @@
 """Unit tests for Dynamic Cookie & Auth Session Persistence Vault."""
 
-import os
 import time
-import pytest
 from scraper.security.vault_session import SessionVault, AuthSession
 
 

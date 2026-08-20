@@ -1,10 +1,8 @@
 """Contract tests for Acquisition Data Models and Capabilities (DS-RB02, DS-RB03, DS-RB42)."""
 
-import pytest
 from scraper.acquisition.capabilities import (
     CapabilityLevel,
     BrowserCapabilities,
-    BackendDescriptor,
 )
 from scraper.acquisition.models import (
     AcquisitionRequest,
@@ -12,7 +10,6 @@ from scraper.acquisition.models import (
     ArtifactReference,
     QualityReport,
     CostReport,
-    FailureRecord,
 )
 
 
@@ -39,7 +36,9 @@ def test_browser_capabilities_satisfaction():
     assert full.satisfies(minimal)
     assert not minimal.satisfies(full)
 
-    js_req = BrowserCapabilities(html=CapabilityLevel.SUPPORTED, javascript=CapabilityLevel.SUPPORTED)
+    js_req = BrowserCapabilities(
+        html=CapabilityLevel.SUPPORTED, javascript=CapabilityLevel.SUPPORTED
+    )
     assert full.satisfies(js_req)
     assert not minimal.satisfies(js_req)
 

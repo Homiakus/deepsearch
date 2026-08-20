@@ -4,10 +4,9 @@ Implements visual patch embedding and multivector similarity modeling based on
 ColPali and Qwen2-VL architectural principles.
 """
 
-import math
 import hashlib
 import numpy as np
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
 from pydantic import BaseModel, Field
 
 from scraper.visual.tiling import VisualTile
@@ -46,12 +45,14 @@ class VLMEmbeddingEngine:
             vector = self._cache[cache_key]
         else:
             # Deterministic projection from visual features & hash
-            raw_hash = hashlib.sha512(tile.image_hash.encode("utf-8") + str(tile.tile_id).encode("utf-8")).digest()
+            raw_hash = hashlib.sha512(
+                tile.image_hash.encode("utf-8") + str(tile.tile_id).encode("utf-8")
+            ).digest()
             # Seed numpy RNG from hash for reproducible deterministic pseudo-embeddings
             seed = int.from_bytes(raw_hash[:8], "big") % (2**32)
             rng = np.random.default_rng(seed)
             raw_vec = rng.standard_normal(self.dim)
-            
+
             # Normalize vector to unit length
             norm = np.linalg.norm(raw_vec)
             if norm > 0:
@@ -65,7 +66,12 @@ class VLMEmbeddingEngine:
             page_id=tile.page_id,
             vector=vector,
             dim=self.dim,
-            metadata={"x": tile.x, "y": tile.y, "width": tile.width, "height": tile.height},
+            metadata={
+                "x": tile.x,
+                "y": tile.y,
+                "width": tile.width,
+                "height": tile.height,
+            },
         )
 
     def embed_tiles_batch(self, tiles: List[VisualTile]) -> List[VisualEmbedding]:
@@ -87,7 +93,9 @@ class VLMEmbeddingEngine:
         self._cache[cache_key] = vector
         return vector
 
-    def compute_similarity(self, query_vector: List[float], tile_vector: List[float]) -> float:
+    def compute_similarity(
+        self, query_vector: List[float], tile_vector: List[float]
+    ) -> float:
         """Compute cosine similarity between query and visual tile embedding."""
         v1 = np.array(query_vector, dtype=float)
         v2 = np.array(tile_vector, dtype=float)

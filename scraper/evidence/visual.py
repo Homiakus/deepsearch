@@ -20,7 +20,9 @@ class VisualEvidenceExtractor:
     def __init__(self, enabled: Optional[bool] = None):
         self.enabled = enabled if enabled is not None else settings.visual_retrieval
 
-    async def extract_visual_evidence(self, image_bytes: bytes, page_url: str) -> List[VisualEvidenceItem]:
+    async def extract_visual_evidence(
+        self, image_bytes: bytes, page_url: str
+    ) -> List[VisualEvidenceItem]:
         if not self.enabled:
             # Zero-cost early exit in default profile
             return []

@@ -4,7 +4,7 @@ import logging
 import urllib.parse
 import httpx
 from typing import List
-from scraper.discovery.providers.base import DiscoveryProvider, ProviderDescriptor, ProviderSearchRequest
+from scraper.discovery.providers.base import ProviderDescriptor, ProviderSearchRequest
 from scraper.search.candidates import SourceCandidate
 
 logger = logging.getLogger(__name__)
@@ -24,7 +24,9 @@ class PubMedProvider:
         url = f"https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pmc&term={urllib.parse.quote(request.query)}&retmode=json&retmax={request.max_results}"
         candidates = []
         try:
-            async with httpx.AsyncClient(timeout=request.timeout_sec, trust_env=False) as client:
+            async with httpx.AsyncClient(
+                timeout=request.timeout_sec, trust_env=False
+            ) as client:
                 res = await client.get(url)
                 if res.status_code == 200:
                     data = res.json()
@@ -46,6 +48,8 @@ class PubMedProvider:
                             )
                         )
         except Exception as exc:
-            logger.warning("PubMedProvider search error for query '%s': %s", request.query, exc)
+            logger.warning(
+                "PubMedProvider search error for query '%s': %s", request.query, exc
+            )
 
         return candidates

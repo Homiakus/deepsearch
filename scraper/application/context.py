@@ -4,7 +4,7 @@ from typing import Optional
 from dataclasses import dataclass, field
 import time
 
-from scraper.config import ExecutionMode, settings
+from scraper.config import ExecutionMode
 from scraper.control.budget import BudgetTracker
 from scraper.control.rate_limiter import HostRateLimiter
 from scraper.normalization.deduplicator import Deduplicator
@@ -30,6 +30,7 @@ class ResearchExecutionContext:
     def check_cancellation(self) -> None:
         if self.is_cancelled:
             from scraper.orchestration.errors import TransientFailure
+
             raise TransientFailure("Execution was cancelled by coordinator")
 
     def elapsed_seconds(self) -> float:

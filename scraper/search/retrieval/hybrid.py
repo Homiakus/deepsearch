@@ -74,7 +74,9 @@ def weighted_reciprocal_rank_fusion(
     return fused
 
 
-def _matches_filter(hit: RetrievalHit, metadata_filter: Optional[Dict[str, Any]]) -> bool:
+def _matches_filter(
+    hit: RetrievalHit, metadata_filter: Optional[Dict[str, Any]]
+) -> bool:
     if not metadata_filter:
         return True
     for k, v in metadata_filter.items():

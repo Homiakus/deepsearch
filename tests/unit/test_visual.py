@@ -13,7 +13,9 @@ def test_screenshot_tiling():
     img.save(buf, format="PNG")
     screenshot_bytes = buf.getvalue()
 
-    tiles = generate_screenshot_tiles("page_123", screenshot_bytes, tile_width=1000, tile_height=1000)
+    tiles = generate_screenshot_tiles(
+        "page_123", screenshot_bytes, tile_width=1000, tile_height=1000
+    )
     # 2000x2000 sliced into 1000x1000 -> 4 tiles
     assert len(tiles) == 4
     assert tiles[0].page_id == "page_123"

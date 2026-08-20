@@ -9,6 +9,7 @@ logger = logging.getLogger(__name__)
 try:
     from qdrant_client import QdrantClient
     from qdrant_client.models import Distance, VectorParams, PointStruct, Filter
+
     QDRANT_AVAILABLE = True
 except ImportError:
     QDRANT_AVAILABLE = False
@@ -19,7 +20,9 @@ class VectorStoreManager:
 
     DEFAULT_COLLECTION = "deepsearch_chunks"
 
-    def __init__(self, url: Optional[str] = None, collection_name: Optional[str] = None):
+    def __init__(
+        self, url: Optional[str] = None, collection_name: Optional[str] = None
+    ):
         self.url = url or settings.qdrant_url
         self.collection_name = collection_name or self.DEFAULT_COLLECTION
         self.client: Optional[QdrantClient] = None
@@ -39,7 +42,9 @@ class VectorStoreManager:
         except Exception:
             return False
 
-    def ensure_collection(self, vector_size: int = 384, distance: str = "Cosine") -> bool:
+    def ensure_collection(
+        self, vector_size: int = 384, distance: str = "Cosine"
+    ) -> bool:
         """Create collection if it does not exist with appropriate vector dimensions."""
         if not self.client:
             return False
@@ -65,7 +70,9 @@ class VectorStoreManager:
         except Exception:
             return False
 
-    def upsert_text_embedding(self, doc_id: str, vector: List[float], payload: Dict[str, Any]) -> bool:
+    def upsert_text_embedding(
+        self, doc_id: str, vector: List[float], payload: Dict[str, Any]
+    ) -> bool:
         if not self.client:
             return False
         try:
@@ -85,7 +92,12 @@ class VectorStoreManager:
             logger.error("Failed to upsert point %s: %s", doc_id, e)
             return False
 
-    def search_text(self, vector: List[float], top_k: int = 5, filter_payload: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
+    def search_text(
+        self,
+        vector: List[float],
+        top_k: int = 5,
+        filter_payload: Optional[Dict[str, Any]] = None,
+    ) -> List[Dict[str, Any]]:
         if not self.client or not self.has_documents():
             return []
         try:
@@ -112,6 +124,7 @@ class VectorStoreManager:
             return []
         try:
             from scraper.retrieval.embeddings import embedding_engine
+
             vector = embedding_engine.embed_query_dense(query)
             return self.search_text(vector=vector, top_k=top_k)
         except Exception as e:
@@ -124,11 +137,14 @@ class VectorStoreManager:
             return False
         try:
             from qdrant_client.models import FieldCondition, MatchValue
+
             self.client.delete(
                 collection_name=self.collection_name,
                 points_selector=Filter(
                     must=[
-                        FieldCondition(key="document_id", match=MatchValue(value=document_id))
+                        FieldCondition(
+                            key="document_id", match=MatchValue(value=document_id)
+                        )
                     ]
                 ),
             )

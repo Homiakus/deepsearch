@@ -9,9 +9,7 @@ import re
 import json
 import time
 from typing import List, Dict, Any, Optional
-from pydantic import BaseModel, Field
 
-from scraper.acquisition.engine import CapturedArtifact
 from scraper.extraction.engine import ExtractionResult
 
 
@@ -56,7 +54,6 @@ class ObsidianVaultExporter:
             note_filename = f"{note_slug}.md"
             note_path = os.path.join(self.notes_dir, note_filename)
 
-
             # YAML Frontmatter
             frontmatter = [
                 "---",
@@ -99,7 +96,7 @@ class ObsidianVaultExporter:
                 claim_text = claim.get("text", f"Claim {c_idx}")
                 claim_slug = f"claim_{c_idx:03d}_{slugify(claim_text)[:40]}"
                 claim_path = os.path.join(self.evidence_dir, f"{claim_slug}.md")
-                
+
                 c_content = [
                     "---",
                     f"claim_id: {json.dumps(claim.get('id', str(c_idx)))}",
@@ -127,7 +124,7 @@ class ObsidianVaultExporter:
         index_path = os.path.join(self.output_dir, "00_Index.md")
         index_content = [
             "---",
-            f"title: \"Research Index: {query}\"",
+            f'title: "Research Index: {query}"',
             f"date: {created_date_str}",
             "tags:",
             "  - deepsearch/index",
@@ -147,11 +144,13 @@ class ObsidianVaultExporter:
             index_content.append(f"- [[Notes/{slug}|{title}]] — *[{url}]({url})*")
 
         if claim_links:
-            index_content.extend([
-                "",
-                "## Evidence & Claims Graph",
-                "",
-            ])
+            index_content.extend(
+                [
+                    "",
+                    "## Evidence & Claims Graph",
+                    "",
+                ]
+            )
             for text, slug in claim_links:
                 index_content.append(f"- [[Evidence/{slug}|{text[:120]}...]]")
 

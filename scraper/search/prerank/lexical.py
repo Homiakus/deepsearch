@@ -5,7 +5,7 @@ and exact identifiers with high precision and zero latency.
 """
 
 import re
-from typing import List, Set
+from typing import List
 from scraper.research.intent import ResearchIntent
 from scraper.search.candidates import SourceCandidate
 
@@ -25,7 +25,14 @@ class LexicalPreRanker:
         # 1. Exact Identifier Match (High Priority)
         for entity in intent.entities:
             val = (entity.canonical_form or entity.name).lower()
-            if entity.entity_type in ("DOI", "PMID", "STANDARD", "SOFTWARE_API", "CHEMICAL", "PRODUCT"):
+            if entity.entity_type in (
+                "DOI",
+                "PMID",
+                "STANDARD",
+                "SOFTWARE_API",
+                "CHEMICAL",
+                "PRODUCT",
+            ):
                 if val in title_lower:
                     score += 0.40
                 elif val in url_lower:
@@ -34,7 +41,7 @@ class LexicalPreRanker:
                     score += 0.25
 
         # 2. Quoted Phrase Match
-        q_tokens = [t for t in re.findall(r'\w+', q_text) if len(t) > 2]
+        q_tokens = [t for t in re.findall(r"\w+", q_text) if len(t) > 2]
         if not q_tokens:
             return min(1.0, score + 0.1)
 
@@ -63,7 +70,9 @@ class LexicalPreRanker:
         return candidate.lexical_score
 
     @classmethod
-    def rank_candidates(cls, candidates: List[SourceCandidate], intent: ResearchIntent) -> List[SourceCandidate]:
+    def rank_candidates(
+        cls, candidates: List[SourceCandidate], intent: ResearchIntent
+    ) -> List[SourceCandidate]:
         for c in candidates:
             cls.score_candidate(c, intent)
         return sorted(candidates, key=lambda c: c.lexical_score, reverse=True)

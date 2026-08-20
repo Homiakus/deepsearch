@@ -4,7 +4,7 @@ import logging
 import urllib.parse
 import httpx
 from typing import List
-from scraper.discovery.providers.base import DiscoveryProvider, ProviderDescriptor, ProviderSearchRequest
+from scraper.discovery.providers.base import ProviderDescriptor, ProviderSearchRequest
 from scraper.search.candidates import SourceCandidate
 
 logger = logging.getLogger(__name__)
@@ -25,7 +25,9 @@ class GitHubProvider:
         headers = {"User-Agent": "DeepSearch-Research-Bot"}
         candidates = []
         try:
-            async with httpx.AsyncClient(timeout=request.timeout_sec, trust_env=False) as client:
+            async with httpx.AsyncClient(
+                timeout=request.timeout_sec, trust_env=False
+            ) as client:
                 res = await client.get(url, headers=headers)
                 if res.status_code == 200:
                     data = res.json()
@@ -44,11 +46,15 @@ class GitHubProvider:
                                     provider=self.descriptor.name,
                                     provider_rank=idx,
                                     source_type="SOURCE_CODE",
-                                    goal_ids=[request.goal_id] if request.goal_id else [],
+                                    goal_ids=[request.goal_id]
+                                    if request.goal_id
+                                    else [],
                                     authority_prior=0.90,
                                 )
                             )
         except Exception as exc:
-            logger.warning("GitHubProvider search error for query '%s': %s", request.query, exc)
+            logger.warning(
+                "GitHubProvider search error for query '%s': %s", request.query, exc
+            )
 
         return candidates

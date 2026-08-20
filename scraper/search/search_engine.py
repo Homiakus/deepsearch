@@ -11,16 +11,13 @@ from scraper.application.models import FeatureAvailabilityState
 from scraper.storage.vector_store import VectorStoreManager
 from scraper.research.query_normalizer import normalize_query
 from scraper.search.embeddings.dense import dense_embedder
-from scraper.search.embeddings.sparse import sparse_embedder
 from scraper.search.retrieval.hybrid import (
     RetrievalHit,
-    FusedResult,
     weighted_reciprocal_rank_fusion,
 )
 from scraper.search.rerank.cross_encoder import cross_encoder_reranker
 from scraper.search.selection.diversity import diversity_selector
 from scraper.search.rerank.base import RerankedPassage
-from scraper.evidence.store import EvidenceStore, evidence_store
 
 
 class SearchExplainTrace(BaseModel):
@@ -107,7 +104,9 @@ class SearchEngine:
         # 2. Simulated Sparse Hits from lexical term matching
         sparse_hits: List[RetrievalHit] = []
         for dh in dense_hits:
-            if any(t.lower() in dh.text.lower() for t in norm_q.normalized_text.split()):
+            if any(
+                t.lower() in dh.text.lower() for t in norm_q.normalized_text.split()
+            ):
                 sparse_hits.append(dh)
 
         # 3. Hybrid Fusion
@@ -138,7 +137,11 @@ class SearchEngine:
             hit = d.fused_result.hit
             explain_obj = None
             if explain:
-                matched = [t for t in norm_q.normalized_text.split() if t.lower() in hit.text.lower()]
+                matched = [
+                    t
+                    for t in norm_q.normalized_text.split()
+                    if t.lower() in hit.text.lower()
+                ]
                 explain_obj = SearchExplainTrace(
                     why_retrieved=d.explanation,
                     matched_terms=matched,

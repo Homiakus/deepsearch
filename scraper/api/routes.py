@@ -3,6 +3,7 @@
 import uuid
 from typing import List, Optional
 from fastapi import APIRouter, HTTPException, status
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from scraper.config import settings, ExecutionMode
@@ -18,6 +19,9 @@ from scraper.application.models import (
     FeatureAvailabilityState,
 )
 from scraper.application.research_service import research_service
+from scraper.api.sse import sse_broker
+from scraper.storage.exporters.obsidian import ObsidianVaultExporter
+from scraper.storage.exporters.zotero import ZoteroLibraryExporter
 
 router = APIRouter(prefix="/api/v1")
 search_engine = SearchEngine()
@@ -82,7 +86,9 @@ async def get_metrics():
 async def inspect_url(req: InspectRequest):
     """Inspect Mode (§57) showing page intelligence metrics and recommended strategy."""
     c_url = canonicalize_url(req.url)
-    artifact = await acquisition_engine.acquire_page(req.url, c_url, mode=ExecutionMode.BALANCED)
+    artifact = await acquisition_engine.acquire_page(
+        req.url, c_url, mode=ExecutionMode.BALANCED
+    )
     pi = artifact.page_intelligence
 
     rec_strategy = "HTTP"
@@ -148,13 +154,18 @@ async def search_query_detailed(req: SearchQueryRequest):
         state=state,
         results=results,
         total_count=len(results),
-        message="Search executed against indexed vector corpus" if state == FeatureAvailabilityState.READY else "Index empty or not configured",
+        message="Search executed against indexed vector corpus"
+        if state == FeatureAvailabilityState.READY
+        else "Index empty or not configured",
     )
 
 
 # --- DS-A02 & DS-A07: Unified Research Application Service Endpoints ---
 
-@router.post("/research", response_model=ResearchHandle, status_code=status.HTTP_202_ACCEPTED)
+
+@router.post(
+    "/research", response_model=ResearchHandle, status_code=status.HTTP_202_ACCEPTED
+)
 async def start_research(req: ResearchRequest):
     """Asynchronously starts or loads a durable research execution (§55, DS-A02, DS-A07)."""
     handle = await research_service.start(req)
@@ -167,7 +178,9 @@ async def get_research_status(run_id: str):
     try:
         return await research_service.status(run_id)
     except KeyError:
-        raise HTTPException(status_code=404, detail=f"Research run '{run_id}' not found")
+        raise HTTPException(
+            status_code=404, detail=f"Research run '{run_id}' not found"
+        )
 
 
 @router.get("/research/{run_id}/result", response_model=ResearchResult)
@@ -179,11 +192,13 @@ async def get_research_result(run_id: str):
             status_obj = await research_service.status(run_id)
             raise HTTPException(
                 status_code=425,
-                detail=f"Research run '{run_id}' is still in progress (status={status_obj.status.value})"
+                detail=f"Research run '{run_id}' is still in progress (status={status_obj.status.value})",
             )
         return res
     except KeyError:
-        raise HTTPException(status_code=404, detail=f"Research run '{run_id}' not found")
+        raise HTTPException(
+            status_code=404, detail=f"Research run '{run_id}' not found"
+        )
 
 
 @router.post("/research/{run_id}/cancel")
@@ -193,15 +208,9 @@ async def cancel_research(run_id: str):
         await research_service.cancel(run_id)
         return {"run_id": run_id, "status": "CANCELLED"}
     except KeyError:
-        raise HTTPException(status_code=404, detail=f"Research run '{run_id}' not found")
-
-
-
-from fastapi.responses import StreamingResponse
-from scraper.api.sse import sse_broker
-from scraper.storage.exporters.obsidian import ObsidianVaultExporter
-from scraper.storage.exporters.zotero import ZoteroLibraryExporter
-
+        raise HTTPException(
+            status_code=404, detail=f"Research run '{run_id}' not found"
+        )
 
 
 @router.get("/research/{run_id}/events")
@@ -233,9 +242,16 @@ async def export_research_obsidian(run_id: str, output_dir: Optional[str] = None
             evidence_claims=res.claims,
             metadata={"run_id": run_id, "quality_score": res.quality_score},
         )
-        return {"status": "ok", "run_id": run_id, "vault_index": index_path, "vault_dir": vault_dir}
+        return {
+            "status": "ok",
+            "run_id": run_id,
+            "vault_index": index_path,
+            "vault_dir": vault_dir,
+        }
     except KeyError:
-        raise HTTPException(status_code=404, detail=f"Research run '{run_id}' not found")
+        raise HTTPException(
+            status_code=404, detail=f"Research run '{run_id}' not found"
+        )
 
 
 @router.post("/research/{run_id}/export/zotero")
@@ -248,7 +264,13 @@ async def export_research_zotero(run_id: str, output_dir: Optional[str] = None):
         zotero_dir = output_dir or f"./data/exports/zotero_{run_id}"
         exporter = ZoteroLibraryExporter(zotero_dir)
         files = exporter.export_all([], query=res.query)
-        return {"status": "ok", "run_id": run_id, "files": files, "output_dir": zotero_dir}
+        return {
+            "status": "ok",
+            "run_id": run_id,
+            "files": files,
+            "output_dir": zotero_dir,
+        }
     except KeyError:
-        raise HTTPException(status_code=404, detail=f"Research run '{run_id}' not found")
-
+        raise HTTPException(
+            status_code=404, detail=f"Research run '{run_id}' not found"
+        )

@@ -38,13 +38,19 @@ class AxiomRemoteWorker:
         self.registry = registry or activity_registry
         self.concurrency = concurrency
         self.heartbeat_interval = heartbeat_interval
-        self.client = AxiomClient(base_url=self.coordinator_url, token=self.worker_token)
+        self.client = AxiomClient(
+            base_url=self.coordinator_url, token=self.worker_token
+        )
         self._running = False
 
     async def start(self):
         """Start the remote worker long-polling loop."""
         self._running = True
-        logger.info("[AxiomWorker %s] Connected to coordinator %s", self.worker_id, self.coordinator_url)
+        logger.info(
+            "[AxiomWorker %s] Connected to coordinator %s",
+            self.worker_id,
+            self.coordinator_url,
+        )
 
         spec = WorkerSpec(
             id=self.worker_id,
@@ -61,8 +67,12 @@ class AxiomRemoteWorker:
                     await asyncio.sleep(0.2)
                     continue
 
-                logger.info("[AxiomWorker] Claimed task: activity=%s node=%s exec=%s",
-                            item.activity, item.node.id, item.token.executionId)
+                logger.info(
+                    "[AxiomWorker] Claimed task: activity=%s node=%s exec=%s",
+                    item.activity,
+                    item.node.id,
+                    item.token.executionId,
+                )
 
                 # Execute task within semaphore bound
                 asyncio.create_task(self._process_work_item(item, semaphore))
@@ -79,21 +89,25 @@ class AxiomRemoteWorker:
         """Stop worker execution."""
         self._running = False
 
-    async def _process_work_item(self, item: RemoteWorkItem, semaphore: asyncio.Semaphore):
+    async def _process_work_item(
+        self, item: RemoteWorkItem, semaphore: asyncio.Semaphore
+    ):
         async with semaphore:
             handler = self.registry.get(item.activity)
             if not handler:
                 logger.error("No handler registered for activity: %s", item.activity)
                 failure = RemoteFailure(
                     failure_class="permanent",
-                    message=f"No Python handler registered for activity '{item.activity}'"
+                    message=f"No Python handler registered for activity '{item.activity}'",
                 )
                 await self.client.fail(item.token, failure, duration_nanos=0)
                 return
 
             # Background heartbeat task
             stop_heartbeat = asyncio.Event()
-            heartbeat_task = asyncio.create_task(self._heartbeat_loop(item, stop_heartbeat))
+            heartbeat_task = asyncio.create_task(
+                self._heartbeat_loop(item, stop_heartbeat)
+            )
 
             start_time = time.perf_counter_ns()
             try:
@@ -104,14 +118,26 @@ class AxiomRemoteWorker:
                 # Commit completion
                 success = await self.client.complete(item.token, result, duration_nanos)
                 if success:
-                    logger.info("[AxiomWorker] Completed node %s in %d ms", item.node.id, duration_nanos // 1_000_000)
+                    logger.info(
+                        "[AxiomWorker] Completed node %s in %d ms",
+                        item.node.id,
+                        duration_nanos // 1_000_000,
+                    )
                 else:
-                    logger.warning("[AxiomWorker] Complete rejected for node %s (possible lease conflict)", item.node.id)
+                    logger.warning(
+                        "[AxiomWorker] Complete rejected for node %s (possible lease conflict)",
+                        item.node.id,
+                    )
 
             except Exception as exc:
                 duration_nanos = time.perf_counter_ns() - start_time
                 failure_class, retry_after = map_exception_to_failure(exc)
-                logger.warning("[AxiomWorker] Node %s failed (%s): %s", item.node.id, failure_class, exc)
+                logger.warning(
+                    "[AxiomWorker] Node %s failed (%s): %s",
+                    item.node.id,
+                    failure_class,
+                    exc,
+                )
 
                 failure = RemoteFailure(
                     failure_class=failure_class,
@@ -130,7 +156,9 @@ class AxiomRemoteWorker:
                 await asyncio.sleep(self.heartbeat_interval)
                 if stop_event.is_set():
                     break
-                await self.client.heartbeat(item.token, details={"worker": self.worker_id})
+                await self.client.heartbeat(
+                    item.token, details={"worker": self.worker_id}
+                )
             except asyncio.CancelledError:
                 break
             except Exception as e:

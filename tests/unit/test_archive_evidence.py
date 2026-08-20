@@ -22,17 +22,21 @@ def test_archive_uses_full_text_and_exports_relevance_provenance():
     )
     extraction = ExtractionEngine.extract_from_html(artifact.url, html)
     extraction.abstract_markdown = extraction.clean_markdown
-    extraction.full_text_markdown = "## Page 1\n\nFull PDF evidence with measurable result."
+    extraction.full_text_markdown = (
+        "## Page 1\n\nFull PDF evidence with measurable result."
+    )
     extraction.source_type = "PRIMARY_RESEARCH"
     extraction.authority_score = 0.9
     extraction.relevance_score = 0.88
     extraction.published_at = "2025"
 
     with tempfile.TemporaryDirectory() as output_dir:
-        built = ArchiveExporter(SearchRunMetadata(query="evidence")).build_archive_structure(
-            [(artifact, extraction)], output_dir=output_dir
-        )
-        with open(os.path.join(built, "rag", "rag_chunks.jsonl"), encoding="utf-8") as f:
+        built = ArchiveExporter(
+            SearchRunMetadata(query="evidence")
+        ).build_archive_structure([(artifact, extraction)], output_dir=output_dir)
+        with open(
+            os.path.join(built, "rag", "rag_chunks.jsonl"), encoding="utf-8"
+        ) as f:
             chunk = json.loads(f.readline())
         assert "Full PDF evidence" in chunk["text"]
         assert chunk["relevance_score"] == 0.88

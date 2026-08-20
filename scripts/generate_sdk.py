@@ -5,9 +5,6 @@ Parses docs/openapi.yaml and generates production-ready, fully-typed client SDKs
 2. Go (go module)
 """
 
-import os
-import sys
-import yaml
 from pathlib import Path
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
@@ -25,16 +22,11 @@ def generate_typescript_sdk():
         "description": "Official TypeScript/JavaScript Client SDK for DeepSearch Platform",
         "main": "dist/index.js",
         "types": "dist/index.d.ts",
-        "scripts": {
-            "build": "tsc",
-            "test": "echo \"Running TS tests\""
-        },
+        "scripts": {"build": "tsc", "test": 'echo "Running TS tests"'},
         "keywords": ["deepsearch", "scraper", "rag", "retrieval", "sdk"],
         "author": "DeepSearch Team",
         "license": "Apache-2.0",
-        "devDependencies": {
-            "typescript": "^5.3.0"
-        }
+        "devDependencies": {"typescript": "^5.3.0"},
     }
 
     tsconfig = {
@@ -44,9 +36,9 @@ def generate_typescript_sdk():
             "declaration": True,
             "outDir": "./dist",
             "strict": True,
-            "esModuleInterop": True
+            "esModuleInterop": True,
         },
-        "include": ["src/**/*"]
+        "include": ["src/**/*"],
     }
 
     types_ts = """/**
@@ -221,20 +213,24 @@ export * from "./types";
 """
 
     import json
-    (SDK_DIR / "typescript" / "package.json").write_text(json.dumps(package_json, indent=2), encoding="utf-8")
-    (SDK_DIR / "typescript" / "tsconfig.json").write_text(json.dumps(tsconfig, indent=2), encoding="utf-8")
+
+    (SDK_DIR / "typescript" / "package.json").write_text(
+        json.dumps(package_json, indent=2), encoding="utf-8"
+    )
+    (SDK_DIR / "typescript" / "tsconfig.json").write_text(
+        json.dumps(tsconfig, indent=2), encoding="utf-8"
+    )
     (ts_dir / "types.ts").write_text(types_ts, encoding="utf-8")
     (ts_dir / "client.ts").write_text(client_ts, encoding="utf-8")
     (ts_dir / "index.ts").write_text('export * from "./client";\n', encoding="utf-8")
     (SDK_DIR / "typescript" / "README.md").write_text(
         "# DeepSearch TypeScript Client SDK\n\nOfficial typed client library for the DeepSearch API.\n",
-        encoding="utf-8"
+        encoding="utf-8",
     )
     print("[OK] Generated TypeScript SDK in sdk/typescript")
 
 
 def generate_go_sdk():
-
     go_dir = SDK_DIR / "go"
     go_dir.mkdir(parents=True, exist_ok=True)
 
@@ -460,7 +456,7 @@ func (c *Client) CancelResearch(ctx context.Context, runID string) error {
     (go_dir / "client.go").write_text(client_go, encoding="utf-8")
     (go_dir / "README.md").write_text(
         "# DeepSearch Go Client SDK\n\nOfficial Go client library for the DeepSearch Platform.\n",
-        encoding="utf-8"
+        encoding="utf-8",
     )
     print("[OK] Generated Go SDK in sdk/go")
 
@@ -469,4 +465,3 @@ if __name__ == "__main__":
     generate_typescript_sdk()
     generate_go_sdk()
     print("All SDKs successfully generated from OpenAPI specifications.")
-

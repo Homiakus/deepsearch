@@ -1,8 +1,8 @@
 """Browser and Execution Capabilities Model (§4, DS-RB03, DS-RB04)."""
 
 from enum import Enum
-from typing import Dict, Any, Union
-from pydantic import BaseModel, Field
+from typing import Union
+from pydantic import BaseModel
 
 
 class CapabilityLevel(str, Enum):
@@ -33,6 +33,7 @@ class CapabilityLevel(str, Enum):
 
 class BrowserCapabilities(BaseModel):
     """Capabilities provided by a specific execution engine or required by a request."""
+
     html: CapabilityLevel = CapabilityLevel.SUPPORTED
     javascript: CapabilityLevel = CapabilityLevel.UNSUPPORTED
     dom_mutation: CapabilityLevel = CapabilityLevel.UNSUPPORTED
@@ -90,6 +91,7 @@ class BrowserCapabilities(BaseModel):
 
 class BackendDescriptor(BaseModel):
     """Metadata and capability envelope of an acquisition backend."""
+
     name: str
     version: str = "1.0.0"
     engine_family: str  # "http", "servo", "chromium", "browseroxide", "blitz"

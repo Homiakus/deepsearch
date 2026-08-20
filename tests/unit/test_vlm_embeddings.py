@@ -1,17 +1,33 @@
 """Unit tests for Multimodal VLM Embeddings and PixelRAG Pipeline."""
 
-import pytest
 from scraper.visual.tiling import VisualTile
-from scraper.visual.vlm_embeddings import VLMEmbeddingEngine, VisualEmbedding
+from scraper.visual.vlm_embeddings import VLMEmbeddingEngine
 from scraper.visual.pixel_rag import PixelRAGPipeline
 
 
 def test_vlm_embedding_engine_deterministic():
     engine = VLMEmbeddingEngine(embedding_dim=128)
 
-    tile1 = VisualTile(page_id="p1", tile_id=1, x=0, y=0, width=500, height=500, tile_bytes=b"tile1", image_hash="hash1")
-    tile2 = VisualTile(page_id="p1", tile_id=2, x=500, y=0, width=500, height=500, tile_bytes=b"tile2", image_hash="hash2")
-
+    tile1 = VisualTile(
+        page_id="p1",
+        tile_id=1,
+        x=0,
+        y=0,
+        width=500,
+        height=500,
+        tile_bytes=b"tile1",
+        image_hash="hash1",
+    )
+    tile2 = VisualTile(
+        page_id="p1",
+        tile_id=2,
+        x=500,
+        y=0,
+        width=500,
+        height=500,
+        tile_bytes=b"tile2",
+        image_hash="hash2",
+    )
 
     emb1 = engine.embed_tile(tile1)
     emb1_repeat = engine.embed_tile(tile1)
@@ -34,6 +50,7 @@ def test_pixel_rag_pipeline_search():
     # Fake 1000x1000 PNG image bytes
     from PIL import Image
     import io
+
     img = Image.new("RGB", (1000, 1000), color="blue")
     buf = io.BytesIO()
     img.save(buf, format="PNG")

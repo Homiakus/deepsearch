@@ -30,5 +30,11 @@ def test_block_ipv6_loopback():
 
 def test_allow_public_urls():
     policy = URLSecurityPolicy(block_private_ips=True)
-    assert policy.validate_url("https://example.com/dataset") == "https://example.com/dataset"
-    assert policy.validate_url("https://arxiv.org/abs/2103.00020") == "https://arxiv.org/abs/2103.00020"
+    assert (
+        policy.validate_url("https://example.com/dataset")
+        == "https://example.com/dataset"
+    )
+    assert (
+        policy.validate_url("https://arxiv.org/abs/2103.00020")
+        == "https://arxiv.org/abs/2103.00020"
+    )

@@ -4,7 +4,7 @@ import logging
 import urllib.parse
 import httpx
 from typing import List
-from scraper.discovery.providers.base import DiscoveryProvider, ProviderDescriptor, ProviderSearchRequest
+from scraper.discovery.providers.base import ProviderDescriptor, ProviderSearchRequest
 from scraper.search.candidates import SourceCandidate
 
 logger = logging.getLogger(__name__)
@@ -28,13 +28,21 @@ class WikipediaProvider:
             "User-Agent": "DeepSearchBot/1.0 (https://github.com/deepsearch; contact@deepsearch.org) Mozilla/5.0"
         }
         try:
-            async with httpx.AsyncClient(timeout=request.timeout_sec, trust_env=False) as client:
+            async with httpx.AsyncClient(
+                timeout=request.timeout_sec, trust_env=False
+            ) as client:
                 res = await client.get(url, headers=headers)
                 if res.status_code == 200:
                     data = res.json()
-                    titles = data[1] if len(data) > 1 and isinstance(data[1], list) else []
-                    snippets = data[2] if len(data) > 2 and isinstance(data[2], list) else []
-                    urls = data[3] if len(data) > 3 and isinstance(data[3], list) else []
+                    titles = (
+                        data[1] if len(data) > 1 and isinstance(data[1], list) else []
+                    )
+                    snippets = (
+                        data[2] if len(data) > 2 and isinstance(data[2], list) else []
+                    )
+                    urls = (
+                        data[3] if len(data) > 3 and isinstance(data[3], list) else []
+                    )
 
                     for idx, link in enumerate(urls, start=1):
                         title = titles[idx - 1] if idx - 1 < len(titles) else ""
@@ -53,6 +61,8 @@ class WikipediaProvider:
                             )
                         )
         except Exception as exc:
-            logger.warning("WikipediaProvider search error for query '%s': %s", request.query, exc)
+            logger.warning(
+                "WikipediaProvider search error for query '%s': %s", request.query, exc
+            )
 
         return candidates

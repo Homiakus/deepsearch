@@ -27,5 +27,4 @@ class ProviderSearchRequest(BaseModel):
 class DiscoveryProvider(Protocol):
     descriptor: ProviderDescriptor
 
-    async def search(self, request: ProviderSearchRequest) -> List[SourceCandidate]:
-        ...
+    async def search(self, request: ProviderSearchRequest) -> List[SourceCandidate]: ...

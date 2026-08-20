@@ -1,6 +1,6 @@
 """Candidate Feature Vector (DS-SI21)."""
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 
 class CandidateFeatureVector(BaseModel):

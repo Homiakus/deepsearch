@@ -14,18 +14,33 @@ class SourceClass(str, Enum):
     UNKNOWN = "unknown"
 
 
-# High authority scientific & medical repositories
+# High authority scientific, medical, and multi-regional repositories
 ACADEMIC_DOMAINS = {
     "europepmc.org": 0.95,
     "ncbi.nlm.nih.gov": 0.95,
-    "pubmed.ncbi.nlm.nih.gov": 0.95,
+    "pubmed.ncbi.nlm.nih.gov": 0.96,
+    "semanticscholar.org": 0.96,
+    "api.semanticscholar.org": 0.96,
+    "openalex.org": 0.95,
+    "crossref.org": 0.96,
+    "api.crossref.org": 0.96,
     "arxiv.org": 0.90,
     "export.arxiv.org": 0.90,
-    "nature.com": 0.95,
-    "science.org": 0.95,
-    "thelancet.com": 0.95,
-    "nejm.org": 0.95,
-    "doi.org": 0.90,
+    "biorxiv.org": 0.88,
+    "medrxiv.org": 0.88,
+    "nature.com": 0.98,
+    "science.org": 0.98,
+    "cell.com": 0.98,
+    "thelancet.com": 0.98,
+    "nejm.org": 0.98,
+    "bmj.com": 0.97,
+    "jamanetwork.com": 0.97,
+    "pnas.org": 0.96,
+    "hal.science": 0.93,
+    "cyberleninka.ru": 0.92,
+    "scielo.org": 0.92,
+    "jstage.jst.go.jp": 0.92,
+    "doi.org": 0.92,
 }
 
 TECH_DOMAINS = {
@@ -64,19 +79,32 @@ def calculate_authority_prior(
     if d_lower in GOVERNMENT_DOMAINS:
         return GOVERNMENT_DOMAINS[d_lower]
 
-    for dom, score in {**ACADEMIC_DOMAINS, **TECH_DOMAINS, **GOVERNMENT_DOMAINS}.items():
+    for dom, score in {
+        **ACADEMIC_DOMAINS,
+        **TECH_DOMAINS,
+        **GOVERNMENT_DOMAINS,
+    }.items():
         if d_lower.endswith(f".{dom}"):
             return score
 
     # 2. Source-type contextual prior
-    if source_type in (SourceType.GUIDELINE.value, SourceType.REGULATOR.value, SourceType.STANDARD.value):
+    if source_type in (
+        SourceType.GUIDELINE.value,
+        SourceType.REGULATOR.value,
+        SourceType.STANDARD.value,
+    ):
+        return 0.94
+    if source_type in (
+        SourceType.META_ANALYSIS.value,
+        SourceType.SYSTEMATIC_REVIEW.value,
+    ):
+        return 0.96
+    if source_type == SourceType.PRIMARY_RESEARCH.value:
         return 0.92
-    if source_type in (SourceType.PRIMARY_RESEARCH.value, SourceType.SYSTEMATIC_REVIEW.value, SourceType.META_ANALYSIS.value):
-        return 0.90
     if source_type == SourceType.OFFICIAL_DOC.value:
-        return 0.88
-    if source_type == SourceType.GOVERNMENT.value:
         return 0.90
+    if source_type == SourceType.GOVERNMENT.value:
+        return 0.92
     if source_type == SourceType.SOURCE_CODE.value:
         return 0.85
     if source_type == SourceType.WIKI.value:
@@ -93,6 +121,11 @@ def calculate_authority_prior(
 
 PEER_REVIEWED_DOMAINS = (
     "nature.com",
+    "science.org",
+    "cell.com",
+    "thelancet.com",
+    "nejm.org",
+    "bmj.com",
     "springer.com",
     "sciencedirect.com",
     "mdpi.com",
@@ -103,10 +136,18 @@ PEER_REVIEWED_DOMAINS = (
     "wiley.com",
     "tandfonline.com",
     "pubmed.ncbi.nlm.nih.gov",
+    "semanticscholar.org",
+    "openalex.org",
+    "hal.science",
+    "cyberleninka.ru",
+    "scielo.org",
+    "jstage.jst.go.jp",
 )
 
 
-def classify_source_class(url: str, source_type: str = "UNKNOWN", title: str = "") -> SourceClass:
+def classify_source_class(
+    url: str, source_type: str = "UNKNOWN", title: str = ""
+) -> SourceClass:
     """Classifies epistemic role independently of topical relevance."""
     from urllib.parse import urlparse
 
@@ -115,22 +156,38 @@ def classify_source_class(url: str, source_type: str = "UNKNOWN", title: str = "
     path = parsed.path.lower()
     title_lower = (title or "").lower()
 
-    if any(marker in path for marker in ("/search", "/results", "/browse", "/login", "/accounts/login")):
+    if any(
+        marker in path
+        for marker in ("/search", "/results", "/browse", "/login", "/accounts/login")
+    ):
         return SourceClass.NAVIGATION
     if source_type in (SourceType.WIKI.value, SourceType.AGGREGATOR.value):
         return SourceClass.SECONDARY
-    if source_type in (SourceType.BLOG.value, SourceType.NEWS_MEDIA.value, SourceType.NEWS_WIRE.value):
+    if source_type in (
+        SourceType.BLOG.value,
+        SourceType.NEWS_MEDIA.value,
+        SourceType.NEWS_WIRE.value,
+    ):
         return SourceClass.SECONDARY
-    if domain == "arxiv.org" or domain == "export.arxiv.org":
+    if domain in ("arxiv.org", "export.arxiv.org", "biorxiv.org", "medrxiv.org"):
         return SourceClass.PREPRINT
     if domain == "europepmc.org" and "/article/" in path:
         return SourceClass.PEER_REVIEWED
     if any(domain == d or domain.endswith("." + d) for d in PEER_REVIEWED_DOMAINS):
         return SourceClass.PEER_REVIEWED
-    if source_type in (SourceType.REGULATOR.value, SourceType.GUIDELINE.value, SourceType.STANDARD.value, SourceType.GOVERNMENT.value, SourceType.OFFICIAL_DOC.value):
+    if source_type in (
+        SourceType.REGULATOR.value,
+        SourceType.GUIDELINE.value,
+        SourceType.STANDARD.value,
+        SourceType.GOVERNMENT.value,
+        SourceType.OFFICIAL_DOC.value,
+    ):
         return SourceClass.OFFICIAL
     if source_type == SourceType.SOURCE_CODE.value:
         return SourceClass.DATASET
-    if any(term in title_lower for term in ("survey", "systematic review", "meta-analysis", "benchmark")):
+    if any(
+        term in title_lower
+        for term in ("survey", "systematic review", "meta-analysis", "benchmark")
+    ):
         return SourceClass.SECONDARY
     return SourceClass.UNKNOWN

@@ -50,6 +50,7 @@ playwright-report/
 data/
 laser_research_dataset/
 papanicolaou_lbc_dataset/
+papanicolaou_lbc_physicochemical_dataset/
 deepsearch_*_test/
 evals/results/
 scratch/

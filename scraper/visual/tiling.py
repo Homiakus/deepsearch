@@ -7,6 +7,7 @@ from pydantic import BaseModel
 
 try:
     from PIL import Image
+
     PIL_AVAILABLE = True
 except ImportError:
     PIL_AVAILABLE = False
@@ -27,7 +28,7 @@ def generate_screenshot_tiles(
     page_id: str,
     screenshot_bytes: bytes,
     tile_width: int = 1280,
-    tile_height: int = 1024
+    tile_height: int = 1024,
 ) -> List[VisualTile]:
     """Slices a full page screenshot into visual tiles (§40)."""
     if not PIL_AVAILABLE or not screenshot_bytes:
@@ -52,16 +53,18 @@ def generate_screenshot_tiles(
 
             img_hash = hashlib.sha256(t_bytes).hexdigest()
 
-            tiles.append(VisualTile(
-                page_id=page_id,
-                tile_id=tile_id,
-                x=x,
-                y=y,
-                width=crop_w,
-                height=crop_h,
-                image_hash=img_hash,
-                tile_bytes=t_bytes
-            ))
+            tiles.append(
+                VisualTile(
+                    page_id=page_id,
+                    tile_id=tile_id,
+                    x=x,
+                    y=y,
+                    width=crop_w,
+                    height=crop_h,
+                    image_hash=img_hash,
+                    tile_bytes=t_bytes,
+                )
+            )
             tile_id += 1
 
     return tiles

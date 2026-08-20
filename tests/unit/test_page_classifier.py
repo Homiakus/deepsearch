@@ -4,7 +4,12 @@ from scraper.acquisition.page_classifier import classify_page
 
 
 def test_classify_json_content():
-    pi = classify_page("https://api.example.com/data", 200, {"content-type": "application/json"}, '{"key": "val"}')
+    pi = classify_page(
+        "https://api.example.com/data",
+        200,
+        {"content-type": "application/json"},
+        '{"key": "val"}',
+    )
     assert pi.content_type == "json"
     assert pi.static_score == 1.0
     assert pi.js_dependency_score == 0.0
@@ -18,7 +23,9 @@ def test_classify_react_next_page():
       <body><div id="__next"></div></body>
     </html>
     """
-    pi = classify_page("https://example.com/next-page", 200, {"content-type": "text/html"}, html)
+    pi = classify_page(
+        "https://example.com/next-page", 200, {"content-type": "text/html"}, html
+    )
     assert "Next.js" in pi.detected_frameworks
     assert pi.js_dependency_score >= 0.5
 
