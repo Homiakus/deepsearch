@@ -38,8 +38,13 @@ class CrossRefProvider:
             headers = {
                 "User-Agent": "DeepSearch-Research/1.0 (mailto:scholar@deepsearch.ai)"
             }
+            transport = httpx.AsyncHTTPTransport(retries=2)
             async with httpx.AsyncClient(
-                timeout=request.timeout_sec, headers=headers, trust_env=False
+                transport=transport,
+                timeout=request.timeout_sec,
+                headers=headers,
+                follow_redirects=True,
+                trust_env=False,
             ) as client:
                 res = await client.get(url)
                 if res.status_code == 200:

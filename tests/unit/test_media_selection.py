@@ -110,3 +110,77 @@ def test_media_quality_gate_rejects_small_and_technical_assets():
         {"width": 800, "height": 600, "relevance_score": 0.8},
         {"caption": "Quantum algorithm diagram"},
     )
+
+
+def test_score_and_rank_images_short_acronyms():
+    query = "AI 3D modeling"
+    candidates = [
+        {
+            "url": "https://example.com/ai_3d_render.jpg",
+            "caption": "Generative AI 3D mesh reconstruction workflow",
+            "alt": "AI 3D modeling diagram",
+            "source_domain": "arxiv.org",
+            "width": 800,
+            "height": 600,
+        },
+        {
+            "url": "https://example.com/unrelated.jpg",
+            "caption": "Standard database tables and records",
+            "alt": "database schemas",
+            "source_domain": "example.com",
+            "width": 800,
+            "height": 600,
+        },
+    ]
+    ranked = score_and_rank_images(candidates, query=query, min_count=1, max_count=5)
+    assert len(ranked) == 1
+    assert ranked[0]["url"] == "https://example.com/ai_3d_render.jpg"
+    assert ranked[0]["relevance_score"] >= 0.7
+
+
+def test_score_and_rank_images_boundary_matching_no_false_positives():
+    # "art" should not match "smart" or "chart"
+    query = "art history"
+    candidates = [
+        {
+            "url": "https://example.com/chart.png",
+            "caption": "Smart financial chart diagram",
+            "alt": "trading chart",
+            "source_domain": "example.com",
+            "width": 800,
+            "height": 600,
+        },
+        {
+            "url": "https://example.com/renaissance_art.jpg",
+            "caption": "Renaissance art history exhibition painting",
+            "alt": "Fine art gallery",
+            "source_domain": "wikimedia.org",
+            "width": 800,
+            "height": 600,
+        },
+    ]
+    ranked = score_and_rank_images(candidates, query=query, min_count=1, max_count=5)
+    assert len(ranked) == 1
+    assert ranked[0]["url"] == "https://example.com/renaissance_art.jpg"
+
+
+def test_extract_image_candidates_with_og_and_srcset():
+    html = """
+    <html>
+        <head>
+            <title>Deep Neural Networks Architecture</title>
+            <meta property="og:image" content="https://example.com/og_hero.jpg">
+        </head>
+        <body>
+            <picture>
+                <source srcset="https://example.com/pic_small.webp 400w, https://example.com/pic_large.webp 1200w">
+                <img src="https://example.com/pic_fallback.jpg" alt="Neural Network Layer Structure">
+            </picture>
+        </body>
+    </html>
+    """
+    candidates = extract_image_candidates(html, "https://example.com/article")
+    urls = [c["url"] for c in candidates]
+    assert "https://example.com/og_hero.jpg" in urls
+    assert "https://example.com/pic_large.webp" in urls
+

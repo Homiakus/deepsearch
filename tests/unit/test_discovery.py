@@ -81,3 +81,21 @@ async def test_fetch_annas_archive_seeds():
         assert "https://annas-archive.cc/book/123456" in seeds
         assert "https://annas-archive.cc/md5/abc123def456" in seeds
         assert "https://annas-archive.cc/article/7890" in seeds
+
+
+def test_provider_yield_tracker():
+    from scraper.discovery.provider_policy import ProviderYieldTracker
+
+    tracker = ProviderYieldTracker()
+    assert tracker.get_health_factor("pubmed") == 1.0
+
+    # Record healthy calls
+    tracker.record_call("pubmed", candidate_count=10, error=False)
+    assert tracker.get_health_factor("pubmed") == 1.0
+
+    # Record failing calls
+    tracker.record_call("flaky_prov", candidate_count=0, error=True)
+    tracker.record_call("flaky_prov", candidate_count=0, error=True)
+    tracker.record_call("flaky_prov", candidate_count=0, error=True)
+    assert tracker.get_health_factor("flaky_prov") == 0.2
+

@@ -37,8 +37,12 @@ class RegionalAcademicProvider:
             hal_query = urllib.parse.quote(request.query)
             hal_url = f"https://api.archives-ouvertes.fr/search/?q={hal_query}&wt=json&rows={min(request.max_results, 8)}&fl=uri_s,title_s,abstract_s,producedDateY_i,doiId_s,docType_s"
 
+            transport = httpx.AsyncHTTPTransport(retries=2)
             async with httpx.AsyncClient(
-                timeout=request.timeout_sec, trust_env=False
+                transport=transport,
+                timeout=request.timeout_sec,
+                follow_redirects=True,
+                trust_env=False,
             ) as client:
                 res = await client.get(hal_url)
                 if res.status_code == 200:
@@ -85,8 +89,13 @@ class RegionalAcademicProvider:
                 cl_query = urllib.parse.quote(request.query)
                 cl_url = f"https://cyberleninka.ru/api/search?q={cl_query}&size={min(request.max_results, 8)}"
                 headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+                transport = httpx.AsyncHTTPTransport(retries=2)
                 async with httpx.AsyncClient(
-                    timeout=request.timeout_sec, headers=headers, trust_env=False
+                    transport=transport,
+                    timeout=request.timeout_sec,
+                    headers=headers,
+                    follow_redirects=True,
+                    trust_env=False,
                 ) as client:
                     res = await client.get(cl_url)
                     if res.status_code == 200:

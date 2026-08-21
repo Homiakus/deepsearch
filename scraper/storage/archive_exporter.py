@@ -31,6 +31,9 @@ class SearchRunMetadata(BaseModel):
     created_at: float = Field(default_factory=time.time)
 
 
+from scraper.search.chunking import StructureAwareChunker, StructuredChunk
+
+
 class RAGChunk(BaseModel):
     chunk_id: str
     source_url: str
@@ -40,6 +43,9 @@ class RAGChunk(BaseModel):
     text: str
     token_estimate: int
     relevance_score: Optional[float] = None
+    heading_path: List[str] = Field(default_factory=list)
+    parent_section_id: Optional[str] = None
+    ordinal: int = 0
     provenance: Dict[str, Any] = Field(default_factory=dict)
 
 
@@ -48,29 +54,30 @@ class ArchiveExporter:
 
     def __init__(self, metadata: SearchRunMetadata):
         self.metadata = metadata
+        self._chunker = StructureAwareChunker(target_words=250, min_words=25)
 
-    def _chunk_text(self, text: str, max_words: int = 250) -> List[str]:
-        """Simple word-bounded chunking for RAG ingestion."""
+    def _chunk_text(
+        self,
+        text: str,
+        doc_id: str = "doc",
+        source_url: str = "",
+        title: str = "",
+        max_words: int = 250,
+    ) -> List[StructuredChunk]:
+        """Structure-aware chunking for RAG ingestion."""
         if not text:
             return []
-        paragraphs = text.split("\n\n")
-        chunks = []
-        current_chunk = []
-        current_count = 0
-
-        for p in paragraphs:
-            p_words = len(p.split())
-            if current_count + p_words > max_words and current_chunk:
-                chunks.append("\n\n".join(current_chunk))
-                current_chunk = [p]
-                current_count = p_words
-            else:
-                current_chunk.append(p)
-                current_count += p_words
-
-        if current_chunk:
-            chunks.append("\n\n".join(current_chunk))
-        return chunks
+        chunker = (
+            self._chunker
+            if max_words == self._chunker.target_words
+            else StructureAwareChunker(target_words=max_words, min_words=25)
+        )
+        return chunker.chunk_markdown(
+            markdown_text=text,
+            document_id=doc_id,
+            source_url=source_url,
+            title=title,
+        )
 
     def build_archive_structure(
         self,
@@ -161,20 +168,32 @@ class ArchiveExporter:
                 or extraction.fit_markdown
                 or extraction.clean_markdown
             )
-            chunks = self._chunk_text(text_for_rag)
+            structured_chunks = self._chunk_text(
+                text=text_for_rag,
+                doc_id=safe_title,
+                source_url=artifact.url,
+                title=safe_title,
+                max_words=250,
+            )
 
-            for c_idx, chunk_text in enumerate(chunks):
+            for c_idx, s_chunk in enumerate(structured_chunks):
                 chunk_id = f"{safe_title}_c{c_idx + 1:03d}"
-                token_est = int(len(chunk_text.split()) * 1.3)
+                token_est = (
+                    s_chunk.token_estimate
+                    or int(len(s_chunk.text.split()) * 1.3)
+                )
                 rag_chunk = RAGChunk(
                     chunk_id=chunk_id,
                     source_url=artifact.url,
                     canonical_url=artifact.canonical_url,
                     title=safe_title,
                     domain=domain_name,
-                    text=chunk_text,
+                    text=s_chunk.text,
                     token_estimate=token_est,
                     relevance_score=extraction.relevance_score,
+                    heading_path=s_chunk.heading_path,
+                    parent_section_id=s_chunk.parent_section_id,
+                    ordinal=s_chunk.ordinal,
                     provenance={
                         "strategy": artifact.strategy_used,
                         "status_code": artifact.status_code,
@@ -184,6 +203,7 @@ class ArchiveExporter:
                         "published_at": extraction.published_at,
                         "document_type": extraction.document_type,
                         "full_text": bool(extraction.full_text_markdown),
+                        "heading_path": s_chunk.heading_path,
                     },
                 )
                 all_rag_chunks.append(rag_chunk)

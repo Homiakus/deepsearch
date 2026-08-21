@@ -73,26 +73,58 @@ class QueryGenerator:
         if any(ord(c) > 127 for c in clean_q):
             en_query = clean_q.lower()
             translations = [
+                # Biomedical & Clinical
                 ("жидкостная биопсия", "liquid biopsy ctDNA circulating tumor DNA"),
                 ("колоректальный рак", "colorectal cancer"),
-                ("онкологи", "oncology"),
-                ("квантов", "quantum"),
-                ("лазерн", "laser cutting assist gas nozzle parameters"),
-                ("резани", "machining parameters cutting speed feed rate"),
-                ("титан", "titanium alloy Ti6Al4V"),
-                ("печать", "3D printing additive manufacturing"),
+                ("онкологи", "oncology cancer neoplasms"),
                 (
                     "алопец",
                     "alopecia androgenetica tofacitinib baricitinib JAK inhibitors",
                 ),
                 ("облысени", "hair loss alopecia treatment clinical trial"),
                 ("иммунотерапи", "immunotherapy checkpoint inhibitors PD-1 CTLA-4"),
+                ("биомаркер", "biomarker diagnostic prognostic clinical validation"),
+                ("мутаци", "gene mutation variant pathogenicity CRISPR Cas9"),
+                ("фармако", "pharmacokinetics pharmacodynamics drug bioavailability"),
+                ("сердечн", "cardiovascular atherosclerosis myocardial infarction"),
+                ("нейродеген", "neurodegenerative Alzheimer Parkinson neuroprotection"),
+                ("микробиом", "microbiome gut microbiota 16S rRNA sequencing"),
+                ("вакцин", "vaccine mRNA adjuvant immunogenicity efficacy"),
+                # Materials, Physics & Engineering
+                ("квантов", "quantum computing algorithm entanglement"),
+                ("лазерн", "laser cutting assist gas nozzle parameters"),
+                ("резани", "machining parameters cutting speed feed rate"),
+                ("титан", "titanium alloy Ti6Al4V microstructure"),
+                ("печать", "3D printing additive manufacturing SLM"),
+                ("аддитивн", "additive manufacturing selective laser melting"),
+                ("твердотельн", "solid state battery solid electrolyte conductivity"),
+                ("аккумулятор", "lithium ion battery cathode anode degradation"),
+                ("графен", "graphene 2D materials synthesis characterization"),
+                ("перовскит", "perovskite solar cells photovoltaic efficiency stability"),
+                ("сверхпровод", "superconductivity high temperature superconductor critical current"),
+                ("спектроскоп", "spectroscopy FTIR Raman XRD characterization"),
+                ("полупроводник", "semiconductor bandgap heterojunction transistor"),
+                ("композит", "composite materials carbon fiber reinforced matrix"),
+                ("микроконтроллер", "microcontroller embedded systems firmware ARM RISC-V"),
+                # Computer Science, AI & Systems
                 ("нейросеть", "neural networks deep learning RAG LLM"),
+                ("трансформер", "transformer attention mechanism LLM"),
+                ("векторн", "vector database embeddings similarity search HNSW"),
+                ("обучение с подкреплением", "reinforcement learning policy gradient PPO RLHF"),
+                ("компьютерное зрение", "computer vision object detection segmentation"),
+                ("генеративн", "generative AI diffusion models LLM"),
+                ("распределенн", "distributed consensus Raft Paxos replication"),
+                ("безопасност", "cybersecurity vulnerability exploit mitigation"),
+                # Scholarly metadata & Standards
                 (
                     "первичное исследование",
                     "randomized clinical trial systematic review meta-analysis",
                 ),
-                ("научная статья", "journal article DOI"),
+                ("научная статья", "journal article peer reviewed DOI"),
+                ("гост", "standard specification technical requirements"),
+                ("патент", "patent claims prior art intellectual property"),
+                ("сравнение", "comparative analysis benchmark performance evaluation"),
+                ("мета-анализ", "meta-analysis systematic review PRISMA forest plot"),
             ]
             for ru_term, en_replacement in translations:
                 if ru_term in en_query:
@@ -139,3 +171,27 @@ class QueryGenerator:
         )
 
         return results[: self.max_queries_per_goal]
+
+    def generate_followup_variants(
+        self,
+        seed_terms: List[str],
+        original_query: str,
+        goal_id: str = "goal_followup",
+    ) -> List[SearchQueryVariant]:
+        """Generates targeted query variants from newly discovered high-relevance terms during deep crawling."""
+        if not seed_terms:
+            return []
+        variants = []
+        for term in seed_terms[:3]:
+            term_clean = term.strip()
+            if len(term_clean) > 3:
+                variants.append(
+                    SearchQueryVariant(
+                        query=f"{original_query} {term_clean}",
+                        language="en" if term_clean.isascii() else "ru",
+                        goal_id=goal_id,
+                        query_type=QueryType.DOMAIN_SPECIFIC,
+                        priority=0.85,
+                    )
+                )
+        return variants

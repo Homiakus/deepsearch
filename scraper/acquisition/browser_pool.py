@@ -80,6 +80,11 @@ class BrowserPoolManager:
         self._browser: Optional[Browser] = None
         self._lock = asyncio.Lock()
         self._storage_state_path = Path(".browser_profile/storage_state.json")
+        self._init_failed: bool = False
+
+    def is_available(self) -> bool:
+        """Returns True if Playwright is installed and browser binary is accessible."""
+        return PLAYWRIGHT_AVAILABLE and not self._init_failed
 
     async def __aenter__(self):
         await self.initialize()
@@ -90,7 +95,7 @@ class BrowserPoolManager:
 
     async def initialize(self):
         """Start Playwright engine and launch Chromium instance."""
-        if not PLAYWRIGHT_AVAILABLE:
+        if not PLAYWRIGHT_AVAILABLE or self._init_failed:
             return
 
         async with self._lock:
@@ -110,6 +115,7 @@ class BrowserPoolManager:
                         ],
                     )
                 except Exception as e:
+                    self._init_failed = True
                     raise BrowserPoolError(
                         f"Failed to initialize Playwright browser instance: {e}"
                     ) from e

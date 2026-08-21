@@ -58,6 +58,59 @@ EXCLUDE_KEYWORDS = {
 MIN_ACCEPTED_IMAGE_DIMENSION = 160
 MIN_ACCEPTED_IMAGE_RELEVANCE = 0.55
 
+AUTHORITY_DOMAINS = {
+    "wikimedia",
+    "wikipedia",
+    "pubmed",
+    "ncbi",
+    "arxiv",
+    "nature.com",
+    "sciencedirect",
+    "biorxiv",
+    "medrxiv",
+    "springer",
+    "ieee",
+    "wiley",
+    "acm.org",
+    "mdpi",
+    "frontiersin",
+    "cell.com",
+    "thelancet",
+    "github",
+}
+
+
+def _pick_best_srcset_url(srcset_str: str, base_url: str) -> Optional[str]:
+    """Picks the highest resolution image URL from a srcset attribute."""
+    if not srcset_str:
+        return None
+    candidates = []
+    for part in srcset_str.split(","):
+        part = part.strip()
+        if not part:
+            continue
+        tokens = part.split()
+        url_part = tokens[0]
+        full_url = urllib.parse.urljoin(base_url, url_part)
+        score = 1
+        if len(tokens) > 1:
+            desc = tokens[1].lower()
+            if desc.endswith("w"):
+                try:
+                    score = int(desc[:-1])
+                except ValueError:
+                    score = 1
+            elif desc.endswith("x"):
+                try:
+                    score = int(float(desc[:-1]) * 1000)
+                except ValueError:
+                    score = 1
+        candidates.append((score, full_url))
+    if candidates:
+        candidates.sort(key=lambda x: x[0], reverse=True)
+        return candidates[0][1]
+    return None
+
 
 def extract_document_links(raw_html: str, base_url: str) -> List[str]:
     """Extracts downloadable document URLs (PDF, Word, Excel, etc.) from HTML."""
@@ -109,7 +162,7 @@ def extract_document_links(raw_html: str, base_url: str) -> List[str]:
 
 
 def extract_image_candidates(raw_html: str, base_url: str) -> List[Dict[str, Any]]:
-    """Extracts candidate image nodes from HTML with rich context (alt, title, figcaption, dimensions)."""
+    """Extracts candidate image nodes from HTML with rich context (alt, title, figcaption, dimensions, og:image)."""
     if not raw_html:
         return []
 
@@ -117,12 +170,67 @@ def extract_image_candidates(raw_html: str, base_url: str) -> List[Dict[str, Any
     candidates: List[Dict[str, Any]] = []
     seen_urls: Set[str] = set()
 
+    # 1. Check OpenGraph / Twitter meta images (editorial primary visual)
+    for meta_sel in [
+        'meta[property="og:image"]',
+        'meta[name="og:image"]',
+        'meta[name="twitter:image"]',
+        'meta[property="twitter:image"]',
+    ]:
+        og_node = parser.css_first(meta_sel)
+        if og_node:
+            og_content = og_node.attributes.get("content")
+            if og_content and not og_content.startswith("data:"):
+                full_og_url = urllib.parse.urljoin(base_url, og_content)
+                if full_og_url not in seen_urls:
+                    seen_urls.add(full_og_url)
+                    title_node = parser.css_first("title") or parser.css_first(
+                        'meta[property="og:title"]'
+                    )
+                    page_title = (
+                        title_node.text(strip=True)
+                        if hasattr(title_node, "text")
+                        else str(title_node.attributes.get("content", ""))
+                    ) if title_node else ""
+                    candidates.append(
+                        {
+                            "url": full_og_url,
+                            "caption": page_title or "Main Article Image",
+                            "alt": page_title or "Main Article Image",
+                            "title": page_title or "Main Article Image",
+                            "figcaption": page_title or "",
+                            "width": 800,
+                            "height": 500,
+                            "source_domain": urllib.parse.urlparse(full_og_url).netloc,
+                            "page_url": base_url,
+                            "is_primary": True,
+                        }
+                    )
+                break
+
+    # 2. Extract standard and responsive images
     for img in parser.css("img"):
         src = (
             img.attributes.get("src")
             or img.attributes.get("data-src")
             or img.attributes.get("data-original")
         )
+        srcset = img.attributes.get("srcset")
+        if srcset:
+            best_srcset = _pick_best_srcset_url(srcset, base_url)
+            if best_srcset:
+                src = best_srcset
+
+        # Check enclosing picture tag for source srcset
+        parent = img.parent
+        if parent and parent.tag == "picture":
+            for src_tag in parent.css("source[srcset]"):
+                p_srcset = src_tag.attributes.get("srcset")
+                best_p = _pick_best_srcset_url(p_srcset or "", base_url)
+                if best_p:
+                    src = best_p
+                    break
+
         if not src or src.startswith("data:"):
             continue
 
@@ -160,14 +268,14 @@ def extract_image_candidates(raw_html: str, base_url: str) -> List[Dict[str, Any
 
         # Extract parent figure caption if enclosed in <figure>
         figcaption = ""
-        parent = img.parent
-        while parent:
-            if parent.tag == "figure":
-                fig_node = parent.css_first("figcaption")
+        p_node = img.parent
+        while p_node:
+            if p_node.tag == "figure":
+                fig_node = p_node.css_first("figcaption")
                 if fig_node:
                     figcaption = fig_node.text(strip=True)
                 break
-            parent = parent.parent
+            p_node = p_node.parent
 
         caption = alt or title or figcaption or "Topic Image / Diagram"
 
@@ -196,7 +304,8 @@ async def fetch_wikimedia_topic_images(
     if not query:
         return []
 
-    encoded_query = urllib.parse.quote(query)
+    clean_query = re.sub(r'[^\w\s-]', ' ', query).strip()
+    encoded_query = urllib.parse.quote(clean_query or query)
     search_url = (
         f"https://commons.wikimedia.org/w/api.php?action=query&generator=search"
         f"&gsrsearch={encoded_query}&gsrnamespace=6&gsrlimit={max_results}&prop=imageinfo"
@@ -260,7 +369,8 @@ async def fetch_wikipedia_article_images(
     if not query:
         return []
 
-    encoded_query = urllib.parse.quote(query)
+    clean_query = re.sub(r'[^\w\s-]', ' ', query).strip()
+    encoded_query = urllib.parse.quote(clean_query or query)
     api_url = (
         f"https://en.wikipedia.org/w/api.php?action=query&generator=search"
         f"&gsrsearch={encoded_query}&gsrlimit=5&prop=pageimages"
@@ -312,8 +422,9 @@ def score_and_rank_images(
     if not candidates:
         return []
 
-    # Clean and tokenize query terms
-    query_terms = [t.lower() for t in re.findall(r"\w+", query) if len(t) > 2]
+    # Clean and tokenize query terms (keeping meaningful short acronyms >= 2 chars, e.g. AI, 3D, ML, 5G)
+    raw_query_terms = [t.lower() for t in re.findall(r"[\w]+", query) if len(t) >= 2 or t.isalnum()]
+    query_terms = raw_query_terms
 
     scored_images: List[Dict[str, Any]] = []
     seen_urls: Set[str] = set()
@@ -324,7 +435,7 @@ def score_and_rank_images(
             continue
         seen_urls.add(url)
 
-        score = 0.3  # Base candidate score
+        score = 0.35 if item.get("is_primary") else 0.30  # Base candidate score
 
         caption = (item.get("caption") or "").lower()
         alt = (item.get("alt") or "").lower()
@@ -345,26 +456,29 @@ def score_and_rank_images(
         ):
             continue
 
-        # 1. Topic Lexical Matching
-        term_matches = sum(1 for term in query_terms if term in combined_text)
+        # 1. Topic Lexical Matching with token boundary matching to avoid false positives (e.g. art vs chart)
+        text_tokens = set(re.findall(r"[\w]+", combined_text))
+
+        def _matches_term(q_term: str) -> bool:
+            if q_term in text_tokens:
+                return True
+            # Prefix/stem matching for words >= 4 chars (e.g. "laser" in "lasers", "algorithm" in "algorithms")
+            if len(q_term) >= 4 and any(
+                tok.startswith(q_term) or q_term.startswith(tok)
+                for tok in text_tokens
+                if len(tok) >= 4
+            ):
+                return True
+            return False
+
+        term_matches = sum(1 for term in query_terms if _matches_term(term))
         if query_terms:
             match_ratio = term_matches / len(query_terms)
             score += match_ratio * 0.45
 
         # 2. Source Domain Authority
         domain = item.get("source_domain", "").lower()
-        if any(
-            d in domain
-            for d in [
-                "wikimedia",
-                "wikipedia",
-                "pubmed",
-                "ncbi",
-                "arxiv",
-                "nature.com",
-                "sciencedirect",
-            ]
-        ):
+        if any(d in domain for d in AUTHORITY_DOMAINS):
             score += 0.15
 
         # 3. Dimensions & Aspect Ratio Heuristics
@@ -380,7 +494,6 @@ def score_and_rank_images(
             else:
                 score -= 0.1
 
-        # 4. Exclusion Keywords Penalty
         final_score = round(max(0.05, min(1.0, score)), 3)
 
         if query_terms and final_score < MIN_ACCEPTED_IMAGE_RELEVANCE:

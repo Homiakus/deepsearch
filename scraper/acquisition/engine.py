@@ -165,6 +165,24 @@ class AdaptiveAcquisitionEngine:
                     )
 
         # L3: Browser Escalation (Playwright Chromium) (§6.1 L3)
+        if not getattr(self.browser_pool, "is_available", lambda: True)():
+            if http_res:
+                pi = classify_page(
+                    url, http_res.status_code, http_res.headers, http_res.text
+                )
+                return CapturedArtifact(
+                    url=http_res.url,
+                    canonical_url=canonical_url,
+                    strategy_used=StrategyEscalation.HTTP,
+                    status_code=http_res.status_code,
+                    content_type=http_res.content_type,
+                    raw_content=http_res.content,
+                    text_content=http_res.text,
+                    page_intelligence=pi,
+                    elapsed_sec=http_res.elapsed_sec,
+                )
+            raise AcquisitionError(f"Failed to acquire page {url}: browser unavailable and HTTP failed")
+
         try:
             browser_res: BrowserResponse = await asyncio.wait_for(
                 self.browser_pool.fetch_page(

@@ -1,0 +1,47 @@
+[
+  {
+    "id": "search_1_medical_rus",
+    "name": "1. Медицина: Ингибиторы JAK при алопеции (RU)",
+    "query": "Клинические испытания ингибиторов JAK тофацитиниб барицитиниб при гнездной алопеции",
+    "elapsed_sec": 30.36,
+    "pages_crawled": 11,
+    "rag_chunks": 1035,
+    "quality_gate_passed": false,
+    "dir_path": "C:\\Temp\\deepsearch_run_bl9quczq",
+    "archive_path": null,
+    "total_media_files": 0,
+    "total_pdfs": 0,
+    "unique_domains": 0,
+    "average_relevance": 0.0
+  },
+  {
+    "id": "search_2_materials_en",
+    "name": "2. Материаловедение: Solid-State Battery Electrolytes (EN)",
+    "query": "Solid-state lithium metal batteries solid electrolyte interphase dendritic degradation impedance",
+    "elapsed_sec": 197.3,
+    "pages_crawled": 11,
+    "rag_chunks": 1794,
+    "quality_gate_passed": true,
+    "dir_path": "C:\\Temp\\deepsearch_run_3ys91q7y",
+    "archive_path": null,
+    "total_media_files": 0,
+    "total_pdfs": 0,
+    "unique_domains": 0,
+    "average_relevance": 0.0
+  },
+  {
+    "id": "search_3_ai_tech",
+    "name": "3. AI / Computer Science: RAG HNSW Reranking (EN)",
+    "query": "Retrieval augmented generation HNSW vector search latency reranking evaluation",
+    "elapsed_sec": 54.12,
+    "pages_crawled": 9,
+    "rag_chunks": 1156,
+    "quality_gate_passed": true,
+    "dir_path": "C:\\Temp\\deepsearch_run_wgrwerf3",
+    "archive_path": null,
+    "total_media_files": 0,
+    "total_pdfs": 0,
+    "unique_domains": 0,
+    "average_relevance": 0.0
+  }
+]

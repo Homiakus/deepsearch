@@ -43,8 +43,12 @@ class AnnasArchiveProvider:
         ]
 
         try:
+            transport = httpx.AsyncHTTPTransport(retries=2)
             async with httpx.AsyncClient(
-                timeout=request.timeout_sec, trust_env=False
+                transport=transport,
+                timeout=request.timeout_sec,
+                follow_redirects=True,
+                trust_env=False,
             ) as client:
                 for ep in endpoints:
                     res = await client.get(ep, headers=headers, follow_redirects=True)

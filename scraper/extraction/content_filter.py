@@ -33,8 +33,12 @@ class ContentFilter:
         link_words = sum(len(m.split()) for m in link_matches)
         link_density = link_words / max(total_words, 1)
 
-        # If > 65% of words are links, it is likely a tag/directory page
-        is_nav = link_density > 0.65
+        # If > 65% of words are links, it is likely a tag/directory page,
+        # unless it contains a substantial body of continuous article text (> 350 non-link words)
+        non_link_words = max(0, total_words - link_words)
+        avg_line_words = total_words / max(len(lines), 1)
+        is_substantial_article = non_link_words >= 350 and avg_line_words >= 8
+        is_nav = (link_density > 0.65) and not is_substantial_article
 
         # 2. Check for cookie/consent/boilerplate banner domination
         boilerplate_terms = [

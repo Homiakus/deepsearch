@@ -79,3 +79,30 @@ def test_query_generator_cross_lingual_mapping():
     assert any(
         "liquid biopsy" in t or "colorectal" in t or "ctdna" in t for t in queries_text
     )
+
+
+def test_query_generator_expanded_materials_and_ai_translations():
+    q = "твердотельный аккумулятор графен перовскит"
+    norm = normalize_query(q)
+    intent = ResearchIntent(
+        original_query=q,
+        normalized_query=norm.normalized_text,
+        task_type="engineering",
+    )
+    goal_graph = decompose_intent(intent)
+    q_gen = QueryGenerator()
+    variants = q_gen.generate_variants(intent, goal_graph)
+
+    queries_text = [v.query.lower() for v in variants]
+    assert any("solid state battery" in t or "graphene" in t or "perovskite" in t for t in queries_text)
+
+
+def test_query_generator_followup_variants():
+    q_gen = QueryGenerator()
+    followups = q_gen.generate_followup_variants(
+        seed_terms=["Ti6Al4V", "microstructure", "tensile strength"],
+        original_query="Laser cutting titanium",
+    )
+    assert len(followups) == 3
+    assert all("Laser cutting titanium" in f.query for f in followups)
+    assert followups[0].priority == 0.85

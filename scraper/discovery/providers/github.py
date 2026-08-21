@@ -25,8 +25,12 @@ class GitHubProvider:
         headers = {"User-Agent": "DeepSearch-Research-Bot"}
         candidates = []
         try:
+            transport = httpx.AsyncHTTPTransport(retries=2)
             async with httpx.AsyncClient(
-                timeout=request.timeout_sec, trust_env=False
+                transport=transport,
+                timeout=request.timeout_sec,
+                follow_redirects=True,
+                trust_env=False,
             ) as client:
                 res = await client.get(url, headers=headers)
                 if res.status_code == 200:

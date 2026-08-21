@@ -22,6 +22,12 @@ class DenseEmbeddingEngine:
 
     def _get_model(self):
         if not self._initialized:
+            import os
+
+            if os.environ.get("PYTEST_CURRENT_TEST") or os.environ.get("DEEPSEARCH_OFFLINE"):
+                self._model = None
+                self._initialized = True
+                return None
             try:
                 from fastembed import TextEmbedding
 

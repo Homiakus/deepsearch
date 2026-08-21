@@ -68,6 +68,14 @@ class CandidateURLPolicy:
         return None
 
     @classmethod
+    def is_binary_document(cls, url: str) -> bool:
+        """Returns True if the URL points directly to a binary document (PDF, DOCX, XLSX, etc.)."""
+        parsed = urlparse(url or "")
+        path = parsed.path.lower()
+        query = parsed.query.lower()
+        return any(marker in path or marker in query for marker in cls.BINARY_PATH_MARKERS)
+
+    @classmethod
     def is_terminal_source_allowed(cls, url: str) -> bool:
         return cls.rejection_reason(url) is None
 

@@ -7,6 +7,7 @@ adaptive page acquisition, content quality filtering, and dual-format archive ge
 import os
 import re
 import json
+import asyncio
 import tempfile
 import logging
 from typing import List, Optional, Tuple, Dict, Any
@@ -28,7 +29,11 @@ from scraper.search.query_generator import QueryGenerator
 from scraper.search.candidates import SourceCandidate
 from scraper.search.candidate_normalizer import candidate_normalizer
 from scraper.search.ranking.candidate_ranker import candidate_ranker
-from scraper.control.ranked_frontier import RankedFrontier, CandidateState
+from scraper.control.ranked_frontier import (
+    RankedFrontier,
+    CandidateState,
+    FrontierItem,
+)
 from scraper.search.document_relevance import document_relevance_evaluator
 from scraper.extraction.content_filter import content_filter
 from scraper.extraction.document_type import DocumentType, document_type_classifier
@@ -49,6 +54,7 @@ from scraper.discovery.media_finder import (
     is_accepted_media_file,
 )
 from scraper.acquisition.media_downloader import download_media_file
+from scraper.visual.pdf_figure_extractor import pdf_figure_extractor
 from scraper.extraction.pdf_extractor import extract_text_from_pdf_file
 from scraper.acquisition.open_access_resolver import open_access_resolver
 
@@ -70,6 +76,7 @@ class DeepSearchPipelineOptions(BaseModel):
     enable_media_archiving: bool = True
     min_media_count: int = 5
     max_media_count: int = 25
+    concurrency: int = 4
 
 
 class DeepSearchPipelineResult(BaseModel):
@@ -224,12 +231,14 @@ class DeepSearchPipeline:
         pdf_temp_dir = tempfile.mkdtemp(prefix="deepsearch_pdfs_")
         source_lineage = SourceLineage()
 
-        # 3. Iterative Ranked Frontier Acquisition Loop
-        while frontier.size() > 0 and len(acquired_results) < opts.max_pages:
-            item = await frontier.lease_next(lease_duration_sec=30.0)
-            if not item:
-                break
+        # 3. Iterative Ranked Frontier Acquisition Loop (Concurrent Worker Pool)
+        concurrency_limit = max(1, min(getattr(opts, "concurrency", 4) or 4, 6))
+        active_workers = 0
+        stop_event = asyncio.Event()
+        frontier_lock = asyncio.Lock()
 
+        async def _process_item(item: FrontierItem):
+            nonlocal acquired_results, downloaded_pdfs, raw_image_candidates, rejections
             current_url = item.candidate.canonical_url or item.candidate.url
             c_url = canonicalize_url(current_url)
 
@@ -242,11 +251,10 @@ class DeepSearchPipeline:
                 await frontier.mark_state(
                     item.id, CandidateState.REJECTED, error="OUT_OF_DOMAIN_SCOPE"
                 )
-                continue
+                return
 
             try:
-                pending_pdfs: List[Dict[str, Any]] = []
-                pending_pdf_hashes: set[str] = set()
+                local_pending_pdfs: List[Dict[str, Any]] = []
                 artifact = await self.acquisition_engine.acquire_page(
                     url=current_url,
                     canonical_url=c_url,
@@ -285,7 +293,7 @@ class DeepSearchPipeline:
                                     pdf_info["file_path"]
                                 )
                                 if pdf_text and len(pdf_text.strip()) > 300:
-                                    pending_pdfs.append(pdf_info)
+                                    local_pending_pdfs.append(pdf_info)
                                     extraction.clean_markdown = (
                                         f"# {oa_paper.title or item.candidate.title}\n\n"
                                         + pdf_text
@@ -323,7 +331,8 @@ class DeepSearchPipeline:
                             "status_code": artifact.status_code,
                             "strategy": artifact.strategy_used,
                         }
-                        rejections.append(rejection)
+                        async with frontier_lock:
+                            rejections.append(rejection)
                         trace.record(
                             TraceEventType.DOCUMENT_REJECTED,
                             entity_id=current_url,
@@ -334,7 +343,7 @@ class DeepSearchPipeline:
                             CandidateState.REJECTED,
                             error=pre_classification.reason_code,
                         )
-                        continue
+                        return
 
                 # PMC Fallback if text is empty shell
                 pmc_match = re.search(r"PMC\d+", artifact.url, re.IGNORECASE)
@@ -346,8 +355,9 @@ class DeepSearchPipeline:
                     try:
                         import httpx
 
+                        transport = httpx.AsyncHTTPTransport(retries=2)
                         async with httpx.AsyncClient(
-                            timeout=10.0, trust_env=False
+                            transport=transport, timeout=10.0, follow_redirects=True, trust_env=False
                         ) as client:
                             xml_res = await client.get(
                                 f"https://www.ebi.ac.uk/europepmc/webservices/rest/{pmcid}/fullTextXML"
@@ -376,7 +386,7 @@ class DeepSearchPipeline:
                                 filename_prefix=pmcid,
                             )
                             if pdf_info:
-                                pending_pdfs.append(pdf_info)
+                                local_pending_pdfs.append(pdf_info)
                                 pdf_text = extract_text_from_pdf_file(
                                     pdf_info["file_path"]
                                 )
@@ -406,12 +416,7 @@ class DeepSearchPipeline:
                             doc_url, output_dir=pdf_temp_dir
                         )
                         if pdf_info:
-                            pdf_hash = pdf_info.get("sha256", "")
-                            if pdf_hash and pdf_hash in pending_pdf_hashes:
-                                continue
-                            if pdf_hash:
-                                pending_pdf_hashes.add(pdf_hash)
-                            pending_pdfs.append(pdf_info)
+                            local_pending_pdfs.append(pdf_info)
                             pdf_text = extract_text_from_pdf_file(pdf_info["file_path"])
                             if pdf_text:
                                 extracted_pdf_text += (
@@ -451,7 +456,8 @@ class DeepSearchPipeline:
                         "status_code": artifact.status_code,
                         "strategy": artifact.strategy_used,
                     }
-                    rejections.append(rejection)
+                    async with frontier_lock:
+                        rejections.append(rejection)
                     trace.record(
                         TraceEventType.DOCUMENT_REJECTED,
                         entity_id=current_url,
@@ -462,34 +468,22 @@ class DeepSearchPipeline:
                         CandidateState.REJECTED,
                         error=classification.reason_code,
                     )
-                    continue
+                    return
 
-                if not c_filter.is_valid:
+                if not doc_quality.is_accepted:
                     rejection = {
                         "url": current_url,
                         "canonical_url": c_url,
                         "candidate_title": item.candidate.title,
                         "provider": item.candidate.provider,
                         "document_type": classification.document_type.value,
-                        "reason_code": c_filter.rejection_reason,
-                        "signals": ["content_filter"],
+                        "reason_code": doc_quality.reject_reason,
+                        "signals": [f"relevance={doc_quality.topical_relevance}"],
                         "status_code": artifact.status_code,
                         "strategy": artifact.strategy_used,
                     }
-                    rejections.append(rejection)
-                    trace.record(
-                        TraceEventType.DOCUMENT_REJECTED,
-                        entity_id=current_url,
-                        reason=c_filter.rejection_reason,
-                    )
-                    await frontier.mark_state(
-                        item.id,
-                        CandidateState.REJECTED,
-                        error=c_filter.rejection_reason,
-                    )
-                    continue
-
-                if not doc_quality.is_accepted:
+                    async with frontier_lock:
+                        rejections.append(rejection)
                     trace.record(
                         TraceEventType.DOCUMENT_REJECTED,
                         entity_id=current_url,
@@ -500,7 +494,7 @@ class DeepSearchPipeline:
                         CandidateState.REJECTED,
                         error=doc_quality.reject_reason,
                     )
-                    continue
+                    return
 
                 extraction.source_type = item.candidate.source_type
                 extraction.source_id = c_url
@@ -515,14 +509,6 @@ class DeepSearchPipeline:
                 extraction.relevance_score = doc_quality.topical_relevance
                 extraction.published_at = item.candidate.published_at
                 extraction.document_type = classification.document_type.value
-
-                for pdf_info in pending_pdfs:
-                    pdf_hash = pdf_info.get("sha256", "")
-                    if pdf_hash and pdf_hash in accepted_pdf_hashes:
-                        continue
-                    if pdf_hash:
-                        accepted_pdf_hashes.add(pdf_hash)
-                    downloaded_pdfs.append(pdf_info)
 
                 # 5. Exact & Near Duplicate Filter (DS-SI33, DS-SI34)
                 c_hash = compute_content_hash(main_text)
@@ -547,13 +533,28 @@ class DeepSearchPipeline:
                     )
 
                 # Collect image candidates from acquired HTML page
+                page_images = []
                 if opts.enable_media_archiving:
                     page_images = extract_image_candidates(
                         artifact.text_content, base_url=artifact.url
                     )
-                    raw_image_candidates.extend(page_images)
 
-                acquired_results.append((artifact, extraction))
+                async with frontier_lock:
+                    for pdf_info in local_pending_pdfs:
+                        pdf_hash = pdf_info.get("sha256", "")
+                        if pdf_hash and pdf_hash in accepted_pdf_hashes:
+                            continue
+                        if pdf_hash:
+                            accepted_pdf_hashes.add(pdf_hash)
+                        downloaded_pdfs.append(pdf_info)
+
+                    if page_images:
+                        raw_image_candidates.extend(page_images)
+
+                    acquired_results.append((artifact, extraction))
+                    if len(acquired_results) >= opts.max_pages:
+                        stop_event.set()
+
                 trace.record(
                     TraceEventType.DOCUMENT_ACCEPTED,
                     entity_id=current_url,
@@ -562,12 +563,18 @@ class DeepSearchPipeline:
                 await frontier.mark_state(item.id, CandidateState.ACCEPTED)
 
                 # 6. Prioritized Link Expansion (DS-SI12, DS-SI13)
-                if item.depth < opts.depth and len(acquired_results) < opts.max_pages:
+                if item.depth < opts.depth and not stop_event.is_set():
                     discovered_links = extract_discovered_links(
                         artifact.text_content, base_url=artifact.url
                     )
                     link_candidates = []
                     for dlink in discovered_links:
+                        # Direct PDF link routing
+                        if candidate_url_policy.is_binary_document(dlink.url):
+                            asyncio.create_task(
+                                download_media_file(dlink.url, output_dir=pdf_temp_dir)
+                            )
+                            continue
                         if (
                             not dlink.is_navigation
                             and not dlink.is_footer
@@ -608,27 +615,52 @@ class DeepSearchPipeline:
                     "Failed acquisition/extraction for %s: %s", current_url, exc
                 )
                 is_transient = "timeout" in str(exc).lower() or "429" in str(exc)
-                rejections.append(
-                    {
-                        "stage": "acquisition",
-                        "url": current_url,
-                        "canonical_url": c_url,
-                        "candidate_title": item.candidate.title,
-                        "provider": item.candidate.provider,
-                        "document_type": "ACQUISITION_FAILURE",
-                        "reason_code": "TRANSIENT_ACQUISITION_FAILURE"
-                        if is_transient
-                        else "ACQUISITION_FAILURE",
-                        "signals": [str(exc)[:500]],
-                        "strategy": "adaptive",
-                    }
-                )
+                rejection = {
+                    "stage": "acquisition",
+                    "url": current_url,
+                    "canonical_url": c_url,
+                    "candidate_title": item.candidate.title,
+                    "provider": item.candidate.provider,
+                    "document_type": "ACQUISITION_FAILURE",
+                    "reason_code": "TRANSIENT_ACQUISITION_FAILURE"
+                    if is_transient
+                    else "ACQUISITION_FAILURE",
+                    "signals": [str(exc)[:500]],
+                    "strategy": "adaptive",
+                }
+                async with frontier_lock:
+                    rejections.append(rejection)
                 await frontier.mark_state(
                     item.id,
                     CandidateState.DEAD,
                     error=str(exc),
                     is_transient_error=is_transient,
                 )
+
+        async def _worker():
+            nonlocal active_workers
+            while not stop_event.is_set():
+                async with frontier_lock:
+                    if len(acquired_results) >= opts.max_pages:
+                        stop_event.set()
+                        break
+
+                item = await frontier.lease_next(lease_duration_sec=30.0)
+                if not item:
+                    if active_workers == 0 and frontier.size() == 0:
+                        stop_event.set()
+                        break
+                    await asyncio.sleep(0.05)
+                    continue
+
+                active_workers += 1
+                try:
+                    await _process_item(item)
+                finally:
+                    active_workers -= 1
+
+        workers = [_worker() for _ in range(concurrency_limit)]
+        await asyncio.gather(*workers)
 
         # 7. Topic Media Discovery & Scoring
         downloaded_media: List[Dict[str, Any]] = []
@@ -658,13 +690,32 @@ class DeepSearchPipeline:
                 )
 
                 media_temp_dir = tempfile.mkdtemp(prefix="deepsearch_media_")
-                for idx, img in enumerate(ranked_images, start=1):
-                    m_info = await download_media_file(
-                        url=img["url"],
-                        output_dir=media_temp_dir,
-                        filename_prefix=f"img_{idx:02d}",
-                        caption=img.get("caption", ""),
-                    )
+
+                # Concurrently download ranked images with bounded concurrency
+                sem = asyncio.Semaphore(6)
+
+                async def _download_candidate(
+                    idx: int, img: Dict[str, Any]
+                ) -> Tuple[int, Dict[str, Any], Optional[Dict[str, Any]]]:
+                    async with sem:
+                        m_res = await download_media_file(
+                            url=img["url"],
+                            output_dir=media_temp_dir,
+                            filename_prefix=f"img_{idx:02d}",
+                            caption=img.get("caption", ""),
+                        )
+                        return idx, img, m_res
+
+                dl_tasks = [
+                    _download_candidate(idx, img)
+                    for idx, img in enumerate(ranked_images, start=1)
+                ]
+                dl_results = await asyncio.gather(*dl_tasks, return_exceptions=True)
+
+                for res in dl_results:
+                    if isinstance(res, Exception):
+                        continue
+                    idx, img, m_info = res
                     if m_info:
                         m_info["relevance_score"] = img.get("relevance_score", 1.0)
                         if is_accepted_media_file(m_info, img):
@@ -689,6 +740,28 @@ class DeepSearchPipeline:
                                 "relevance_score": img.get("relevance_score"),
                             }
                         )
+
+                # Extract embedded scientific diagrams from downloaded PDFs
+                if downloaded_pdfs:
+                    for pdf_doc in downloaded_pdfs:
+                        p_path = pdf_doc.get("file_path")
+                        if p_path and os.path.exists(p_path):
+                            doc_id = pdf_doc.get("filename", "doc").replace(".pdf", "")
+                            try:
+                                extracted_figs = pdf_figure_extractor.extract_figures_from_pdf(
+                                    pdf_path=p_path,
+                                    output_media_dir=media_temp_dir,
+                                    doc_id=doc_id,
+                                    max_figures=3,
+                                )
+                                for fig in extracted_figs:
+                                    downloaded_media.append(fig)
+                            except Exception as pdf_fig_err:
+                                logger.debug(
+                                    "PDF figure extraction error for %s: %s",
+                                    p_path,
+                                    pdf_fig_err,
+                                )
 
             except Exception as media_exc:
                 logger.warning("Topic media selection error: %s", media_exc)

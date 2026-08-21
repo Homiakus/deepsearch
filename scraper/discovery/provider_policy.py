@@ -4,7 +4,7 @@ Selects and configures optimal discovery providers based on intent, goals,
 evidence preferences, and domain requirements without rigid hardcoded routing.
 """
 
-from typing import List, Tuple, Optional
+from typing import List, Tuple, Optional, Dict, Any
 from scraper.discovery.providers.base import DiscoveryProvider, ProviderSearchRequest
 from scraper.discovery.providers.registry import ProviderRegistry, provider_registry
 from scraper.research.intent import ResearchIntent
@@ -12,11 +12,46 @@ from scraper.research.goals import ResearchGoal
 from scraper.search.query_models import SearchQueryVariant
 
 
+class ProviderYieldTracker:
+    """Tracks historical success, latency, and candidate yield of discovery providers (DS-SI10)."""
+
+    def __init__(self):
+        self._stats: Dict[str, Dict[str, Any]] = {}
+
+    def record_call(self, provider_name: str, candidate_count: int, error: bool = False):
+        if provider_name not in self._stats:
+            self._stats[provider_name] = {"calls": 0, "errors": 0, "total_candidates": 0}
+        s = self._stats[provider_name]
+        s["calls"] += 1
+        if error:
+            s["errors"] += 1
+        s["total_candidates"] += candidate_count
+
+    def get_health_factor(self, provider_name: str) -> float:
+        s = self._stats.get(provider_name)
+        if not s or s["calls"] == 0:
+            return 1.0
+        error_rate = s["errors"] / s["calls"]
+        if error_rate >= 0.8 and s["calls"] >= 3:
+            return 0.2
+        if error_rate >= 0.5:
+            return 0.6
+        return 1.0
+
+
+provider_yield_tracker = ProviderYieldTracker()
+
+
 class ProviderPolicy:
     """Evaluates suitability of providers for a set of goal query variants."""
 
-    def __init__(self, registry: ProviderRegistry = provider_registry):
+    def __init__(
+        self,
+        registry: ProviderRegistry = provider_registry,
+        yield_tracker: ProviderYieldTracker = provider_yield_tracker,
+    ):
         self.registry = registry
+        self.yield_tracker = yield_tracker
 
     def plan_provider_requests(
         self,

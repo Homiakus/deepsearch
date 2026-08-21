@@ -25,8 +25,12 @@ class ArxivProvider:
         url = f"https://export.arxiv.org/api/query?search_query=all:{urllib.parse.quote(request.query)}&start=0&max_results={request.max_results}"
         candidates = []
         try:
+            transport = httpx.AsyncHTTPTransport(retries=2)
             async with httpx.AsyncClient(
-                timeout=request.timeout_sec, trust_env=False
+                transport=transport,
+                timeout=request.timeout_sec,
+                follow_redirects=True,
+                trust_env=False,
             ) as client:
                 res = await client.get(url)
                 if res.status_code == 200:
