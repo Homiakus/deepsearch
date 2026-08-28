@@ -42,7 +42,8 @@ jobs:
         run: uv run pytest tests/unit/test_quality_report.py tests/unit/test_document_type.py tests/unit/test_candidate_url_policy.py -q
 
       - name: Validate Search Benchmark Fixtures
-        run: uv run python -c "import json; from pathlib import Path; [json.loads(line) for line in Path('benchmarks/search/source_quality.jsonl').read_text(encoding='utf-8').splitlines() if line.strip()]; print('source quality fixtures: ok')"
+        run: >-
+          uv run python -c "import json; from pathlib import Path; [json.loads(line) for line in Path('benchmarks/search/source_quality.jsonl').read_text(encoding='utf-8').splitlines() if line.strip()]; print('source quality fixtures: ok')"
 
       - name: Build Wheel Package
         run: uv build
