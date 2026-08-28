@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import itertools
-from typing import Any, Iterable
+from collections.abc import Iterable
+from typing import Any
 
 from tools.devloop_core import DevLoopError, Task
 
@@ -89,8 +90,10 @@ def edge_summary(model: dict[str, Any], cases: list[dict[str, str]]) -> str:
             f"- pairwise scenarios: {len(cases)}",
             f"- uncovered pairs: {len(missing)}",
             f"- targeted 3-way/high-risk interactions: {len(interactions)}",
-            "- regression rule: every confirmed bug keeps its minimal reproducer; "
-            "generalizable bugs extend an axis or targeted interaction.",
+            (
+                "- regression rule: every confirmed bug keeps its minimal reproducer; "
+                "generalizable bugs extend an axis or targeted interaction."
+            ),
         ]
     )
 

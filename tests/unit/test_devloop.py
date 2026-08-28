@@ -6,8 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from tools import devloop
-from tools import devloop_mutation
+from tools import devloop, devloop_mutation
 from tools.devloop_core import DevLoopError
 
 

@@ -10,9 +10,10 @@ import re
 import shlex
 import subprocess
 import tomllib
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Iterable, Sequence
+from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_CONFIG = ROOT / ".deepsearch" / "devloop.toml"
@@ -78,7 +79,6 @@ def run(
     kwargs: dict[str, Any] = {
         "cwd": cwd,
         "env": merged_env,
-        "check": True,
         "text": True,
     }
     if capture:
@@ -86,11 +86,11 @@ def run(
 
     if isinstance(command, str):
         print(f"+ {command}", flush=True)
-        return subprocess.run(command, shell=True, **kwargs)
+        return subprocess.run(command, shell=True, check=True, **kwargs)
 
     argv = list(command)
     print(f"+ {shlex.join(argv)}", flush=True)
-    return subprocess.run(argv, **kwargs)
+    return subprocess.run(argv, check=True, **kwargs)
 
 
 def git_output(*args: str) -> str:

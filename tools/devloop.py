@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Conservative plan-driven development loop for DeepSearch."""
 
 from __future__ import annotations
@@ -8,14 +7,15 @@ import json
 import os
 import subprocess
 import sys
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Any, Sequence
+from typing import Any
 
 _REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
-from tools.devloop_core import (  # noqa: E402
+from tools.devloop_core import (
     DEFAULT_CONFIG,
     ROOT,
     DevLoopError,
@@ -29,17 +29,17 @@ from tools.devloop_core import (  # noqa: E402
     run_full_gates,
     run_safe_fix,
 )
-from tools.devloop_edge import (  # noqa: E402
+from tools.devloop_edge import (
     edge_summary,
     generate_pairwise_cases,
     make_task_packet,
     missing_pairwise_coverage,
 )
-from tools.devloop_mutation import (  # noqa: E402
+from tools.devloop_mutation import (
     bootstrap_mutation_tools,
     run_mutation,
 )
-from tools.devloop_runner import run_one_iteration  # noqa: E402
+from tools.devloop_runner import run_one_iteration
 
 __all__ = [
     "Task",
