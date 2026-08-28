@@ -129,13 +129,29 @@ CAPABILITY_REGISTRY: Dict[str, CapabilityInfo] = {
 
 
 def get_capability_matrix() -> Dict[str, CapabilityInfo]:
-    """Return the canonical capability registry mapping."""
-    return dict(CAPABILITY_REGISTRY)
+    """Return the canonical capability registry mapping with dynamic status reflecting runtime configuration."""
+    from scraper.config import settings
+
+    matrix = dict(CAPABILITY_REGISTRY)
+    if not settings.experimental_search or settings.retrieval_backend == "disabled":
+        matrix["hybrid_search"] = CapabilityInfo(
+            name="hybrid_search",
+            status=CapabilityStatus.DISABLED,
+            description="Dense semantic and sparse lexical vector retrieval over indexed local corpus.",
+            interface_bindings=[
+                "CLI: scraper search",
+                "REST: POST /api/v1/search/query",
+                "MCP: deepsearch_search",
+            ],
+            reason_disabled="Hybrid search is disabled in the stable profile (EXPERIMENTAL_SEARCH=false). Requires populated vector index and explicit enablement.",
+        )
+    return matrix
 
 
 def require_capability(name: str) -> CapabilityInfo:
     """Enforce that a required capability is not disabled, raising CapabilityUnavailableError if disabled."""
-    info = CAPABILITY_REGISTRY.get(name)
+    matrix = get_capability_matrix()
+    info = matrix.get(name)
     if not info:
         raise CapabilityUnavailableError(
             capability=name,

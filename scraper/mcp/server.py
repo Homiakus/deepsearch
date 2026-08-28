@@ -336,6 +336,26 @@ async def deepsearch_search(query: str, limit: int = 10) -> str:
     service = get_deepsearch_service()
 
     try:
+        from scraper.contracts.capabilities import (
+            require_capability,
+            CapabilityUnavailableError,
+        )
+
+        try:
+            require_capability("hybrid_search")
+        except CapabilityUnavailableError as exc:
+            return json.dumps(
+                {
+                    "status": "unavailable",
+                    "capability": "hybrid_search",
+                    "error": exc.message,
+                    "results": [],
+                    "count": 0,
+                },
+                indent=2,
+                ensure_ascii=False,
+            )
+
         state = service.search_engine.get_feature_state()
         # Offload synchronous vector/BM25 retrieval to a worker thread to prevent blocking event loop
         results = await asyncio.to_thread(

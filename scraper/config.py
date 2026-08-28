@@ -185,9 +185,13 @@ class Settings(BaseSettings):
     rate_limit_rps: float = Field(default=10.0, ge=0.1, le=10000.0)
     rate_limit_burst: int = Field(default=20, ge=1, le=20000)
 
-    # Feature Flags & Orchestration (§0, §1, DS-A40, DS-A50)
+    # Feature Flags & Orchestration (§0, §1, DS-A40, DS-A50, DS-16)
     orchestration_backend: str = "axiom"  # legacy | axiom
     retrieval_backend: str = "qdrant"  # disabled | qdrant
+    experimental_search: bool = Field(
+        default=False,
+        description="Enable experimental vector/hybrid search endpoints (DS-16)",
+    )
     visual_retrieval: str = "disabled"  # disabled | experimental
     orchestrator_url: str = "http://localhost:8081"
     orchestrator_token: str = "adgo-dev-token"

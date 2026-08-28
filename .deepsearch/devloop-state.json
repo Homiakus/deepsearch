@@ -75,6 +75,11 @@
       "plan_fingerprint": "7bece7cbbcd6ad5a",
       "priority": "P1",
       "title": "Исправить extraction и формат архива"
+    },
+    "DS-16": {
+      "plan_fingerprint": "9c43547a6401991a",
+      "priority": "P1",
+      "title": "Вывести fake search/PixelRAG из stable surface"
     }
   },
   "version": 1

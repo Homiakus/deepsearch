@@ -113,14 +113,22 @@ async def test_mcp_tool_extraction():
 
 @pytest.mark.asyncio
 async def test_mcp_tool_search():
-    res_raw = await deepsearch_search("quantum mechanics", limit=5)
-    res = json.loads(res_raw)
+    # In stable profile (default), search is unavailable
+    res_raw_disabled = await deepsearch_search("quantum mechanics", limit=5)
+    res_disabled = json.loads(res_raw_disabled)
+    assert res_disabled["status"] == "unavailable"
+    assert res_disabled["capability"] == "hybrid_search"
 
-    assert isinstance(res, dict)
-    assert res["status"] == "success"
-    assert "state" in res
-    assert "results" in res
-    assert isinstance(res["results"], list)
+    # When experimental_search is explicitly enabled
+    with patch("scraper.config.settings.experimental_search", True):
+        res_raw = await deepsearch_search("quantum mechanics", limit=5)
+        res = json.loads(res_raw)
+
+        assert isinstance(res, dict)
+        assert res["status"] == "success"
+        assert "state" in res
+        assert "results" in res
+        assert isinstance(res["results"], list)
 
 
 @pytest.mark.asyncio

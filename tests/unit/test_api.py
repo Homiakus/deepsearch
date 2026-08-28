@@ -35,12 +35,13 @@ def test_invalid_api_key_rejected():
 
 def test_bearer_token_authentication_accepted():
     """Verify Bearer token authorization header is accepted (§DS-08)."""
-    res = client.post(
-        "/api/v1/search/hybrid",
-        headers={"Authorization": f"Bearer {settings.api_key}"},
-        json={"query": "test", "limit": 5},
-    )
-    assert res.status_code == 200
+    with patch("scraper.config.settings.experimental_search", True):
+        res = client.post(
+            "/api/v1/search/hybrid",
+            headers={"Authorization": f"Bearer {settings.api_key}"},
+            json={"query": "test", "limit": 5},
+        )
+        assert res.status_code == 200
 
 
 def test_api_inspect():
@@ -76,27 +77,41 @@ def test_api_inspect():
         assert data["canonical_url"] == "https://example.com/"
 
 
-def test_api_search():
+def test_api_search_stable_returns_501_and_experimental_returns_200():
+    # In stable profile (default), search is disabled -> 501
     res = client.post(
         "/api/v1/search/hybrid",
         headers=AUTH_HEADERS,
         json={"query": "test query", "limit": 5},
     )
-    assert res.status_code == 200
-    results = res.json()
-    assert isinstance(results, list)
+    assert res.status_code == 501
+    detail = res.json().get("detail", {})
+    assert detail.get("error") == "capability_unavailable"
+    assert detail.get("capability") == "hybrid_search"
+
+    # When experimental_search is explicitly enabled -> 200
+    with patch("scraper.config.settings.experimental_search", True):
+        res_exp = client.post(
+            "/api/v1/search/hybrid",
+            headers=AUTH_HEADERS,
+            json={"query": "test query", "limit": 5},
+        )
+        assert res_exp.status_code == 200
+        results = res_exp.json()
+        assert isinstance(results, list)
 
 
 def test_api_search_query_detailed():
-    res = client.post(
-        "/api/v1/search/query",
-        headers=AUTH_HEADERS,
-        json={"query": "test query", "limit": 5},
-    )
-    assert res.status_code == 200
-    data = res.json()
-    assert "state" in data
-    assert "results" in data
+    with patch("scraper.config.settings.experimental_search", True):
+        res = client.post(
+            "/api/v1/search/query",
+            headers=AUTH_HEADERS,
+            json={"query": "test query", "limit": 5},
+        )
+        assert res.status_code == 200
+        data = res.json()
+        assert "state" in data
+        assert "results" in data
 
 
 def test_ui_dashboard_endpoint():
@@ -112,6 +127,7 @@ def test_api_capabilities_endpoint():
     assert "capabilities" in data
     assert "research_pipeline" in data["capabilities"]
     assert data["capabilities"]["research_pipeline"]["status"] == "stable"
+    assert data["capabilities"]["hybrid_search"]["status"] == "disabled"
     assert data["capabilities"]["pixel_rag"]["status"] == "disabled"
 
 

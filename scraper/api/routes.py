@@ -144,7 +144,19 @@ async def search_text(
     _auth: str = Depends(verify_api_key),
     service: DeepSearchService = Depends(get_deepsearch_service),
 ):
-    """Search text without fake synthetic results (DS-A03)."""
+    """Search text without fake synthetic results (DS-A03, DS-16)."""
+    try:
+        require_capability("hybrid_search")
+    except CapabilityUnavailableError as exc:
+        raise HTTPException(
+            status_code=501,
+            detail={
+                "error": "capability_unavailable",
+                "capability": exc.capability,
+                "status": exc.status.value,
+                "message": exc.message,
+            },
+        )
     return service.search_engine.search_text(req.query, limit=req.limit)
 
 
@@ -154,7 +166,7 @@ async def search_visual(
     _auth: str = Depends(verify_api_key),
     service: DeepSearchService = Depends(get_deepsearch_service),
 ):
-    """Visual multivector search (DS-A03, DS-01)."""
+    """Visual multivector search (DS-A03, DS-01, DS-16)."""
     try:
         require_capability("pixel_rag")
     except CapabilityUnavailableError as exc:
@@ -176,7 +188,19 @@ async def search_hybrid(
     _auth: str = Depends(verify_api_key),
     service: DeepSearchService = Depends(get_deepsearch_service),
 ):
-    """Hybrid text and visual retrieval (DS-A03)."""
+    """Hybrid text and visual retrieval (DS-A03, DS-16)."""
+    try:
+        require_capability("hybrid_search")
+    except CapabilityUnavailableError as exc:
+        raise HTTPException(
+            status_code=501,
+            detail={
+                "error": "capability_unavailable",
+                "capability": exc.capability,
+                "status": exc.status.value,
+                "message": exc.message,
+            },
+        )
     return service.search_engine.search_hybrid(req.query, limit=req.limit)
 
 
@@ -186,7 +210,19 @@ async def search_query_detailed(
     _auth: str = Depends(verify_api_key),
     service: DeepSearchService = Depends(get_deepsearch_service),
 ):
-    """Detailed query endpoint returning typed feature state and results."""
+    """Detailed query endpoint returning typed feature state and results (DS-16)."""
+    try:
+        require_capability("hybrid_search")
+    except CapabilityUnavailableError as exc:
+        raise HTTPException(
+            status_code=501,
+            detail={
+                "error": "capability_unavailable",
+                "capability": exc.capability,
+                "status": exc.status.value,
+                "message": exc.message,
+            },
+        )
     state = service.search_engine.get_feature_state()
     results = service.search_engine.search_hybrid(req.query, limit=req.limit)
     return SearchResponse(

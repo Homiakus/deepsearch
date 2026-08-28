@@ -123,7 +123,18 @@ def extract(
 
 @app.command()
 def search(query: str = typer.Argument(..., help="Search query string")):
-    """Perform hybrid text and visual multivector search (§56, DS-A03)."""
+    """Perform hybrid text and visual multivector search (§56, DS-A03, DS-16)."""
+    from scraper.contracts.capabilities import (
+        require_capability,
+        CapabilityUnavailableError,
+    )
+
+    try:
+        require_capability("hybrid_search")
+    except CapabilityUnavailableError as exc:
+        console.print(f"[bold yellow]Search unavailable:[/bold yellow] {exc.message}")
+        return
+
     service = get_deepsearch_service()
     state = service.search_engine.get_feature_state()
     results = service.search(query)

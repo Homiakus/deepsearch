@@ -8,7 +8,14 @@ logger = logging.getLogger(__name__)
 
 try:
     from qdrant_client import QdrantClient
-    from qdrant_client.models import Distance, VectorParams, PointStruct, Filter
+    from qdrant_client.models import (
+        Distance,
+        VectorParams,
+        PointStruct,
+        Filter,
+        FieldCondition,
+        MatchValue,
+    )
 
     QDRANT_AVAILABLE = True
 except ImportError:
@@ -101,11 +108,25 @@ class VectorStoreManager:
         if not self.client or not self.has_documents():
             return []
         try:
-            results = self.client.search(
-                collection_name=self.collection_name,
-                query_vector=vector,
-                limit=top_k,
-            )
+            query_filter = None
+            if filter_payload and QDRANT_AVAILABLE:
+                conditions = [
+                    FieldCondition(key=k, match=MatchValue(value=v))
+                    for k, v in filter_payload.items()
+                    if v is not None
+                ]
+                if conditions:
+                    query_filter = Filter(must=conditions)
+
+            search_kwargs: Dict[str, Any] = {
+                "collection_name": self.collection_name,
+                "query_vector": vector,
+                "limit": top_k,
+            }
+            if query_filter is not None:
+                search_kwargs["query_filter"] = query_filter
+
+            results = self.client.search(**search_kwargs)
             return [
                 {
                     "id": hit.id,
