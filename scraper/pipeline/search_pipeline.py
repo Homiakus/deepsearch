@@ -58,7 +58,9 @@ from scraper.discovery.media_finder import (
 )
 from scraper.acquisition.media_downloader import download_media_file
 from scraper.visual.pdf_figure_extractor import pdf_figure_extractor
-from scraper.extraction.pdf_extractor import extract_text_from_pdf_file
+from scraper.extraction.pdf_extractor import (
+    async_extract_text_from_pdf_file,
+)
 from scraper.acquisition.open_access_resolver import open_access_resolver
 
 logger = logging.getLogger(__name__)
@@ -79,6 +81,9 @@ class DeepSearchPipelineOptions(BaseModel):
     enable_media_archiving: bool = True
     min_media_count: int = 5
     max_media_count: int = 25
+    max_pdfs_per_page: int = 3
+    max_pdfs_per_run: int = 20
+    max_pdf_pages: int = 50
     concurrency: int = 4
 
 
@@ -445,11 +450,17 @@ class DeepSearchPipeline:
                         )
                         if oa_paper and oa_paper.pdf_url:
                             pdf_info = await download_media_file(
-                                oa_paper.pdf_url, output_dir=pdf_temp_dir
+                                oa_paper.pdf_url,
+                                output_dir=pdf_temp_dir,
+                                license=getattr(oa_paper, "license", "UNKNOWN_LICENSE"),
+                                author=getattr(oa_paper, "author", "UNKNOWN_AUTHOR"),
+                                source_domain=urllib.parse.urlparse(
+                                    oa_paper.pdf_url
+                                ).netloc,
                             )
                             if pdf_info:
-                                pdf_text = await asyncio.to_thread(
-                                    extract_text_from_pdf_file, pdf_info["file_path"]
+                                pdf_text = await async_extract_text_from_pdf_file(
+                                    pdf_info["file_path"], max_pages=opts.max_pdf_pages
                                 )
                                 if pdf_text and len(pdf_text.strip()) > 300:
                                     local_pending_pdfs.append(pdf_info)
@@ -499,24 +510,35 @@ class DeepSearchPipeline:
                         )
                         return
 
-                # PDF document discovery & acquisition
+                # PDF document discovery & acquisition (with per-page and per-run limits)
                 doc_links = extract_document_links(
                     artifact.text_content, base_url=artifact.url
                 )
                 extracted_pdf_text = ""
+                page_pdf_count = 0
                 for doc_url in doc_links:
+                    if page_pdf_count >= opts.max_pdfs_per_page:
+                        break
+                    if (
+                        len(downloaded_pdfs) + len(local_pending_pdfs)
+                        >= opts.max_pdfs_per_run
+                    ):
+                        break
                     if (
                         doc_url.lower().endswith(".pdf")
                         or "ptpmcrender.fcgi" in doc_url.lower()
                         or "/pdf" in doc_url.lower()
                     ):
                         pdf_info = await download_media_file(
-                            doc_url, output_dir=pdf_temp_dir
+                            doc_url,
+                            output_dir=pdf_temp_dir,
+                            source_domain=urllib.parse.urlparse(doc_url).netloc,
                         )
                         if pdf_info:
+                            page_pdf_count += 1
                             local_pending_pdfs.append(pdf_info)
-                            pdf_text = await asyncio.to_thread(
-                                extract_text_from_pdf_file, pdf_info["file_path"]
+                            pdf_text = await async_extract_text_from_pdf_file(
+                                pdf_info["file_path"], max_pages=opts.max_pdf_pages
                             )
                             if pdf_text:
                                 extracted_pdf_text += (
@@ -810,6 +832,9 @@ class DeepSearchPipeline:
                         output_dir=media_temp_dir,
                         filename_prefix=f"img_{idx:02d}",
                         caption=img.get("caption", ""),
+                        license=img.get("license", "UNKNOWN_LICENSE"),
+                        author=img.get("author", "UNKNOWN_AUTHOR"),
+                        source_domain=img.get("source_domain"),
                     )
                     return idx, img, m_res
 

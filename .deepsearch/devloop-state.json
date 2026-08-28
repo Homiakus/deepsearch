@@ -65,6 +65,11 @@
       "plan_fingerprint": "016441afac04a6e3",
       "priority": "P1",
       "title": "Сделать discovery конкурентным, расширяемым и наблюдаемым"
+    },
+    "DS-14": {
+      "plan_fingerprint": "d561e1dc598cd5d9",
+      "priority": "P1",
+      "title": "Объединить и ограничить media/PDF acquisition"
     }
   },
   "version": 1

@@ -208,6 +208,8 @@ def extract_image_candidates(raw_html: str, base_url: str) -> List[Dict[str, Any
                             "source_domain": urllib.parse.urlparse(full_og_url).netloc,
                             "page_url": base_url,
                             "is_primary": True,
+                            "license": "UNKNOWN_LICENSE",
+                            "author": "UNKNOWN_AUTHOR",
                         }
                     )
                 break
@@ -295,6 +297,8 @@ def extract_image_candidates(raw_html: str, base_url: str) -> List[Dict[str, Any
                 "height": height,
                 "source_domain": urllib.parse.urlparse(full_url).netloc,
                 "page_url": base_url,
+                "license": "UNKNOWN_LICENSE",
+                "author": "UNKNOWN_AUTHOR",
             }
         )
 
@@ -347,6 +351,22 @@ async def fetch_wikimedia_topic_images(
                         re.sub(r"<[^>]+>", "", str(desc)).strip()[:200] or raw_title
                     )
 
+                    license_raw = (
+                        extmetadata.get("LicenseShortName", {}).get("value")
+                        or extmetadata.get("UsageTerms", {}).get("value")
+                        or "UNKNOWN_LICENSE"
+                    )
+                    artist_raw = (
+                        extmetadata.get("Artist", {}).get("value")
+                        or extmetadata.get("Author", {}).get("value")
+                        or extmetadata.get("Credit", {}).get("value")
+                        or "UNKNOWN_AUTHOR"
+                    )
+                    clean_author = (
+                        re.sub(r"<[^>]+>", "", str(artist_raw)).strip()
+                        or "UNKNOWN_AUTHOR"
+                    )
+
                     candidates.append(
                         {
                             "url": img_url,
@@ -358,6 +378,8 @@ async def fetch_wikimedia_topic_images(
                             "height": info.get("height"),
                             "source_domain": "commons.wikimedia.org",
                             "page_url": info.get("descriptionurl", ""),
+                            "license": str(license_raw).strip() or "UNKNOWN_LICENSE",
+                            "author": clean_author,
                         }
                     )
     except Exception as exc:
@@ -408,6 +430,8 @@ async def fetch_wikipedia_article_images(
                                 "height": thumb.get("height"),
                                 "source_domain": "en.wikipedia.org",
                                 "page_url": f"https://en.wikipedia.org/wiki/{urllib.parse.quote(title.replace(' ', '_'))}",
+                                "license": "CC BY-SA 4.0",
+                                "author": "Wikipedia Contributors",
                             }
                         )
     except Exception as exc:

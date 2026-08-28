@@ -1,16 +1,22 @@
-"""PDF Text Extractor Engine.
+"""PDF Text Extractor Engine (§DS-14).
 
 Extracts text, headings, and metadata from binary PDF files for conversion into Markdown.
-Includes strict magic byte validation to reject HTML error pages masquerading as PDFs.
+Includes strict magic byte validation to reject HTML error pages masquerading as PDFs,
+and enforces bounded page counts, memory budgets, and extraction timeouts.
 """
 
+import os
 import io
+import asyncio
 import logging
 from typing import Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
 PDF_MAGIC_BYTES = b"%PDF-"
+DEFAULT_MAX_PDF_BYTES = 50 * 1024 * 1024
+DEFAULT_MAX_PAGES = 50
+DEFAULT_MAX_PAGE_CHARS = 50000
 
 
 def validate_pdf_stream(data: bytes) -> Tuple[bool, str]:
@@ -30,11 +36,29 @@ def validate_pdf_stream(data: bytes) -> Tuple[bool, str]:
     return True, "VALID_PDF"
 
 
-def extract_text_from_pdf_file(file_path: str, max_pages: Optional[int] = None) -> str:
-    """Extracts plain text from a local PDF file after header validation."""
+def extract_text_from_pdf_file(
+    file_path: str,
+    max_pages: Optional[int] = DEFAULT_MAX_PAGES,
+    max_bytes: int = DEFAULT_MAX_PDF_BYTES,
+) -> str:
+    """Extracts plain text from a local PDF file after header and size validation."""
     try:
+        if not os.path.exists(file_path):
+            return ""
+        file_size = os.path.getsize(file_path)
+        if file_size > max_bytes or file_size < 10:
+            logger.warning(
+                "PDF file %s size (%d bytes) exceeds budget (%d bytes)",
+                file_path,
+                file_size,
+                max_bytes,
+            )
+            return ""
+
         with open(file_path, "rb") as f:
-            pdf_bytes = f.read()
+            pdf_bytes = f.read(max_bytes + 1)
+            if len(pdf_bytes) > max_bytes:
+                return ""
         return extract_text_from_pdf_bytes(pdf_bytes, max_pages=max_pages)
     except Exception as exc:
         logger.warning("pypdf text extraction failed for %s: %s", file_path, exc)
@@ -42,7 +66,9 @@ def extract_text_from_pdf_file(file_path: str, max_pages: Optional[int] = None) 
 
 
 def extract_text_from_pdf_bytes(
-    pdf_bytes: bytes, max_pages: Optional[int] = None
+    pdf_bytes: bytes,
+    max_pages: Optional[int] = DEFAULT_MAX_PAGES,
+    max_page_chars: int = DEFAULT_MAX_PAGE_CHARS,
 ) -> str:
     """Extracts plain text from raw PDF bytes with header validation and error handling."""
     is_valid, reason = validate_pdf_stream(pdf_bytes)
@@ -54,7 +80,8 @@ def extract_text_from_pdf_bytes(
         from pypdf import PdfReader
 
         reader = PdfReader(io.BytesIO(pdf_bytes), strict=False)
-        pages_to_read = len(reader.pages)
+        total_pages = len(reader.pages)
+        pages_to_read = total_pages
         if max_pages and max_pages > 0:
             pages_to_read = min(pages_to_read, max_pages)
 
@@ -64,7 +91,8 @@ def extract_text_from_pdf_bytes(
                 page = reader.pages[idx]
                 page_text = page.extract_text() or ""
                 if page_text.strip():
-                    text_parts.append(f"## Page {idx + 1}\n\n{page_text.strip()}")
+                    clean_text = page_text.strip()[:max_page_chars]
+                    text_parts.append(f"## Page {idx + 1}\n\n{clean_text}")
             except Exception as page_err:
                 logger.debug("Error extracting page %d: %s", idx + 1, page_err)
                 continue
@@ -76,11 +104,27 @@ def extract_text_from_pdf_bytes(
 
 
 async def async_extract_text_from_pdf_file(
-    file_path: str, max_pages: Optional[int] = None
+    file_path: str,
+    max_pages: Optional[int] = DEFAULT_MAX_PAGES,
+    max_bytes: int = DEFAULT_MAX_PDF_BYTES,
+    timeout_sec: float = 30.0,
 ) -> str:
-    """Non-blocking asynchronous thread execution for PDF text extraction."""
-    import asyncio
-
-    return await asyncio.to_thread(
-        extract_text_from_pdf_file, file_path, max_pages=max_pages
-    )
+    """Non-blocking asynchronous thread execution for PDF text extraction with timeout."""
+    try:
+        return await asyncio.wait_for(
+            asyncio.to_thread(
+                extract_text_from_pdf_file,
+                file_path,
+                max_pages=max_pages,
+                max_bytes=max_bytes,
+            ),
+            timeout=timeout_sec,
+        )
+    except asyncio.TimeoutError:
+        logger.warning(
+            "PDF extraction timed out for %s after %.1fs", file_path, timeout_sec
+        )
+        return ""
+    except Exception as exc:
+        logger.warning("Async PDF extraction failed for %s: %s", file_path, exc)
+        return ""

@@ -243,6 +243,9 @@ class ArchiveExporter:
                             "type": "pdf",
                             "size_bytes": pdf_info.get("size_bytes", 0),
                             "sha256": pdf_info.get("sha256", ""),
+                            "license": pdf_info.get("license", "UNKNOWN_LICENSE"),
+                            "author": pdf_info.get("author", "UNKNOWN_AUTHOR"),
+                            "source_domain": pdf_info.get("source_domain", ""),
                         }
                     )
                     total_pdf_files += 1
@@ -259,6 +262,8 @@ class ArchiveExporter:
                     shutil.copy2(src_file, dst_path)
                     caption = media_info.get("caption") or f"Topic Media {m_idx}"
                     score = media_info.get("relevance_score", 1.0)
+                    lic = media_info.get("license", "UNKNOWN_LICENSE")
+                    auth = media_info.get("author", "UNKNOWN_AUTHOR")
                     manifest_files.append(
                         {
                             "id": f"media_{m_idx:03d}_{filename}",
@@ -272,12 +277,15 @@ class ArchiveExporter:
                             "mime_type": media_info.get("content_type", ""),
                             "width": media_info.get("width"),
                             "height": media_info.get("height"),
+                            "license": lic,
+                            "author": auth,
+                            "source_domain": media_info.get("source_domain", ""),
                         }
                     )
                     total_media_files += 1
                     rag_context_lines.append(
                         f"- ![Image {m_idx}: {caption}](media/{filename})  \n"
-                        f"  *Source*: [{media_info.get('url')}]({media_info.get('url')}) | *Relevance Score*: {score:.2f}\n"
+                        f"  *Source*: [{media_info.get('url')}]({media_info.get('url')}) | *License*: {lic} | *Author*: {auth} | *Relevance Score*: {score:.2f}\n"
                     )
 
         # Save `rag/rag_chunks.jsonl`
