@@ -17,6 +17,14 @@ from scraper.application.models import (
     ResearchStatus,
     ResearchResult,
 )
+from scraper.application.job_service import (
+    JobService,
+    JobRequest,
+    JobHandle,
+    JobStatus,
+    JobResult,
+    job_service as default_job_service,
+)
 from scraper.application.research_service import (
     ResearchApplicationService,
     research_service as default_research_service,
@@ -61,6 +69,7 @@ class DeepSearchService:
         acquisition_engine: Optional[AdaptiveAcquisitionEngine] = None,
         search_engine: Optional[SearchEngine] = None,
         research_service: Optional[ResearchApplicationService] = None,
+        job_service: Optional[JobService] = None,
     ):
         self.acquisition_engine = acquisition_engine or AdaptiveAcquisitionEngine()
         self.search_engine = search_engine or SearchEngine()
@@ -69,6 +78,25 @@ class DeepSearchService:
             if research_service is not None
             else default_research_service
         )
+        self.job_service = (
+            job_service if job_service is not None else default_job_service
+        )
+
+    async def submit_crawl_job(self, request: JobRequest) -> JobHandle:
+        """Submit a bounded crawl job (§DS-11)."""
+        return await self.job_service.submit_job(request)
+
+    async def get_crawl_status(self, job_id: str) -> JobStatus:
+        """Get the status of a crawl job (§DS-11)."""
+        return await self.job_service.get_status(job_id)
+
+    async def get_crawl_result(self, job_id: str) -> Optional[JobResult]:
+        """Get the final result of a crawl job (§DS-11)."""
+        return await self.job_service.get_result(job_id)
+
+    async def cancel_crawl_job(self, job_id: str) -> bool:
+        """Cancel a crawl job (§DS-11)."""
+        return await self.job_service.cancel_job(job_id)
 
     async def inspect(
         self, url: str, mode: ExecutionMode = ExecutionMode.BALANCED
@@ -163,6 +191,12 @@ class DeepSearchService:
                 await self.acquisition_engine.http_fetcher.close()
         except Exception as exc:
             logger.warning("Error closing http fetcher: %s", exc)
+
+        try:
+            if hasattr(self, "job_service") and self.job_service:
+                await self.job_service.close()
+        except Exception as exc:
+            logger.warning("Error closing job service: %s", exc)
 
 
 _default_service: Optional[DeepSearchService] = None

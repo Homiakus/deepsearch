@@ -1,13 +1,12 @@
 """FastAPI Route Handlers (§55 REST API, §57 Inspect Mode, DS-A02, DS-A03, DS-A07, §DS-04, §DS-08)."""
 
-import uuid
 from typing import List, Optional
 from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
-from scraper.config import settings, ExecutionMode
+from scraper.config import settings
 from scraper.monitoring.telemetry import telemetry
 from scraper.search.search_engine import SearchResultItem, SearchResponse
 from scraper.application.models import (
@@ -32,22 +31,14 @@ from scraper.contracts.capabilities import (
     require_capability,
 )
 
+from scraper.application.job_service import (
+    JobRequest,
+    JobHandle,
+    JobStatus,
+    JobResult,
+)
+
 router = APIRouter(prefix="/api/v1")
-
-
-class CrawlJobRequest(BaseModel):
-    url: str
-    max_depth: int = Field(default=3, ge=0, le=10)
-    max_pages: int = Field(default=100, ge=1, le=50000)
-    mode: ExecutionMode = ExecutionMode.BALANCED
-
-
-class CrawlJobResponse(BaseModel):
-    job_id: str
-    status: str
-    url: str
-    max_depth: int
-    max_pages: int
 
 
 class InspectRequest(BaseModel):
@@ -92,20 +83,59 @@ async def inspect_url(
     return await service.inspect(req.url)
 
 
-@router.post("/crawl", response_model=CrawlJobResponse)
+@router.post("/crawl", response_model=JobHandle, status_code=status.HTTP_202_ACCEPTED)
 async def start_crawl(
-    req: CrawlJobRequest,
+    req: JobRequest,
     _auth: str = Depends(verify_api_key),
+    service: DeepSearchService = Depends(get_deepsearch_service),
 ):
-    """Start a crawl job with bounded batch execution (§55, DS-A08)."""
-    job_id = f"crawl_{uuid.uuid4().hex[:8]}"
-    return CrawlJobResponse(
-        job_id=job_id,
-        status="ACCEPTED",
-        url=req.url,
-        max_depth=req.max_depth,
-        max_pages=req.max_pages,
-    )
+    """Submit a bounded in-process crawl job (§55, §DS-11)."""
+    return await service.submit_crawl_job(req)
+
+
+@router.get("/crawl/{job_id}", response_model=JobStatus)
+async def get_crawl_status(
+    job_id: str,
+    service: DeepSearchService = Depends(get_deepsearch_service),
+):
+    """Get the status of a crawl job (§DS-11)."""
+    try:
+        return await service.get_crawl_status(job_id)
+    except KeyError:
+        raise HTTPException(status_code=404, detail=f"Crawl job '{job_id}' not found")
+
+
+@router.get("/crawl/{job_id}/result", response_model=JobResult)
+async def get_crawl_result(
+    job_id: str,
+    service: DeepSearchService = Depends(get_deepsearch_service),
+):
+    """Get the outcome of a completed crawl job (§DS-11)."""
+    try:
+        res = await service.get_crawl_result(job_id)
+        if res is None:
+            status_obj = await service.get_crawl_status(job_id)
+            raise HTTPException(
+                status_code=425,
+                detail=f"Crawl job '{job_id}' is still in progress (status={status_obj.status.value})",
+            )
+        return res
+    except KeyError:
+        raise HTTPException(status_code=404, detail=f"Crawl job '{job_id}' not found")
+
+
+@router.post("/crawl/{job_id}/cancel")
+async def cancel_crawl(
+    job_id: str,
+    _auth: str = Depends(verify_api_key),
+    service: DeepSearchService = Depends(get_deepsearch_service),
+):
+    """Request cooperative cancellation of a crawl job (§DS-11)."""
+    try:
+        cancelled = await service.cancel_crawl_job(job_id)
+        return {"job_id": job_id, "cancelled": cancelled}
+    except KeyError:
+        raise HTTPException(status_code=404, detail=f"Crawl job '{job_id}' not found")
 
 
 @router.post("/search/text", response_model=List[SearchResultItem])

@@ -50,6 +50,11 @@
       "plan_fingerprint": "7b7fa337605b38f1",
       "priority": "P1",
       "title": "Подключить ограничения в реальный RunContext"
+    },
+    "DS-11": {
+      "plan_fingerprint": "b50d8a47ada59930",
+      "priority": "P1",
+      "title": "Реализовать настоящий минимальный JobService"
     }
   },
   "version": 1
