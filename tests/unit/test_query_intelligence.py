@@ -20,13 +20,13 @@ def test_query_normalizer_preserves_identifiers():
 
 
 def test_entity_extraction_types():
-    q = "baricitinib clinical trials for androgenetic alopecia compared with minoxidil in ISO 9001"
+    q = "metformin clinical trials for diabetes compared with insulin in ISO 9001"
     entities = extract_entities_from_query(q)
 
     e_names = [e.name.lower() for e in entities]
-    assert "baricitinib" in e_names
-    assert "alopecia" in e_names or "androgenetic alopecia" in e_names
-    assert "minoxidil" in e_names
+    assert "metformin" in e_names
+    assert "diabetes" in e_names
+    assert "insulin" in e_names
     assert any(e.entity_type == "STANDARD" for e in entities)
 
 

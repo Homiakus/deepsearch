@@ -60,6 +60,11 @@
       "plan_fingerprint": "835011b2bc2db026",
       "priority": "P1",
       "title": "Разделить research pipeline на проверяемые стадии"
+    },
+    "DS-13": {
+      "plan_fingerprint": "016441afac04a6e3",
+      "priority": "P1",
+      "title": "Сделать discovery конкурентным, расширяемым и наблюдаемым"
     }
   },
   "version": 1

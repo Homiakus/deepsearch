@@ -1,8 +1,24 @@
-"""Discovery Provider Protocol and Base Descriptors (DS-SI08)."""
+"""Discovery Provider Protocol and Base Descriptors (DS-13)."""
 
+from enum import Enum
 from typing import List, Optional, Protocol, runtime_checkable
 from pydantic import BaseModel, Field
 from scraper.search.candidates import SourceCandidate
+
+
+class ProviderStatus(str, Enum):
+    SUCCESS = "success"
+    TIMEOUT = "timeout"
+    FAILED = "failed"
+    SKIPPED = "skipped"
+
+
+class ProviderExecutionReport(BaseModel):
+    provider_name: str
+    status: ProviderStatus
+    candidate_count: int = 0
+    latency_sec: float = 0.0
+    error: Optional[str] = None
 
 
 class ProviderDescriptor(BaseModel):
@@ -13,6 +29,7 @@ class ProviderDescriptor(BaseModel):
     freshness_capability: str = "MEDIUM"  # REALTIME, HIGH, MEDIUM, ARCHIVAL
     cost_class: str = "FREE"  # FREE, LOW, MEDIUM, HIGH
     rate_limit_class: str = "DEFAULT"
+    opt_in_only: bool = False
 
 
 class ProviderSearchRequest(BaseModel):

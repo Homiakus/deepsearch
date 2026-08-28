@@ -20,7 +20,15 @@ def decompose_intent(intent: ResearchIntent) -> ResearchGoalGraph:
         or any(e.entity_type in ("DISEASE", "CHEMICAL") for e in intent.entities)
         or any(
             k in q_lower
-            for k in ["alopecia", "клиническ", "лечени", "drug", "trial", "efficacy"]
+            for k in [
+                "клиническ",
+                "лечени",
+                "medicin",
+                "drug",
+                "trial",
+                "efficacy",
+                "therapy",
+            ]
         )
     )
     is_software = (

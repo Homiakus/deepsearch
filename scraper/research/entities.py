@@ -26,20 +26,23 @@ class EntityClass(str, Enum):
 
 # Domain dictionaries and regex recognizers
 MEDICAL_TERMS = {
-    "alopecia": EntityClass.DISEASE,
-    "алопеция": EntityClass.DISEASE,
-    "облысение": EntityClass.DISEASE,
-    "androgenetic alopecia": EntityClass.DISEASE,
-    "finasteride": EntityClass.CHEMICAL,
-    "финастерид": EntityClass.CHEMICAL,
-    "minoxidil": EntityClass.CHEMICAL,
-    "миноксидил": EntityClass.CHEMICAL,
-    "baricitinib": EntityClass.CHEMICAL,
-    "дутастерид": EntityClass.CHEMICAL,
-    "dutasteride": EntityClass.CHEMICAL,
-    "dht": EntityClass.CHEMICAL,
-    "jak inhibitor": EntityClass.CHEMICAL,
+    "diabetes": EntityClass.DISEASE,
+    "диабет": EntityClass.DISEASE,
+    "oncology": EntityClass.DISEASE,
+    "онкология": EntityClass.DISEASE,
+    "hypertension": EntityClass.DISEASE,
+    "гипертония": EntityClass.DISEASE,
+    "carcinoma": EntityClass.DISEASE,
+    "melanoma": EntityClass.DISEASE,
+    "aspirin": EntityClass.CHEMICAL,
+    "аспирин": EntityClass.CHEMICAL,
+    "insulin": EntityClass.CHEMICAL,
+    "инсулин": EntityClass.CHEMICAL,
+    "metformin": EntityClass.CHEMICAL,
+    "метформин": EntityClass.CHEMICAL,
+    "crispr": EntityClass.CHEMICAL,
 }
+
 
 TECH_TERMS = {
     "qdrant": EntityClass.PRODUCT,

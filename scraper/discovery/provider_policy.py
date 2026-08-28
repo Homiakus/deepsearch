@@ -91,7 +91,6 @@ class ProviderPolicy:
             "patient",
             "syndrome",
             "inhibitor",
-            "alopecia",
             "antibody",
         }
         has_medical_kw = any(kw in q_lower for kw in medical_keywords)
@@ -143,7 +142,11 @@ class ProviderPolicy:
                     "openalex",
                 ):
                     p = self.registry.get(prov_name)
-                    if p and not any(r[0] == p for r in requests):
+                    if (
+                        p
+                        and not p.descriptor.opt_in_only
+                        and not any(r[0] == p for r in requests)
+                    ):
                         requests.append(
                             (
                                 p,
@@ -165,7 +168,11 @@ class ProviderPolicy:
                     "regional_academic",
                 ):
                     p = self.registry.get(prov_name)
-                    if p and not any(r[0] == p for r in requests):
+                    if (
+                        p
+                        and not p.descriptor.opt_in_only
+                        and not any(r[0] == p for r in requests)
+                    ):
                         requests.append(
                             (
                                 p,
@@ -180,7 +187,11 @@ class ProviderPolicy:
 
             if is_code:
                 p_gh = self.registry.get("github")
-                if p_gh and not any(r[0] == p_gh for r in requests):
+                if (
+                    p_gh
+                    and not p_gh.descriptor.opt_in_only
+                    and not any(r[0] == p_gh for r in requests)
+                ):
                     requests.append(
                         (
                             p_gh,
@@ -193,14 +204,17 @@ class ProviderPolicy:
                         )
                     )
 
-            # 3. Grounding & Open Web Fallback (WebSearch, Anna's Archive & Wikipedia)
+            # 3. Grounding & Open Web Fallback (WebSearch & Wikipedia; opt-in only sources excluded by default)
             for prov_name, limit in [
                 ("web_search", 15),
-                ("annas_archive", 10),
                 ("wikipedia", 5),
             ]:
                 p = self.registry.get(prov_name)
-                if p and not any(r[0] == p for r in requests):
+                if (
+                    p
+                    and not p.descriptor.opt_in_only
+                    and not any(r[0] == p for r in requests)
+                ):
                     requests.append(
                         (
                             p,

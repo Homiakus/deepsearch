@@ -18,10 +18,11 @@ class MockProvider:
     )
 
     async def search(self, request: ProviderSearchRequest):
+        tag = request.goal_id or request.query.replace(" ", "_")
         return [
             SourceCandidate(
-                url=f"https://mock.org/article_{i}",
-                canonical_url=f"https://mock.org/article_{i}",
+                url=f"https://mock.org/{tag}_article_{i}",
+                canonical_url=f"https://mock.org/{tag}_article_{i}",
                 title=f"Mock Title {i}",
                 snippet="Mock snippet text",
                 provider=self.descriptor.name,
@@ -59,8 +60,8 @@ async def test_provider_registry_and_parallel_search():
 def test_provider_policy_planning():
     policy = ProviderPolicy(registry=provider_registry)
     intent = ResearchIntent(
-        original_query="alopecia areata treatment",
-        normalized_query="alopecia areata treatment",
+        original_query="melanoma immunotherapy treatment",
+        normalized_query="melanoma immunotherapy treatment",
         task_type="medical",
     )
     goal = ResearchGoal(
@@ -68,7 +69,7 @@ def test_provider_policy_planning():
         question="What are standard treatments?",
         required_evidence_types=["GUIDELINE", "PRIMARY_RESEARCH"],
     )
-    qv = [SearchQueryVariant(query="alopecia areata treatment", goal_id=goal.id)]
+    qv = [SearchQueryVariant(query="melanoma immunotherapy treatment", goal_id=goal.id)]
 
     planned = policy.plan_provider_requests(intent, goal, qv)
     assert len(planned) > 0
@@ -77,6 +78,80 @@ def test_provider_policy_planning():
         name in provider_names
         for name in ("semantic_scholar", "openalex", "crossref", "europe_pmc", "pubmed")
     )
+    # Anna's Archive must NOT be planned by default (opt-in only)
+    assert "annas_archive" not in provider_names
+
+
+@pytest.mark.asyncio
+async def test_provider_concurrency_deterministic_merge_and_fault_isolation():
+    import asyncio
+    from scraper.discovery.providers.base import ProviderStatus
+
+    class VariableLatencyProvider:
+        def __init__(self, name: str, delay_sec: float, should_fail: bool = False):
+            self.descriptor = ProviderDescriptor(name=name)
+            self.delay_sec = delay_sec
+            self.should_fail = should_fail
+
+        async def search(self, request: ProviderSearchRequest):
+            await asyncio.sleep(self.delay_sec)
+            if self.should_fail:
+                raise RuntimeError(f"Simulated fault in {self.descriptor.name}")
+            return [
+                SourceCandidate(
+                    url=f"https://{self.descriptor.name}.org/p_{i}",
+                    canonical_url=f"https://{self.descriptor.name}.org/p_{i}",
+                    title=f"{self.descriptor.name} Title {i}",
+                    provider=self.descriptor.name,
+                    provider_rank=i,
+                )
+                for i in range(1, request.max_results + 1)
+            ]
+
+    p_slow = VariableLatencyProvider("p_slow", delay_sec=0.08)
+    p_fast = VariableLatencyProvider("p_fast", delay_sec=0.01)
+    p_err = VariableLatencyProvider("p_err", delay_sec=0.02, should_fail=True)
+
+    reg = ProviderRegistry()
+    reqs = [
+        (p_slow, ProviderSearchRequest(query="q1", max_results=2)),
+        (p_fast, ProviderSearchRequest(query="q2", max_results=2)),
+        (p_err, ProviderSearchRequest(query="q3", max_results=2)),
+    ]
+
+    candidates, reports = await reg.search_parallel_with_reports(
+        reqs, max_concurrency=3
+    )
+
+    # 1. Deterministic merge: p_slow was request 0, so its candidates come before p_fast (request 1)
+    assert len(candidates) == 4
+    assert candidates[0].provider == "p_slow"
+    assert candidates[1].provider == "p_slow"
+    assert candidates[2].provider == "p_fast"
+    assert candidates[3].provider == "p_fast"
+
+    # 2. Fault isolation: p_err error did not crash the batch and is reported accurately
+    report_map = {r.provider_name: r for r in reports}
+    assert report_map["p_slow"].status == ProviderStatus.SUCCESS
+    assert report_map["p_fast"].status == ProviderStatus.SUCCESS
+    assert report_map["p_err"].status == ProviderStatus.FAILED
+    assert "Simulated fault" in (report_map["p_err"].error or "")
+
+
+def test_domain_filter_parsed_hostname_isolation():
+    from scraper.discovery.providers.registry import is_matching_domain
+
+    target = "example.com"
+    # Valid exact and subdomains
+    assert is_matching_domain("https://example.com/page", target)
+    assert is_matching_domain("https://sub.example.com/item", target)
+    assert is_matching_domain("http://deep.nested.example.com", target)
+
+    # Substring attacks or lookalikes must be rejected
+    assert not is_matching_domain("https://fake-example.com/page", target)
+    assert not is_matching_domain("https://example.com.attacker.org/phish", target)
+    assert not is_matching_domain("https://malicious.org/example.com", target)
+    assert not is_matching_domain("not_a_url", target)
 
 
 @pytest.mark.asyncio

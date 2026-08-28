@@ -3,7 +3,7 @@
 import logging
 from typing import List, Optional
 
-from scraper.discovery.providers.registry import provider_registry
+from scraper.discovery.providers.registry import provider_registry, is_matching_domain
 from scraper.discovery.providers.base import ProviderSearchRequest
 from scraper.research.intent import ResearchIntent
 from scraper.research.query_normalizer import normalize_query
@@ -21,12 +21,14 @@ async def discover_diverse_seeds(
     preferred_sources: Optional[List[str]] = None,
     category: Optional[str] = None,
 ) -> List[str]:
-    """Discovers diverse seed URLs using ProviderRegistry and QueryIntelligence."""
+    """Discovers diverse seed URLs using ProviderRegistry and QueryIntelligence (DS-13)."""
     discovered: List[str] = []
 
-    # 1. Add user preferred sources first
+    # 1. Add user preferred sources first (filter by domain if specified)
     if preferred_sources:
-        discovered.extend(preferred_sources)
+        for pref in preferred_sources:
+            if is_matching_domain(pref, domain):
+                discovered.append(pref)
 
     # 2. Build structured research intent & goal graph
     norm_q = normalize_query(query)
@@ -49,11 +51,11 @@ async def discover_diverse_seeds(
         reqs = provider_policy.plan_provider_requests(intent, goal, query_variants)
         provider_reqs.extend(reqs)
 
-    # 4. Parallel search via provider registry
-    candidates = await provider_registry.search_parallel(provider_reqs)
+    # 4. Parallel search via provider registry with domain filter
+    candidates = await provider_registry.search_parallel(provider_reqs, domain=domain)
 
     for c in candidates:
-        if c.url and c.url not in discovered:
+        if c.url and is_matching_domain(c.url, domain) and c.url not in discovered:
             discovered.append(c.url)
 
     # Fallback to direct provider lookups if parallel candidates empty
@@ -63,9 +65,9 @@ async def discover_diverse_seeds(
             wiki_candidates = await p_wiki.search(
                 ProviderSearchRequest(query=query, max_results=3, language="en")
             )
-            discovered.extend(
-                [c.url for c in wiki_candidates if c.url not in discovered]
-            )
+            for c in wiki_candidates:
+                if is_matching_domain(c.url, domain) and c.url not in discovered:
+                    discovered.append(c.url)
 
     # Deduplicate while preserving order
     seen = set()

@@ -20,6 +20,7 @@ class AnnasArchiveProvider:
         languages=["en", "ru"],
         freshness_capability="ARCHIVAL",
         cost_class="FREE",
+        opt_in_only=True,
     )
 
     async def search(self, request: ProviderSearchRequest) -> List[SourceCandidate]:

@@ -77,11 +77,6 @@ class QueryGenerator:
                 ("жидкостная биопсия", "liquid biopsy ctDNA circulating tumor DNA"),
                 ("колоректальный рак", "colorectal cancer"),
                 ("онкологи", "oncology cancer neoplasms"),
-                (
-                    "алопец",
-                    "alopecia androgenetica tofacitinib baricitinib JAK inhibitors",
-                ),
-                ("облысени", "hair loss alopecia treatment clinical trial"),
                 ("иммунотерапи", "immunotherapy checkpoint inhibitors PD-1 CTLA-4"),
                 ("биомаркер", "biomarker diagnostic prognostic clinical validation"),
                 ("мутаци", "gene mutation variant pathogenicity CRISPR Cas9"),
