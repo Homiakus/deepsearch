@@ -25,6 +25,11 @@
       "plan_fingerprint": "d74ce6dd07d58fd1",
       "priority": "P0",
       "title": "Исправить контракты и типизированную модель ошибок"
+    },
+    "DS-06": {
+      "plan_fingerprint": "3138c59eaa02d51a",
+      "priority": "P0",
+      "title": "Свести конфигурацию к одному проверяемому контракту"
     }
   },
   "version": 1
