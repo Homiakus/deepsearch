@@ -20,6 +20,11 @@
       "plan_fingerprint": "6eafb268328dc724",
       "priority": "P0",
       "title": "Создать один application service и composition root"
+    },
+    "DS-05": {
+      "plan_fingerprint": "d74ce6dd07d58fd1",
+      "priority": "P0",
+      "title": "Исправить контракты и типизированную модель ошибок"
     }
   },
   "version": 1

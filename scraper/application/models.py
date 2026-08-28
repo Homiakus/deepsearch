@@ -84,7 +84,19 @@ class ResearchStatus(BaseModel):
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
-class ResearchResult(BaseModel):
+class ProviderStatus(BaseModel):
+    """Execution status and metrics for an individual seed or discovery provider (§DS-05, DS-13)."""
+
+    provider: str
+    status: str = "ok"  # ok, degraded, timeout, failed, disabled
+    items_count: int = 0
+    error: Optional[str] = None
+    duration_sec: float = 0.0
+
+
+class RunResult(BaseModel):
+    """Structured execution outcome with warnings, errors, and provider statuses (§DS-05)."""
+
     run_id: str
     query: str
     status: RunLifecycleState = RunLifecycleState.COMPLETED
@@ -92,6 +104,15 @@ class ResearchResult(BaseModel):
     total_rag_chunks: int = 0
     archive_path: Optional[str] = None
     dir_path: Optional[str] = None
+    warnings: List[str] = Field(default_factory=list)
+    errors: List[str] = Field(default_factory=list)
+    provider_statuses: Dict[str, ProviderStatus] = Field(default_factory=dict)
     manifest: Dict[str, Any] = Field(default_factory=dict)
     evidence_summary: Optional[Dict[str, Any]] = None
     completed_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class ResearchResult(RunResult):
+    """Compatibility alias and typed result model for research runs."""
+
+    pass

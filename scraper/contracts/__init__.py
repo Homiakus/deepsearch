@@ -1,6 +1,11 @@
-"""Core Protocols and Data Contracts for DeepSearch Platform."""
+"""Core Protocols and Data Contracts for DeepSearch Platform (§DS-05)."""
 
-from typing import Protocol, Optional, Dict, Any, runtime_checkable
+from __future__ import annotations
+
+from typing import Protocol, Optional, Dict, Any, List, runtime_checkable
+from scraper.acquisition.http_fetcher import HTTPResponse
+from scraper.acquisition.browser_pool import BrowserResponse
+from scraper.acquisition.models import AcquisitionRequest, AcquisitionResult
 
 
 @runtime_checkable
@@ -10,10 +15,11 @@ class FetcherProtocol(Protocol):
     async def fetch(
         self,
         url: str,
-        method: str = "GET",
         headers: Optional[Dict[str, str]] = None,
-        timeout: float = 30.0,
-    ) -> Any: ...
+        proxy: Optional[str] = None,
+    ) -> HTTPResponse: ...
+
+    async def close(self) -> None: ...
 
 
 @runtime_checkable
@@ -26,8 +32,9 @@ class BrowserPoolProtocol(Protocol):
         visual_mode: bool = False,
         wait_for_selector: Optional[str] = None,
         take_screenshot: bool = False,
-        timeout: float = 30.0,
-    ) -> Any: ...
+    ) -> BrowserResponse: ...
+
+    async def close(self) -> None: ...
 
 
 @runtime_checkable
@@ -45,9 +52,9 @@ class StorageProtocol(Protocol):
 
 @runtime_checkable
 class OCREngineProtocol(Protocol):
-    """Abstract protocol for visual OCR engines (PaddleOCR-VL-1.6)."""
+    """Abstract protocol for visual OCR engines."""
 
-    async def extract_text_from_image(self, image_bytes: bytes) -> Any: ...
+    async def extract_text_from_image(self, image_bytes: bytes) -> str: ...
 
 
 @runtime_checkable
@@ -57,4 +64,19 @@ class AcquisitionBackend(Protocol):
     @property
     def descriptor(self) -> Any: ...
 
-    async def acquire(self, request: Any) -> Any: ...
+    async def acquire(self, request: AcquisitionRequest) -> AcquisitionResult: ...
+
+
+@runtime_checkable
+class DiscoveryProviderProtocol(Protocol):
+    """Protocol for academic and open access discovery providers (§DS-13)."""
+
+    @property
+    def name(self) -> str: ...
+
+    async def search(
+        self,
+        query: str,
+        limit: int = 10,
+        **kwargs: Any,
+    ) -> List[str]: ...
