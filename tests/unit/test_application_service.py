@@ -166,7 +166,9 @@ async def test_interface_parity_inspect_and_extract():
     try:
         client = TestClient(app)
         api_res = client.post(
-            "/api/v1/inspect", json={"url": "https://example.com/contract"}
+            "/api/v1/inspect",
+            headers={"X-API-Key": "dev-secret"},
+            json={"url": "https://example.com/contract"},
         )
         assert api_res.status_code == 200
         api_data = api_res.json()

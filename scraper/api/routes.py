@@ -1,7 +1,8 @@
-"""FastAPI Route Handlers (§55 REST API, §57 Inspect Mode, DS-A02, DS-A03, DS-A07, §DS-04)."""
+"""FastAPI Route Handlers (§55 REST API, §57 Inspect Mode, DS-A02, DS-A03, DS-A07, §DS-04, §DS-08)."""
 
 import uuid
 from typing import List, Optional
+from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
@@ -22,6 +23,7 @@ from scraper.application.service import (
     get_deepsearch_service,
 )
 from scraper.api.sse import sse_broker
+from scraper.api.security import verify_api_key, resolve_safe_workspace_dir
 from scraper.storage.exporters.obsidian import ObsidianVaultExporter
 from scraper.storage.exporters.zotero import ZoteroLibraryExporter
 from scraper.contracts.capabilities import (
@@ -83,6 +85,7 @@ async def get_metrics():
 @router.post("/inspect", response_model=InspectResponse)
 async def inspect_url(
     req: InspectRequest,
+    _auth: str = Depends(verify_api_key),
     service: DeepSearchService = Depends(get_deepsearch_service),
 ):
     """Inspect Mode (§57) showing page intelligence metrics and recommended strategy."""
@@ -90,7 +93,10 @@ async def inspect_url(
 
 
 @router.post("/crawl", response_model=CrawlJobResponse)
-async def start_crawl(req: CrawlJobRequest):
+async def start_crawl(
+    req: CrawlJobRequest,
+    _auth: str = Depends(verify_api_key),
+):
     """Start a crawl job with bounded batch execution (§55, DS-A08)."""
     job_id = f"crawl_{uuid.uuid4().hex[:8]}"
     return CrawlJobResponse(
@@ -105,6 +111,7 @@ async def start_crawl(req: CrawlJobRequest):
 @router.post("/search/text", response_model=List[SearchResultItem])
 async def search_text(
     req: SearchQueryRequest,
+    _auth: str = Depends(verify_api_key),
     service: DeepSearchService = Depends(get_deepsearch_service),
 ):
     """Search text without fake synthetic results (DS-A03)."""
@@ -114,6 +121,7 @@ async def search_text(
 @router.post("/search/visual", response_model=List[SearchResultItem])
 async def search_visual(
     req: SearchQueryRequest,
+    _auth: str = Depends(verify_api_key),
     service: DeepSearchService = Depends(get_deepsearch_service),
 ):
     """Visual multivector search (DS-A03, DS-01)."""
@@ -135,6 +143,7 @@ async def search_visual(
 @router.post("/search/hybrid", response_model=List[SearchResultItem])
 async def search_hybrid(
     req: SearchQueryRequest,
+    _auth: str = Depends(verify_api_key),
     service: DeepSearchService = Depends(get_deepsearch_service),
 ):
     """Hybrid text and visual retrieval (DS-A03)."""
@@ -144,6 +153,7 @@ async def search_hybrid(
 @router.post("/search/query", response_model=SearchResponse)
 async def search_query_detailed(
     req: SearchQueryRequest,
+    _auth: str = Depends(verify_api_key),
     service: DeepSearchService = Depends(get_deepsearch_service),
 ):
     """Detailed query endpoint returning typed feature state and results."""
@@ -168,6 +178,7 @@ async def search_query_detailed(
 )
 async def start_research(
     req: ResearchRequest,
+    _auth: str = Depends(verify_api_key),
     service: DeepSearchService = Depends(get_deepsearch_service),
 ):
     """Asynchronously starts or loads a durable research execution (§55, DS-A02, DS-A07)."""
@@ -212,6 +223,7 @@ async def get_research_result(
 @router.post("/research/{run_id}/cancel")
 async def cancel_research(
     run_id: str,
+    _auth: str = Depends(verify_api_key),
     service: DeepSearchService = Depends(get_deepsearch_service),
 ):
     """Request durable cancellation of a research execution."""
@@ -242,26 +254,35 @@ async def stream_research_events(run_id: str):
 async def export_research_obsidian(
     run_id: str,
     output_dir: Optional[str] = None,
+    _auth: str = Depends(verify_api_key),
     service: DeepSearchService = Depends(get_deepsearch_service),
 ):
-    """Export research execution artifacts to an Obsidian markdown vault."""
+    """Export research execution artifacts to an Obsidian markdown vault strictly inside workspace (§DS-08)."""
     try:
         res = await service.research_result(run_id)
         if res is None:
             raise HTTPException(status_code=425, detail="Research is still running")
-        vault_dir = output_dir or f"./data/exports/obsidian_{run_id}"
-        exporter = ObsidianVaultExporter(vault_dir)
+
+        base_export_dir = Path(settings.storage_path) / "exports"
+        safe_vault_path = resolve_safe_workspace_dir(
+            base_export_dir, output_dir, f"obsidian_{run_id}"
+        )
+        safe_vault_dir = str(safe_vault_path)
+
+        exporter = ObsidianVaultExporter(safe_vault_dir)
         index_path = exporter.export_vault(
             query=res.query,
             extractions=[],
-            evidence_claims=res.claims,
-            metadata={"run_id": run_id, "quality_score": res.quality_score},
+            evidence_claims=res.evidence_summary.get("claims", [])
+            if res.evidence_summary
+            else [],
+            metadata={"run_id": run_id},
         )
         return {
             "status": "ok",
             "run_id": run_id,
             "vault_index": index_path,
-            "vault_dir": vault_dir,
+            "vault_dir": safe_vault_dir,
         }
     except KeyError:
         raise HTTPException(
@@ -273,21 +294,28 @@ async def export_research_obsidian(
 async def export_research_zotero(
     run_id: str,
     output_dir: Optional[str] = None,
+    _auth: str = Depends(verify_api_key),
     service: DeepSearchService = Depends(get_deepsearch_service),
 ):
-    """Export research execution citations to Zotero CSL-JSON and RIS files."""
+    """Export research execution citations to Zotero CSL-JSON and RIS files strictly inside workspace (§DS-08)."""
     try:
         res = await service.research_result(run_id)
         if res is None:
             raise HTTPException(status_code=425, detail="Research is still running")
-        zotero_dir = output_dir or f"./data/exports/zotero_{run_id}"
-        exporter = ZoteroLibraryExporter(zotero_dir)
+
+        base_export_dir = Path(settings.storage_path) / "exports"
+        safe_zotero_path = resolve_safe_workspace_dir(
+            base_export_dir, output_dir, f"zotero_{run_id}"
+        )
+        safe_zotero_dir = str(safe_zotero_path)
+
+        exporter = ZoteroLibraryExporter(safe_zotero_dir)
         files = exporter.export_all([], query=res.query)
         return {
             "status": "ok",
             "run_id": run_id,
             "files": files,
-            "output_dir": zotero_dir,
+            "output_dir": safe_zotero_dir,
         }
     except KeyError:
         raise HTTPException(

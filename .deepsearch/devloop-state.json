@@ -35,6 +35,11 @@
       "plan_fingerprint": "0c13769e361c90b8",
       "priority": "P0",
       "title": "Закрыть единый сетевой security boundary"
+    },
+    "DS-08": {
+      "plan_fingerprint": "0b21034bf78140d4",
+      "priority": "P0",
+      "title": "Защитить REST API и файловый вывод"
     }
   },
   "version": 1
