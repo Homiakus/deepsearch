@@ -4,13 +4,12 @@
 
 [English](README.md) • [Русский](README.ru.md)
 
-[![CI / Unit Tests](https://img.shields.io/badge/tests-136%20passed-brightgreen.svg)](tests/)
 [![Python Version](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13-blue.svg)](pyproject.toml)
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![MCP Server](https://img.shields.io/badge/MCP-FastMCP%20stdio-purple.svg)](docs/MCP_GUIDE.md)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110+-009688.svg)](scraper/api/app.py)
 
-DeepSearch is an adaptive web scraping, content extraction, and autonomous research platform. It evaluates target URLs at runtime to execute the **minimal effective cost tier**—routing between low-overhead HTTP, direct API discovery, headless Playwright Chromium, and visual multivector layout extraction (PixelRAG).
+DeepSearch is an adaptive web scraping, content extraction, and autonomous research platform. It evaluates target URLs at runtime to execute the **minimal effective cost tier**—routing between low-overhead HTTP, direct API discovery, and headless Playwright Chromium.
 
 ```
 Target URL / Search Query
@@ -19,8 +18,8 @@ Target URL / Search Query
 ┌────────────────────────────────────────────────────────────────────────┐
 │                        Minimal Effective Cost Tier                      │
 │                                                                        │
-│   L0: CAS Cache ──► L1: HTTP ──► L2: API ──► L3: Browser ──► L4: Visual│
-│   (BLAKE3 Hash)    (HTTPX)     (JSON)    (Playwright)   (PixelRAG)     │
+│   L0: CAS Cache ──► L1: HTTP ──► L2: API ──► L3: Headless Browser      │
+│   (BLAKE3 Hash)    (HTTPX)     (JSON)    (Playwright Chromium)         │
 └───────────────────────────────────┬────────────────────────────────────┘
                                     │
                                     ▼
@@ -30,7 +29,7 @@ Target URL / Search Query
 │   • Discovery: OpenAlex, Crossref, Semantic Scholar, Europe PMC,       │
 │     PubMed, ArXiv, Regional Academic, Wikipedia, Anna's Archive        │
 │   • Acquisition: Open Access direct PDF resolver & unpaywall fallbacks │
-│   • Media Pipeline: Topic image scoring, PDF figure & chart extraction │
+│   • Media Pipeline: Topic image scoring, PDF figure extraction         │
 │   • Dual-Format Output: files/ (links & media) + rag/ (LLM dataset)    │
 └───────────────────────────────────┬────────────────────────────────────┘
                                     │
@@ -40,28 +39,20 @@ Target URL / Search Query
 
 ---
 
-## Why DeepSearch
+## Platform Capability Matrix (§DS-01)
 
-Standard web scrapers force a single rigid approach: lightweight HTTP fetchers fail on JavaScript-heavy SPAs, while full-browser headless scrapers are 10–30x slower, resource-heavy, and easily blocked.
-
-DeepSearch resolves this by combining real-time DOM intelligence with cost-governed execution:
-
-* **Adaptive Escalation**: Scores target pages for static markup ratio, JS dependency, and dynamic API endpoints before deciding whether to launch a headless browser.
-* **Autonomous Research Pipeline**: Discovers academic, medical, and encyclopedic sources, extracts full text from HTML/PDFs, scores relevant media figures, and exports ready-to-use RAG datasets.
-* **Production-Grade Resilience**: Built-in host-aware token-bucket rate limiting, 3-level deduplication, self-healing CSS/XPath selectors, and SSRF pre-flight DNS blocking.
-* **Native AI Agent Protocols**: Full Model Context Protocol (MCP) server integration for Claude Desktop, Cursor, Claude Code, VS Code, and custom microservices.
-
----
-
-## Key Features
-
-* **Minimal Effective Cost Decision Policy**: Dynamically routes requests through 6 cost tiers (L0 Cache, L1 HTTP, L2 Direct API, L3 Playwright Browser, L4–L5 Visual/PixelRAG).
-* **Page Intelligence Engine**: Analyzes DOM structure to compute `static_score`, `js_dependency_score`, `api_score`, `visual_score`, and canvas detection.
-* **Autonomous Research Pipeline**: End-to-end multi-source discovery (ArXiv, Europe PMC, PubMed, Wikipedia, Anna's Archive) exporting dual-structure `.zip` archives with `files/` (links & media) and `rag/` (LLM-ready context chunks).
-* **Content Addressable Storage (CAS)**: Zstandard (`zstd`) compressed local filesystem storage keyed by BLAKE3 cryptographic hashes.
-* **3-Level Deduplication**: Normalizes URLs (strips tracking query parameters), checks exact BLAKE3 content hashes, and evaluates 64-bit SimHash Hamming distance.
-* **Resilient Extraction**: Generates sanitized Clean Markdown and Fit Markdown, converts tables to Markdown/CSV/JSON, and auto-repairs selectors via DOM fingerprinting.
-* **Full Multi-Interface Access**: Provides Typer CLI (`scraper`), FastAPI REST service (`:8080`), and FastMCP stdio server.
+| Capability | Status | Description | Interface |
+| :--- | :--- | :--- | :--- |
+| `research_pipeline` | `stable` | Multi-source discovery, crawl, extraction, dual-format `.zip` export | CLI, REST, MCP |
+| `url_inspection` | `stable` | Page intelligence, static vs JS dependency scoring | CLI, REST, MCP |
+| `content_extraction` | `stable` | Clean/Fit Markdown, table parsing (CSV/JSON/MD) | CLI, REST, MCP |
+| `seed_discovery` | `stable` | Academic query seed discovery across 8+ providers | REST, MCP |
+| `archive_export` | `stable` | Structured ZIP, JSONL RAG chunks, Obsidian, Zotero | REST, CLI |
+| `hybrid_search` | `experimental` | Dense semantic and sparse lexical vector retrieval | CLI, REST, MCP |
+| `rust_worker` | `experimental` | Rust sidecar worker client for HTTP acquisition | Python Client |
+| `pixel_rag` | `disabled` | Multimodal visual tile embedding & retrieval | Returns 501 `capability_unavailable` |
+| `ocr_engine` | `disabled` | PaddleOCR visual text & bounding box extraction | Disabled without native binaries |
+| `distributed_queue` | `disabled` | PostgreSQL persistence & Redis Streams task queue | In-memory queue active |
 
 ---
 

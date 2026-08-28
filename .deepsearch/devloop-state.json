@@ -1,5 +1,11 @@
 {
-  "version": 1,
-  "completed": {},
-  "attempts": {}
+  "attempts": {},
+  "completed": {
+    "DS-01": {
+      "plan_fingerprint": "6caf18d18279a279",
+      "priority": "P0",
+      "title": "Зафиксировать честную карту возможностей"
+    }
+  },
+  "version": 1
 }

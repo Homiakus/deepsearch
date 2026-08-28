@@ -379,6 +379,22 @@ async def deepsearch_search(query: str, limit: int = 10) -> str:
         )
 
 
+@mcp.tool()
+async def deepsearch_capabilities() -> str:
+    """Returns the canonical capability matrix (§DS-01) with honest status tiers (stable, experimental, disabled)."""
+    from scraper.contracts.capabilities import get_capability_matrix
+
+    matrix = get_capability_matrix()
+    return json.dumps(
+        {
+            "status": "success",
+            "capabilities": {k: v.model_dump() for k, v in matrix.items()},
+        },
+        indent=2,
+        ensure_ascii=False,
+    )
+
+
 def run_mcp_server():
     """Runs the MCP server over stdio transport, ensuring stderr logging and stdout isolation."""
     # Guarantee logs are routed strictly to stderr so stdio JSON-RPC framing remains uncorrupted

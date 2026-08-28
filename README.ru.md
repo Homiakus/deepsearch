@@ -4,13 +4,12 @@
 
 [English](README.md) • [Русский](README.ru.md)
 
-[![CI / Unit Tests](https://img.shields.io/badge/tests-136%20passed-brightgreen.svg)](tests/)
 [![Python Version](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13-blue.svg)](pyproject.toml)
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![MCP Server](https://img.shields.io/badge/MCP-FastMCP%20stdio-purple.svg)](docs/MCP_GUIDE.md)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110+-009688.svg)](scraper/api/app.py)
 
-DeepSearch — это адаптивная платформа для веб-скрейпинга, извлечения контента и проведения глубоких автономных исследований. Система в реальном времени анализирует структуру целевых страниц и выбирает **минимально эффективный уровень исполнения (Minimal Effective Cost Tier)** — динамически переключаясь между легковесным HTTP, прямым API, headless-браузером Playwright Chromium и мультивекторным визуальным извлечением макета (PixelRAG).
+DeepSearch — это адаптивная платформа для веб-скрейпинга, извлечения контента и проведения глубоких автономных исследований. Система в реальном времени анализирует структуру целевых страниц и выбирает **минимально эффективный уровень исполнения (Minimal Effective Cost Tier)** — динамически переключаясь между легковесным HTTP, прямым API и headless-браузером Playwright Chromium.
 
 ```
 Целевой URL / Поисковый запрос
@@ -19,8 +18,8 @@ DeepSearch — это адаптивная платформа для веб-ск
 ┌────────────────────────────────────────────────────────────────────────┐
 │                   Минимально эффективный уровень (Cost Tier)           │
 │                                                                        │
-│   L0: CAS Cache ──► L1: HTTP ──► L2: API ──► L3: Browser ──► L4: Visual│
-│   (BLAKE3 Hash)    (HTTPX)     (JSON)    (Playwright)   (PixelRAG)     │
+│   L0: CAS Cache ──► L1: HTTP ──► L2: API ──► L3: Headless Browser      │
+│   (BLAKE3 Hash)    (HTTPX)     (JSON)    (Playwright Chromium)         │
 └───────────────────────────────────┬────────────────────────────────────┘
                                     │
                                     ▼
@@ -40,24 +39,20 @@ DeepSearch — это адаптивная платформа для веб-ск
 
 ---
 
-## Почему DeepSearch
+## Карта возможностей платформы (§DS-01)
 
-Традиционные скрейперы заставляют выбирать крайности: легковесные HTTP-клиенты падают на современных SPA с JavaScript, а постоянный запуск браузеров в 10–30 раз медленнее, потребляет гигабайты памяти и быстрее блокируется антибот-системами.
-
-DeepSearch решает эту проблему благодаря интеллектуальной эскалации:
-
-* **Адаптивная эскалация**: Оценивает долю статического HTML, зависимость от JS и наличие скрытых REST API до принятия решения о запуске браузера.
-* **Автономный ресёрч-пайплайн**: Автоматически находит научные, медицинские и энциклопедические статьи, извлекает текст из HTML и PDF, отбирает релевантные схемы и графики и формирует готовые RAG-датасеты.
-* **Инженерная надёжность**: Встроенный token-bucket рейт-лимитер для каждого хоста, 3-уровневая дедупликация, самовосстанавливающиеся селекторы и защита от SSRF (блокировка приватных IP-диапазонов).
-* **Нативная поддержка AI-агентов**: Сервер Model Context Protocol (MCP) со stdio-транспортом для Claude Desktop, Cursor, Claude Code, VS Code и внешних микросервисов.
-
----
-
-## Ключевые возможности
-
-* **Минимально эффективная маршрутизация**: 6 уровней стоимости (L0 Cache, L1 HTTP, L2 Direct API, L3 Playwright Browser, L4–L5 Visual/PixelRAG).
-* **Page Intelligence Engine**: Анализ структуры DOM с расчётом `static_score`, `js_dependency_score`, `api_score`, `visual_score` и детекцией canvas-элементов.
-* **Автономный исследовательский пайплайн**: Мультидоменный поиск (ArXiv, Europe PMC, PubMed, Wikipedia, Anna's Archive) с экспортом `.zip` архивов: `files/` (Markdown со ссылками на источники) и `rag/` (чанкованный контекст для LLM).
+| Возможность | Статус | Описание | Интерфейс |
+| :--- | :--- | :--- | :--- |
+| `research_pipeline` | `stable` | Сбор из многих источников, обход, извлечение, экспорт `.zip` | CLI, REST, MCP |
+| `url_inspection` | `stable` | Анализ страниц, скоринг статики и JS-зависимостей | CLI, REST, MCP |
+| `content_extraction` | `stable` | Чистый/компактный Markdown, парсинг таблиц (CSV/JSON/MD) | CLI, REST, MCP |
+| `seed_discovery` | `stable` | Поиск источников в академических провайдерах | REST, MCP |
+| `archive_export` | `stable` | Структурированный ZIP, JSONL RAG-чанки, Obsidian, Zotero | REST, CLI |
+| `hybrid_search` | `experimental` | Плотный семантический и лексический векторный поиск | CLI, REST, MCP |
+| `rust_worker` | `experimental` | Rust worker client для сетевой загрузки | Python Client |
+| `pixel_rag` | `disabled` | Мультивекторный визуальный поиск по скриншотам | Возвращает 501 `capability_unavailable` |
+| `ocr_engine` | `disabled` | PaddleOCR распознавание текста | Отключен при отсутствии нативных бинарников |
+| `distributed_queue` | `disabled` | Очередь задач PostgreSQL / Redis Streams | Активна in-memory очередь |
 * **Content Addressable Storage (CAS)**: Локальное хранилище со сжатием Zstandard (`zstd`) и индексацией по криптографическим BLAKE3-хешам.
 * **3-уровневая дедупликация**: Каноникализация URL (удаление трекинговых меток), сверка BLAKE3-хешей контента и вычисление расстояния Хэмминга по 64-битному SimHash.
 * **Устойчивое извлечение контента**: Преобразование HTML в оптимизированный Clean Markdown и Fit Markdown, конвертация таблиц в Markdown/CSV/JSON, самовосстановление селекторов по DOM-отпечаткам.

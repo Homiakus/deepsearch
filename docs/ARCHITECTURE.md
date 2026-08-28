@@ -143,3 +143,21 @@ The software architecture follows a **Clean Layered Architecture (Dependency DAG
 - **Payload Limits**: Strict response size caps (`100 MB` raw, `500 MB` decompressed).
 - **Rate Limit Governance**: Token bucket rate limiting per target hostname protects target web servers from denial-of-service.
 - **Graceful Resource Teardown**: Async context managers handle cleanup of browser contexts, HTTP connection pools, and database sessions during process termination.
+
+---
+
+## 6. Canonical Capability Matrix (§DS-01)
+
+| Capability | Status | Description | Interface Bindings | Operational Notes |
+| :--- | :--- | :--- | :--- | :--- |
+| `research_pipeline` | `stable` | Multi-source discovery, adaptive crawl, extraction, archive packaging | CLI `scraper research`, REST `POST /api/v1/research`, MCP `deepsearch_research` | Verified core path |
+| `url_inspection` | `stable` | Page intelligence, static/JS scoring, strategy recommendation | CLI `scraper inspect`, REST `POST /api/v1/inspect`, MCP `deepsearch_inspect` | Verified |
+| `content_extraction` | `stable` | Clean & fit Markdown, table conversion (CSV/JSON/MD) | CLI `scraper extract`, REST `POST /api/v1/extract`, MCP `deepsearch_extract` | Verified |
+| `seed_discovery` | `stable` | Academic and open-access query discovery | REST `POST /api/v1/discover`, MCP `deepsearch_discover` | Verified |
+| `archive_export` | `stable` | Structured ZIP, JSONL RAG chunks, Obsidian, Zotero | REST `POST /api/v1/research/{id}/export/*` | Verified |
+| `hybrid_search` | `experimental` | Dense semantic and sparse lexical vector retrieval | CLI `scraper search`, REST `POST /api/v1/search/query`, MCP `deepsearch_search` | Requires populated local Qdrant index |
+| `pixel_rag` | `disabled` | Multimodal visual tile embedding & retrieval | REST `POST /api/v1/search/visual` | Returns 501 `capability_unavailable` until native VLM weights are integrated |
+| `ocr_engine` | `disabled` | PaddleOCR visual text & bounding box extraction | Internal visual pipeline | Returns empty result / disabled when native PaddleOCR is not installed |
+| `distributed_queue_postgres_redis` | `disabled` | PostgreSQL persistence & Redis Streams queue | Internal scheduler | In-memory queue is active by default; external backends disabled until DS-13 |
+| `rust_worker_acquisition` | `experimental` | Rust sidecar worker client for HTTP acquisition | `scraper/acquisition/rust_worker_client.py` | Standalone binary tests pass |
+

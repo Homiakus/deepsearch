@@ -135,34 +135,11 @@ class PaddleOCREngine:
             except Exception as e:
                 logger.warning("Error running %s inference: %s", self.ocr_version, e)
 
-        # Fallback mode when paddleocr is not installed or inference fails
-        full_text = ""
-        blocks: List[OCRBoundingBox] = []
-
-        if PIL_AVAILABLE and image_bytes:
-            try:
-                img = Image.open(io.BytesIO(image_bytes))
-                w, h = img.size
-                blocks.append(
-                    OCRBoundingBox(
-                        text=f"[{self.ocr_version} Fallback Container {w}x{h}]",
-                        confidence=1.0,
-                        box=[
-                            [0.0, 0.0],
-                            [float(w), 0.0],
-                            [float(w), float(h)],
-                            [0.0, float(h)],
-                        ],
-                    )
-                )
-                full_text = f"[{self.ocr_version} Fallback Container {w}x{h}]"
-            except Exception:
-                pass
-
+        # Honest failure/unsupported mode when paddleocr is not installed or inference fails
         return OCRResult(
-            full_text=full_text,
-            blocks=blocks,
-            mean_confidence=1.0,
-            model_name=f"{self.ocr_version} (Fallback)",
+            full_text="",
+            blocks=[],
+            mean_confidence=0.0,
+            model_name=f"{self.ocr_version} (Unavailable)",
             elapsed_sec=round(time.time() - start_t, 4),
         )

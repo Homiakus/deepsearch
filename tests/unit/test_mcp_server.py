@@ -175,6 +175,19 @@ async def test_mcp_tool_discover():
         assert res["seeds"] == ["https://arxiv.org/abs/2101.0001"]
 
 
+@pytest.mark.asyncio
+async def test_mcp_tool_capabilities():
+    from scraper.mcp.server import deepsearch_capabilities
+
+    res_raw = await deepsearch_capabilities()
+    res = json.loads(res_raw)
+    assert res["status"] == "success"
+    assert "capabilities" in res
+    assert "research_pipeline" in res["capabilities"]
+    assert res["capabilities"]["research_pipeline"]["status"] == "stable"
+    assert res["capabilities"]["pixel_rag"]["status"] == "disabled"
+
+
 def test_mcp_server_metadata():
     tools = mcp._tool_manager.list_tools()
     tool_names = [t.name for t in tools]
@@ -184,6 +197,7 @@ def test_mcp_server_metadata():
     assert "deepsearch_extract" in tool_names
     assert "deepsearch_search" in tool_names
     assert "deepsearch_discover" in tool_names
+    assert "deepsearch_capabilities" in tool_names
 
 
 # --- HARDENING & SECURITY TESTS ---
@@ -344,6 +358,7 @@ def test_stdio_jsonrpc_handshake_e2e():
         assert "deepsearch_extract" in tools_found
         assert "deepsearch_search" in tools_found
         assert "deepsearch_discover" in tools_found
+        assert "deepsearch_capabilities" in tools_found
 
     finally:
         if proc.poll() is None:

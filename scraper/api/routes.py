@@ -22,6 +22,11 @@ from scraper.application.research_service import research_service
 from scraper.api.sse import sse_broker
 from scraper.storage.exporters.obsidian import ObsidianVaultExporter
 from scraper.storage.exporters.zotero import ZoteroLibraryExporter
+from scraper.contracts.capabilities import (
+    CapabilityUnavailableError,
+    get_capability_matrix,
+    require_capability,
+)
 
 router = APIRouter(prefix="/api/v1")
 search_engine = SearchEngine()
@@ -74,6 +79,14 @@ async def health_check():
         "app": settings.app_name,
         "version": settings.app_version,
         "orchestration_backend": settings.orchestration_backend,
+    }
+
+
+@router.get("/capabilities")
+async def get_capabilities():
+    """Returns the canonical capability matrix (§DS-01) with honest status tiers."""
+    return {
+        "capabilities": {k: v.model_dump() for k, v in get_capability_matrix().items()}
     }
 
 
@@ -134,7 +147,19 @@ async def search_text(req: SearchQueryRequest):
 
 @router.post("/search/visual", response_model=List[SearchResultItem])
 async def search_visual(req: SearchQueryRequest):
-    """Visual multivector search (DS-A03)."""
+    """Visual multivector search (DS-A03, DS-01)."""
+    try:
+        require_capability("pixel_rag")
+    except CapabilityUnavailableError as exc:
+        raise HTTPException(
+            status_code=501,
+            detail={
+                "error": "capability_unavailable",
+                "capability": exc.capability,
+                "status": exc.status.value,
+                "message": exc.message,
+            },
+        )
     return search_engine.search_visual(req.query, limit=req.limit)
 
 

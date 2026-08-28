@@ -1,36 +1,34 @@
 # DeepSearch Platform Roadmap
 
+**Status:** Canonical Roadmap (§DS-01)  
+**Readiness Tiers:** `Stable` (verified end-to-end), `Experimental` (active implementation), `Disabled / Planned` (specification in REFACTOR_PLAN).
+
 ---
 
-## 🟢 Implemented Features (v1.0.0 & v1.1.0)
+## 🟢 1. Stable Features (Verified in Core Pipeline)
 
-- [x] **Minimal Effective Cost Decision Policy (§2)**: Dynamic routing across L0 Cache, L1 HTTP, L2 API, L3 Playwright Browser, L4-L5 Visual/PixelRAG.
-- [x] **Page Intelligence Engine (§7)**: Automatic scoring of `static_score`, `js_dependency_score`, `api_score`, `visual_score`, and canvas detection.
-- [x] **Host-Aware Rate Limiter (§12, §23)**: Token bucket algorithm with adaptive feedback on 429/503 responses and full jitter exponential backoff.
-- [x] **Resource Budget Tracker (§101)**: Job limits for max pages, depth, bytes, browser seconds, LLM tokens, and visual pages.
-- [x] **URL Canonicalization & Stripping (§17)**: Strips tracking parameters (`utm_*`, `fbclid`) and standardizes query components.
-- [x] **3-Level Deduplication (§17)**: Canonical URL hash, BLAKE3 content hash, and 64-bit SimHash Hamming distance.
-- [x] **Content Addressable Storage (CAS)**: Local filesystem & S3/MinIO CAS compressed with `zstandard` (`zstd`) and keyed by BLAKE3 / SHA-256 hash.
-- [x] **Markdown Extraction Pipeline (§35)**: HTML to token-optimized `clean_markdown` and `fit_markdown`.
-- [x] **Table Extraction (§36)**: Converts tables simultaneously to HTML, JSON, CSV, and Markdown.
-- [x] **Self-Healing Selectors (§60)**: DOM element fingerprinting for auto-repairing broken CSS/XPath selectors.
-- [x] **Media Downloader & OCR Engine**: Downloads embedded media and applies Tesseract OCR for visual document extraction.
-- [x] **Multi-Source Seed Discovery**: Automatic seed URLs discovery from ArXiv API, Wikipedia (EN/RU), and domain-specific sources.
-- [x] **Autonomous Research Pipeline**: End-to-end research execution with structured `.zip` archive output containing `files/` (links & media) and `rag/` (LLM context).
-- [x] **Model Context Protocol (MCP) Integration**: Native stdio FastMCP server (`scraper mcp`) exposing `inspect_url`, `crawl_domain`, `extract_markdown`, `hybrid_search`, `run_research_pipeline`, and `discover_seeds`.
-- [x] **REST API Server**: FastAPI service with 11 async endpoints, SSE live telemetry stream, and interactive Swagger UI (`/docs`).
-- [x] **Typer CLI**: Command line interface for `inspect`, `crawl`, `extract`, `search`, `research`, and `mcp`.
-- [x] **Observability**: Prometheus metrics tracking Browser Escalation Ratio and useful data ratio.
-- [x] **Security Protection**: SSRF pre-flight DNS resolution blocking private subnets.
-- [x] **Distributed Request Queue Adapter**: Production Redis Streams queue backend with consumer groups and in-memory fallback for high-concurrency crawling.
-- [x] **Expanded VLM Visual Embeddings**: Multimodal visual indexing and retrieval engine with ColPali / Qwen2-VL patch embeddings representation.
-- [x] **S3 / MinIO CAS Backend Adapter**: Remote S3/MinIO object storage backend for compressed CAS buckets with local caching.
-- [x] **Dynamic Cookie & Auth Session Persistence**: Encrypted Session Vault (AES-GCM) for domain session cookies, bearer tokens, and headers.
-- [x] **Real-time Streaming Research Web UI**: SSE (Server-Sent Events) live crawling telemetry and interactive visual dashboard.
-- [x] **Automated OpenAPI Client SDK Generation**: Automated TypeScript and Go client SDK generator from `docs/openapi.yaml`.
-- [x] **Obsidian / Zotero Exporter Plugin**: Direct export of research pipeline archives to Obsidian Knowledge Vaults with [[Wikilinks]] and Zotero CSL-JSON / RIS libraries.
-- [x] **Expanded Academic Discovery Providers (v1.2.0)**: Integrated OpenAlex, Crossref, Semantic Scholar, Europe PMC, PubMed, Regional Academic (eLibrary/SciELO), and Anna's Archive discovery.
-- [x] **Direct Open Access PDF Resolver (v1.2.0)**: Unpaywall and DOI-based automated PDF retrieval from PMC Open Access, ArXiv, MDPI, BioMed Central, and publisher direct streams.
-- [x] **Visual PDF Figure & Chart Extractor (v1.2.0)**: High-resolution raster and vector image extraction from scientific PDFs with bounding-box OCR captions and layout alignment.
-- [x] **Enhanced Text Normalization & Linguistic Cleansing (v1.2.0)**: Unicode normalization (NFC/NFKC), dehyphenation, ligature expansion, and multi-language sentence boundary preservation.
+- [x] **Autonomous Research Pipeline**: End-to-end multi-provider discovery (ArXiv, Europe PMC, PubMed, Wikipedia, Anna's Archive), adaptive acquisition, extraction, and dual-format `.zip` export with `files/` and `rag/` LLM context.
+- [x] **Page Intelligence & Inspection**: Runtime DOM scoring of static markup, JS dependency, API availability, and strategy selection.
+- [x] **Multi-Interface Access**: Single application service behind Typer CLI (`scraper`), FastAPI REST service (`:8080`), and FastMCP stdio server.
+- [x] **Markdown & Table Extraction**: Trafilatura/selectolax extraction producing Clean Markdown, Fit Markdown, and tables (CSV/JSON/MD).
+- [x] **Content Addressable Storage (CAS)**: Local filesystem CAS compressed with `zstandard` and keyed by BLAKE3 / SHA-256 hash.
+- [x] **URL Canonicalization & Deduplication**: Tracking parameter stripping (`utm_*`, `fbclid`), exact content hashing, and 64-bit SimHash near-deduplication.
+- [x] **Academic Discovery Providers**: Integrated OpenAlex, Crossref, Semantic Scholar, Europe PMC, PubMed, and ArXiv discovery.
+- [x] **Direct Open Access PDF Resolver**: Unpaywall and DOI-based automated PDF retrieval.
+- [x] **Obsidian / Zotero Export**: Direct export of research pipeline archives to Obsidian Knowledge Vaults and Zotero CSL-JSON / RIS.
 
+---
+
+## 🟡 2. Experimental Features
+
+- [ ] **Hybrid Search Engine**: Dense semantic (FastEmbed) and sparse lexical retrieval over local Qdrant index. Returns explicit `INDEX_EMPTY` / `NOT_CONFIGURED` state when unpopulated.
+- [ ] **Host Rate Limiting & Resource Budgeting**: Token bucket rate limiter and budget tracker (formal integration across all network boundaries in DS-06, DS-07).
+- [ ] **Rust Acquisition Worker Sidecar**: Native Rust worker for high-performance HTTP acquisition with zero-copy decompression.
+
+---
+
+## 🔴 3. Disabled / Planned Features (Tracked in `docs/architecture/REFACTOR_PLAN.md`)
+
+- [ ] **PixelRAG Visual Search**: Real VLM multivector model weights (ColPali/Qwen2-VL) integration (currently returns HTTP 501 `capability_unavailable`).
+- [ ] **Native PaddleOCR Extraction**: Integration with production OCR runtime (currently disabled when native binaries are absent).
+- [ ] **Distributed PostgreSQL & Redis Streams Queue**: High-throughput distributed task queue (DS-13).
