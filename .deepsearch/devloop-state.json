@@ -5,6 +5,11 @@
       "plan_fingerprint": "6caf18d18279a279",
       "priority": "P0",
       "title": "Зафиксировать честную карту возможностей"
+    },
+    "DS-02": {
+      "plan_fingerprint": "db891c89c152cb67",
+      "priority": "P0",
+      "title": "Ввести минимальный обязательный CI-gate"
     }
   },
   "version": 1

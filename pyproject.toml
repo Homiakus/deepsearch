@@ -44,7 +44,7 @@ dev = [
     "pytest>=8.0.0",
     "pytest-asyncio>=0.23.0",
     "pytest-cov>=4.1.0",
-    "black>=24.2.0",
+    "mypy>=1.9.0",
     "ruff>=0.3.0"
 ]
 
@@ -66,6 +66,38 @@ pytest_add_cli_args_test_selection = ["tests/"]
 mutate_only_covered_lines = true
 max_stack_depth = 8
 
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+
 [tool.ruff.lint.per-file-ignores]
 "tools/devloop.py" = ["E402"]
+
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true
+warn_unused_configs = true
+check_untyped_defs = false
+disallow_untyped_defs = false
+disable_error_code = [
+    "arg-type",
+    "attr-defined",
+    "assignment",
+    "dict-item",
+    "operator",
+    "misc",
+    "call-arg",
+    "union-attr",
+    "var-annotated",
+    "return-value",
+]
+
+[tool.coverage.run]
+source = ["scraper"]
+omit = ["tests/*"]
+
+[tool.coverage.report]
+show_missing = true
+fail_under = 0
+
 

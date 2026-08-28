@@ -8,8 +8,12 @@ on:
 
 jobs:
   python-quality-and-unit:
-    name: Python Lint, Type Check & Unit Tests
+    name: Python Lint, Type Check, Unit & Coverage Matrix (py${{ matrix.python-version }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
     steps:
       - uses: actions/checkout@v4
 
@@ -18,25 +22,28 @@ jobs:
         with:
           enable-cache: true
 
-      - name: Set up Python
+      - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: ${{ matrix.python-version }}
 
-      - name: Install dependencies
-        run: uv sync --all-extras
+      - name: Install dependencies (frozen)
+        run: uv sync --all-extras --frozen
 
-      - name: Syntax & Compile check
+      - name: Syntax & Bytecode Compilation Check
         run: uv run python -m compileall scraper
 
       - name: Ruff Linter
         run: uv run ruff check .
 
-      - name: Formatter check
+      - name: Ruff Formatter Check
         run: uv run ruff format --check .
 
-      - name: Run Unit & Contract Tests (Offline)
-        run: uv run pytest tests/ -v --durations=10
+      - name: Mypy Static Type Analysis
+        run: uv run mypy scraper
+
+      - name: Run Unit & Contract Tests with Coverage
+        run: uv run pytest tests/ -v --durations=10 --cov=scraper --cov-report=term-missing
 
       - name: Run Source Quality Contract Tests
         run: uv run pytest tests/unit/test_quality_report.py tests/unit/test_document_type.py tests/unit/test_candidate_url_policy.py -q
@@ -45,13 +52,15 @@ jobs:
         run: >-
           uv run python -c "import json; from pathlib import Path; [json.loads(line) for line in Path('benchmarks/search/source_quality.jsonl').read_text(encoding='utf-8').splitlines() if line.strip()]; print('source quality fixtures: ok')"
 
-      - name: Build Wheel Package
+      - name: Build Wheel and Source Distribution
         run: uv build
 
-      - name: Wheel Import Smoke Test
+      - name: Clean Environment Wheel Installation & CLI Smoke Test
         run: |
-          uv pip install dist/*.whl
-          python -c "import scraper; print('Scraper version:', scraper.__version__ if hasattr(scraper, '__version__') else 'OK')"
+          uv venv test-smoke-env
+          uv pip install --python test-smoke-env dist/*.whl
+          uv run --python test-smoke-env scraper --help
+          uv run --python test-smoke-env python -c "import scraper; print('Scraper smoke check: OK')"
 
   rust-acquisition-worker:
     name: Rust Acquisition Worker (Format, Clippy, Test)
