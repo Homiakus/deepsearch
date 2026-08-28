@@ -149,3 +149,7 @@ class HTTPFetcher:
                 elapsed_sec=res.elapsed.total_seconds(),
                 redirect_chain=[str(r.url) for r in res.history],
             )
+
+    async def close(self) -> None:
+        """Release any client session resources."""
+        pass

@@ -13,17 +13,13 @@ if hasattr(sys.stdout, "reconfigure"):
     except Exception:
         pass
 
-from scraper.config import settings, ExecutionMode
-from scraper.normalization.canonicalizer import canonicalize_url
-from scraper.acquisition.engine import AdaptiveAcquisitionEngine
-from scraper.extraction.engine import ExtractionEngine
-from scraper.search.search_engine import SearchEngine
+from scraper.config import ExecutionMode
 from scraper.application.models import (
     ResearchRequest,
     RunLifecycleState,
     FeatureAvailabilityState,
 )
-from scraper.application.research_service import research_service
+from scraper.application.service import get_deepsearch_service
 
 app = typer.Typer(
     name="scraper",
@@ -53,11 +49,13 @@ def crawl(
             title="DeepSearch Scraper",
         )
     )
-    c_url = canonicalize_url(url)
-    engine = AdaptiveAcquisitionEngine()
+    service = get_deepsearch_service()
 
     async def _run():
-        artifact = await engine.acquire_page(url, c_url, mode=ExecutionMode(mode))
+        c_url = (await service.inspect(url, mode=ExecutionMode(mode))).canonical_url
+        artifact = await service.acquisition_engine.acquire_page(
+            url, c_url, mode=ExecutionMode(mode)
+        )
         console.print(f"[bold cyan]Acquired URL:[/bold cyan] {artifact.url}")
         console.print(f"[bold cyan]Strategy Used:[/bold cyan] {artifact.strategy_used}")
         console.print(f"[bold cyan]Status Code:[/bold cyan] {artifact.status_code}")
@@ -74,35 +72,30 @@ def crawl(
 @app.command()
 def inspect(url: str = typer.Argument(..., help="URL to inspect (§57)")):
     """Inspect Mode (§57): Analyzes a URL and prints diagnostic page metrics and recommended strategy."""
-    c_url = canonicalize_url(url)
-    engine = AdaptiveAcquisitionEngine()
+    service = get_deepsearch_service()
 
     async def _run():
-        artifact = await engine.acquire_page(url, c_url, mode=ExecutionMode.BALANCED)
-        pi = artifact.page_intelligence
+        res = await service.inspect(url, mode=ExecutionMode.BALANCED)
 
         table = Table(title=f"Inspect Report for {url}")
         table.add_column("Metric", style="cyan", no_wrap=True)
         table.add_column("Value", style="magenta")
 
-        rec_strategy = "HTTP"
-        if pi.js_dependency_score >= settings.adaptive.browser_threshold:
-            rec_strategy = "PLAYWRIGHT BROWSER"
-        if pi.api_score >= 0.7:
-            rec_strategy = "DIRECT API"
-
-        table.add_row("HTTP Status", str(artifact.status_code))
-        table.add_row("Content Type", artifact.content_type)
-        table.add_row("Static Content", f"{pi.static_score * 100:.1f}%")
-        table.add_row("JS Dependency", f"{pi.js_dependency_score * 100:.1f}%")
-        table.add_row("Detected APIs", str(len(pi.detected_apis)))
-        table.add_row("Tables Count", str(pi.tables_count))
-        table.add_row("Canvas Detected", "Yes" if pi.has_canvas else "No")
-        table.add_row("Visual Score", f"{pi.visual_score * 100:.1f}%")
+        table.add_row("HTTP Status", str(res.http_status))
+        table.add_row("Content Type", res.content_type)
+        table.add_row("Static Content", f"{res.static_score * 100:.1f}%")
+        table.add_row("JS Dependency", f"{res.js_dependency_score * 100:.1f}%")
+        table.add_row("Detected APIs", str(res.detected_apis_count))
+        table.add_row("Tables Count", str(res.tables_count))
+        table.add_row("Canvas Detected", "Yes" if res.canvas_detected else "No")
+        table.add_row("Visual Score", f"{res.visual_score * 100:.1f}%")
         table.add_row(
-            "Recommended Strategy", f"[bold green]{rec_strategy}[/bold green]"
+            "Recommended Strategy",
+            f"[bold green]{res.recommended_strategy}[/bold green]",
         )
-        table.add_row("Estimated Cost", "LOW" if rec_strategy == "HTTP" else "HIGH")
+        table.add_row(
+            "Estimated Cost", "LOW" if res.recommended_strategy == "HTTP" else "HIGH"
+        )
 
         console.print(table)
 
@@ -117,12 +110,10 @@ def extract(
     ),
 ):
     """Extract content and structured data from URL (§56)."""
-    c_url = canonicalize_url(url)
-    engine = AdaptiveAcquisitionEngine()
+    service = get_deepsearch_service()
 
     async def _run():
-        artifact = await engine.acquire_page(url, c_url, mode=ExecutionMode.BALANCED)
-        result = ExtractionEngine.extract_from_html(url, artifact.text_content)
+        result = await service.extract(url, mode=ExecutionMode.BALANCED)
         console.print(
             Panel(result.clean_markdown[:1000], title="Extract Result (Clean Markdown)")
         )
@@ -133,9 +124,9 @@ def extract(
 @app.command()
 def search(query: str = typer.Argument(..., help="Search query string")):
     """Perform hybrid text and visual multivector search (§56, DS-A03)."""
-    se = SearchEngine()
-    state = se.get_feature_state()
-    results = se.search_hybrid(query)
+    service = get_deepsearch_service()
+    state = service.search_engine.get_feature_state()
+    results = service.search(query)
 
     if state != FeatureAvailabilityState.READY or not results:
         console.print(
@@ -212,14 +203,16 @@ def research(
         output_archive_path=output,
     )
 
+    service = get_deepsearch_service()
+
     async def _run():
-        handle = await research_service.start(req)
+        handle = await service.start_research(req)
         console.print(f"[bold blue]Run ID:[/bold blue] {handle.run_id}")
 
         # Poll status until completed
         while True:
             await asyncio.sleep(0.5)
-            st = await research_service.status(handle.run_id)
+            st = await service.research_status(handle.run_id)
             if st.status in (
                 RunLifecycleState.COMPLETED,
                 RunLifecycleState.INSUFFICIENT_EVIDENCE,
@@ -228,7 +221,7 @@ def research(
             ):
                 break
 
-        res = await research_service.result(handle.run_id)
+        res = await service.research_result(handle.run_id)
         if res and res.status in (
             RunLifecycleState.COMPLETED,
             RunLifecycleState.INSUFFICIENT_EVIDENCE,
@@ -252,7 +245,7 @@ def research(
                     f"[bold yellow]Archive Generated with Insufficient Evidence:[/bold yellow] {res.archive_path or res.dir_path}"
                 )
         else:
-            st = await research_service.status(handle.run_id)
+            st = await service.research_status(handle.run_id)
             console.print(
                 f"[bold red]Research {st.status.value}:[/bold red] {st.error_message}"
             )

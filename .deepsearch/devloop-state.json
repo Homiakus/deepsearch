@@ -15,6 +15,11 @@
       "plan_fingerprint": "68b10ff6d5b9c6bf",
       "priority": "P0",
       "title": "Сделать unit tests герметичными"
+    },
+    "DS-04": {
+      "plan_fingerprint": "6eafb268328dc724",
+      "priority": "P0",
+      "title": "Создать один application service и composition root"
     }
   },
   "version": 1

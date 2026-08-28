@@ -33,7 +33,8 @@ def test_api_inspect():
         page_intelligence=mock_pi,
     )
     with patch(
-        "scraper.api.routes.acquisition_engine.acquire_page", new_callable=AsyncMock
+        "scraper.acquisition.engine.AdaptiveAcquisitionEngine.acquire_page",
+        new_callable=AsyncMock,
     ) as mock_acquire:
         mock_acquire.return_value = mock_artifact
         res = client.post("/api/v1/inspect", json={"url": "https://example.com"})

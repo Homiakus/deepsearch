@@ -1,4 +1,4 @@
-"""DeepSearch Model Context Protocol (MCP) Server (§100, DS-A02, DS-A03).
+"""DeepSearch Model Context Protocol (MCP) Server (§100, DS-A02, DS-A03, §DS-04).
 
 Exposes DeepSearch research, inspection, extraction, and hybrid retrieval tools
 to LLM clients (Claude, Cursor, Antigravity, VS Code, etc.) over standard MCP interfaces.
@@ -15,14 +15,10 @@ from pathlib import Path
 from typing import Optional, List, Literal
 from mcp.server.fastmcp import FastMCP
 
-from scraper.config import settings, ExecutionMode
-from scraper.acquisition.engine import AdaptiveAcquisitionEngine
-from scraper.normalization.canonicalizer import canonicalize_url
-from scraper.extraction.engine import ExtractionEngine
-from scraper.search.search_engine import SearchEngine
+from scraper.config import ExecutionMode
 from scraper.discovery.seed_finder import discover_diverse_seeds
 from scraper.application.models import ResearchRequest, RunLifecycleState
-from scraper.application.research_service import research_service
+from scraper.application.service import get_deepsearch_service
 
 logger = logging.getLogger(__name__)
 
@@ -30,9 +26,6 @@ mcp = FastMCP(
     name="deepsearch",
     instructions="DeepSearch Adaptive Scraping, Extraction, and Research Platform MCP Server",
 )
-
-search_engine = SearchEngine()
-acquisition_engine = AdaptiveAcquisitionEngine()
 
 ALLOWED_MODES = {"fast", "balanced", "complete", "research"}
 MAX_DEPTH = 10
@@ -127,7 +120,8 @@ async def deepsearch_research(
         category=category.strip() if category else None,
     )
 
-    handle = await research_service.start(req)
+    service = get_deepsearch_service()
+    handle = await service.start_research(req)
     timeout_sec = 600.0  # 10 minute absolute safety boundary
     start_time = asyncio.get_event_loop().time()
 
@@ -135,7 +129,7 @@ async def deepsearch_research(
         # Wait for completion in MCP async loop with durable cancellation
         while True:
             await asyncio.sleep(0.5)
-            st = await research_service.status(handle.run_id)
+            st = await service.research_status(handle.run_id)
             if st.status in (
                 RunLifecycleState.COMPLETED,
                 RunLifecycleState.INSUFFICIENT_EVIDENCE,
@@ -150,7 +144,7 @@ async def deepsearch_research(
                     handle.run_id,
                     timeout_sec,
                 )
-                await research_service.cancel(handle.run_id)
+                await service.cancel_research(handle.run_id)
                 return json.dumps(
                     {
                         "status": "failed",
@@ -161,7 +155,7 @@ async def deepsearch_research(
                     ensure_ascii=False,
                 )
 
-        res = await research_service.result(handle.run_id)
+        res = await service.research_result(handle.run_id)
         if res and res.status in (
             RunLifecycleState.COMPLETED,
             RunLifecycleState.INSUFFICIENT_EVIDENCE,
@@ -182,7 +176,7 @@ async def deepsearch_research(
                 ensure_ascii=False,
             )
         else:
-            st = await research_service.status(handle.run_id)
+            st = await service.research_status(handle.run_id)
             return json.dumps(
                 {
                     "status": "failed",
@@ -199,11 +193,11 @@ async def deepsearch_research(
             "MCP client cancelled research request %s. Propagating cancellation to backend...",
             handle.run_id,
         )
-        await research_service.cancel(handle.run_id)
+        await service.cancel_research(handle.run_id)
         raise
     except Exception as exc:
         logger.exception("Unexpected error in deepsearch_research handler: %s", exc)
-        await research_service.cancel(handle.run_id)
+        await service.cancel_research(handle.run_id)
         return json.dumps(
             {"status": "failed", "run_id": handle.run_id, "error": str(exc)},
             indent=2,
@@ -262,34 +256,24 @@ async def deepsearch_inspect(url: str) -> str:
             ensure_ascii=False,
         )
 
+    service = get_deepsearch_service()
     try:
-        c_url = canonicalize_url(url.strip())
-        artifact = await acquisition_engine.acquire_page(
-            url.strip(), c_url, mode=ExecutionMode.BALANCED
-        )
-        pi = artifact.page_intelligence
-
-        rec_strategy = "HTTP"
-        if pi.js_dependency_score >= settings.adaptive.browser_threshold:
-            rec_strategy = "PLAYWRIGHT BROWSER"
-        if pi.api_score >= 0.7:
-            rec_strategy = "DIRECT API"
-
+        res = await service.inspect(url.strip(), mode=ExecutionMode.BALANCED)
         return json.dumps(
             {
                 "status": "success",
-                "url": url,
-                "canonical_url": c_url,
-                "http_status": artifact.status_code,
-                "content_type": artifact.content_type,
-                "static_score": pi.static_score,
-                "js_dependency_score": pi.js_dependency_score,
-                "detected_apis_count": len(pi.detected_apis),
-                "tables_count": pi.tables_count,
-                "canvas_detected": pi.has_canvas,
-                "visual_score": pi.visual_score,
-                "recommended_strategy": rec_strategy,
-                "estimated_cost": 1.0 if rec_strategy == "HTTP" else 10.0,
+                "url": res.url,
+                "canonical_url": res.canonical_url,
+                "http_status": res.http_status,
+                "content_type": res.content_type,
+                "static_score": res.static_score,
+                "js_dependency_score": res.js_dependency_score,
+                "detected_apis_count": res.detected_apis_count,
+                "tables_count": res.tables_count,
+                "canvas_detected": res.canvas_detected,
+                "visual_score": res.visual_score,
+                "recommended_strategy": res.recommended_strategy,
+                "estimated_cost": res.estimated_cost,
             },
             indent=2,
             ensure_ascii=False,
@@ -313,21 +297,18 @@ async def deepsearch_extract(url: str) -> str:
             ensure_ascii=False,
         )
 
+    service = get_deepsearch_service()
     try:
-        c_url = canonicalize_url(url.strip())
-        artifact = await acquisition_engine.acquire_page(
-            url.strip(), c_url, mode=ExecutionMode.BALANCED
-        )
-        result = ExtractionEngine.extract_from_html(url.strip(), artifact.text_content)
+        result = await service.extract(url.strip(), mode=ExecutionMode.BALANCED)
 
         return json.dumps(
             {
                 "status": "success",
-                "url": url,
+                "url": result.url,
                 "clean_markdown": result.clean_markdown,
                 "fit_markdown": result.fit_markdown,
                 "tables_count": len(result.tables),
-                "extracted_records_count": len(result.extracted_records),
+                "word_count": result.word_count,
             },
             indent=2,
             ensure_ascii=False,
@@ -352,12 +333,13 @@ async def deepsearch_search(query: str, limit: int = 10) -> str:
         )
 
     bounded_limit = max(1, min(limit, MAX_SEARCH_LIMIT))
+    service = get_deepsearch_service()
 
     try:
-        state = search_engine.get_feature_state()
+        state = service.search_engine.get_feature_state()
         # Offload synchronous vector/BM25 retrieval to a worker thread to prevent blocking event loop
         results = await asyncio.to_thread(
-            search_engine.search_hybrid, query.strip(), limit=bounded_limit
+            service.search, query.strip(), limit=bounded_limit
         )
         return json.dumps(
             {
@@ -398,13 +380,20 @@ async def deepsearch_capabilities() -> str:
 def run_mcp_server():
     """Runs the MCP server over stdio transport, ensuring stderr logging and stdout isolation."""
     # Guarantee logs are routed strictly to stderr so stdio JSON-RPC framing remains uncorrupted
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-        stream=sys.stderr,
-        force=True,
+    root_logger = logging.getLogger()
+    for handler in root_logger.handlers[:]:
+        root_logger.removeHandler(handler)
+
+    stderr_handler = logging.StreamHandler(sys.stderr)
+    formatter = logging.Formatter(
+        "%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
     )
-    logger.info("Initializing DeepSearch Production MCP Server on stdio transport...")
+    stderr_handler.setFormatter(formatter)
+    root_logger.addHandler(stderr_handler)
+    root_logger.setLevel(logging.INFO)
+
+    logger.info("Initializing DeepSearch FastMCP server over stdio transport...")
     mcp.run(transport="stdio")
 
 
