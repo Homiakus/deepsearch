@@ -93,7 +93,9 @@ class DocumentRelevanceEvaluator:
         entity_matches = 0
         for e in intent.entities:
             ename = (e.canonical_form or e.name).lower()
-            if cls._term_matches(ename, doc_lower) or cls._term_matches(ename, title_lower):
+            if cls._term_matches(ename, doc_lower) or cls._term_matches(
+                ename, title_lower
+            ):
                 entity_matches += 1
         entity_score = (
             entity_matches / max(len(intent.entities), 1) if intent.entities else 1.0
@@ -101,9 +103,7 @@ class DocumentRelevanceEvaluator:
 
         # 3. Evidence density (quantitative tokens, metrics, citations)
         has_numbers = len(re.findall(r"\b\d+(?:\.\d+)?\b", doc_lower)) > 3
-        has_citations = any(
-            k in doc_lower for k in cls.RESEARCH_EVIDENCE_MARKERS
-        )
+        has_citations = any(k in doc_lower for k in cls.RESEARCH_EVIDENCE_MARKERS)
         density = (
             0.5 + (0.25 if has_numbers else 0.0) + (0.25 if has_citations else 0.0)
         )

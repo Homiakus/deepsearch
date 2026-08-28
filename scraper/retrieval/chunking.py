@@ -49,11 +49,7 @@ class StructureAwareChunker:
         """Splits an oversized paragraph into sentence-bounded chunks."""
         import re
 
-        sentences = [
-            s.strip()
-            for s in re.split(r"(?<=[.!?])\s+", text)
-            if s.strip()
-        ]
+        sentences = [s.strip() for s in re.split(r"(?<=[.!?])\s+", text) if s.strip()]
         if not sentences:
             return [text]
 
@@ -90,7 +86,9 @@ class StructureAwareChunker:
         def _emit_chunk(block_text: str):
             nonlocal chunks
             c_id = f"chunk_{uuid.uuid4().hex[:12]}"
-            c_hash = hashlib.sha256(block_text.encode("utf-8", errors="replace")).hexdigest()
+            c_hash = hashlib.sha256(
+                block_text.encode("utf-8", errors="replace")
+            ).hexdigest()
             w_count = len(block_text.split())
             t_est = self.estimate_tokens(block_text)
 
@@ -155,7 +153,9 @@ class StructureAwareChunker:
                 _flush_chunk(reset_overlap=True)
                 heading_text = line.lstrip("#").strip()
                 current_heading = heading_text
-                current_path = [document.title, heading_text] if document.title else [heading_text]
+                current_path = (
+                    [document.title, heading_text] if document.title else [heading_text]
+                )
                 continue
 
             # Table boundary

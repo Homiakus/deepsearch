@@ -25,5 +25,9 @@ def test_terminal_url_policy_keeps_binary_documents_out_of_page_acquisition():
         candidate_url_policy.rejection_reason("https://arxiv.org/pdf/2309.15217v2.pdf")
         == URLRejectionReason.BINARY_DOCUMENT_URL
     )
-    assert candidate_url_policy.is_binary_document("https://arxiv.org/pdf/2309.15217v2.pdf")
-    assert not candidate_url_policy.is_binary_document("https://arxiv.org/abs/2309.15217v2")
+    assert candidate_url_policy.is_binary_document(
+        "https://arxiv.org/pdf/2309.15217v2.pdf"
+    )
+    assert not candidate_url_policy.is_binary_document(
+        "https://arxiv.org/abs/2309.15217v2"
+    )

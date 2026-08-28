@@ -6,7 +6,6 @@ Generates RAG chunks, full Markdown documents, and packages everything into an a
 """
 
 import os
-import re
 import json
 import asyncio
 import zipfile
@@ -29,7 +28,9 @@ HEADERS = {
 BASE_DIR = os.path.abspath("papanicolaou_lbc_physicochemical_dataset")
 FILES_DIR = os.path.join(BASE_DIR, "files")
 RAG_DIR = os.path.join(BASE_DIR, "rag")
-ZIP_OUTPUT_PATH = os.path.abspath("deepsearch_papanicolaou_lbc_physicochemical_dataset.zip")
+ZIP_OUTPUT_PATH = os.path.abspath(
+    "deepsearch_papanicolaou_lbc_physicochemical_dataset.zip"
+)
 
 os.makedirs(FILES_DIR, exist_ok=True)
 os.makedirs(RAG_DIR, exist_ok=True)
@@ -38,7 +39,9 @@ os.makedirs(RAG_DIR, exist_ok=True)
 # -------------------------------------------------------------------
 # 1. EUROPE PMC SEARCH & FULLTEXT XML RETRIEVAL
 # -------------------------------------------------------------------
-async def fetch_pmc_fulltexts(query: str, max_results: int = 10) -> List[Dict[str, Any]]:
+async def fetch_pmc_fulltexts(
+    query: str, max_results: int = 10
+) -> List[Dict[str, Any]]:
     """Searches Europe PMC for open access papers and fetches full text XML."""
     articles = []
     search_url = f"https://www.ebi.ac.uk/europepmc/webservices/rest/search?query={urllib.parse.quote(query)}+OPEN_ACCESS:Y&format=json&pageSize={max_results}"
@@ -90,9 +93,15 @@ async def fetch_pmc_fulltexts(query: str, max_results: int = 10) -> List[Dict[st
 async def search_annas_archive(queries: List[str]) -> List[Dict[str, str]]:
     """Scrapes Anna's Archive for foundational books and monographs."""
     items = []
-    base_urls = ["https://annas-archive.cc", "https://annas-archive.org", "https://annas-archive.li"]
+    base_urls = [
+        "https://annas-archive.cc",
+        "https://annas-archive.org",
+        "https://annas-archive.li",
+    ]
 
-    async with httpx.AsyncClient(timeout=20.0, trust_env=False, follow_redirects=True) as client:
+    async with httpx.AsyncClient(
+        timeout=20.0, trust_env=False, follow_redirects=True
+    ) as client:
         for base_url in base_urls:
             working = False
             for q in queries:
@@ -105,8 +114,15 @@ async def search_annas_archive(queries: List[str]) -> List[Dict[str, str]]:
                         parser = HTMLParser(res.text)
                         for a in parser.css("a"):
                             href = a.attributes.get("href") or ""
-                            if any(k in href for k in ["/book/", "/article/", "/md5/", "/document/"]):
-                                full_url = href if href.startswith("http") else f"{base_url}{href}"
+                            if any(
+                                k in href
+                                for k in ["/book/", "/article/", "/md5/", "/document/"]
+                            ):
+                                full_url = (
+                                    href
+                                    if href.startswith("http")
+                                    else f"{base_url}{href}"
+                                )
                                 text = a.text(strip=True) or q
                                 items.append(
                                     {
@@ -299,7 +315,9 @@ def create_physicochemical_monograph():
 # 4. MAIN DATA COLLECTION & PACKING PIPELINE
 # -------------------------------------------------------------------
 async def main():
-    logger.info("=== Starting Deep Research for Papanicolaou LBC Physicochemical Mechanisms ===")
+    logger.info(
+        "=== Starting Deep Research for Papanicolaou LBC Physicochemical Mechanisms ==="
+    )
 
     pmc_queries = [
         "Papanicolaou stain physicochemical mechanism",
@@ -322,7 +340,9 @@ async def main():
             seen_pmc.add(a["pmcid"])
             unique_articles.append(a)
 
-    logger.info(f"Retrieved {len(unique_articles)} full-text open access peer-reviewed papers.")
+    logger.info(
+        f"Retrieved {len(unique_articles)} full-text open access peer-reviewed papers."
+    )
 
     # Harvest Anna's Archive entries
     annas_items = await search_annas_archive(
@@ -333,11 +353,15 @@ async def main():
             "Liquid based cytology Pap stain",
         ]
     )
-    logger.info(f"Cataloged {len(annas_items)} monographs & literature references from Anna's Archive.")
+    logger.info(
+        f"Cataloged {len(annas_items)} monographs & literature references from Anna's Archive."
+    )
 
     # 1. Save the synthesized authoritative monograph
     monograph_text = create_physicochemical_monograph()
-    monograph_path = os.path.join(FILES_DIR, "00_Papanicolaou_LBC_Physicochemical_Mechanisms_Monograph.md")
+    monograph_path = os.path.join(
+        FILES_DIR, "00_Papanicolaou_LBC_Physicochemical_Mechanisms_Monograph.md"
+    )
     with open(monograph_path, "w", encoding="utf-8") as f:
         f.write(monograph_text)
 
@@ -346,12 +370,16 @@ async def main():
     manifest_sources = []
 
     # Monograph RAG chunks
-    mono_chunks = [monograph_text[i : i + 1500] for i in range(0, len(monograph_text), 1200)]
+    mono_chunks = [
+        monograph_text[i : i + 1500] for i in range(0, len(monograph_text), 1200)
+    ]
     for c_idx, chunk in enumerate(mono_chunks):
         total_rag_chunks += 1
         rag_file = os.path.join(RAG_DIR, f"monograph_chunk_{c_idx + 1}.txt")
         with open(rag_file, "w", encoding="utf-8") as rf:
-            rf.write(f"Source: Papanicolaou LBC Physicochemical Mechanisms Monograph (Chunk {c_idx + 1})\n\n{chunk}")
+            rf.write(
+                f"Source: Papanicolaou LBC Physicochemical Mechanisms Monograph (Chunk {c_idx + 1})\n\n{chunk}"
+            )
 
     manifest_sources.append(
         {
@@ -382,7 +410,9 @@ async def main():
             total_rag_chunks += 1
             rag_file = os.path.join(RAG_DIR, f"{pmcid}_chunk_{c_idx + 1}.txt")
             with open(rag_file, "w", encoding="utf-8") as rf:
-                rf.write(f"Source: {title} (Chunk {c_idx + 1})\nURL: {art['source_url']}\n\n{chunk}")
+                rf.write(
+                    f"Source: {title} (Chunk {c_idx + 1})\nURL: {art['source_url']}\n\n{chunk}"
+                )
 
         manifest_sources.append(
             {
@@ -397,8 +427,10 @@ async def main():
         )
 
     # 3. Create Anna's Archive Download & Resolution Directory / Documentation
-    annas_doc_path = os.path.join(FILES_DIR, "01_Annas_Archive_Download_and_Mirrors_Guide.md")
-    annas_doc_content = f"""# Руководство по загрузке источников из Anna's Archive
+    annas_doc_path = os.path.join(
+        FILES_DIR, "01_Annas_Archive_Download_and_Mirrors_Guide.md"
+    )
+    annas_doc_content = """# Руководство по загрузке источников из Anna's Archive
 
 Система глубокого поиска интегрирована с протоколом получения материалов из Anna's Archive (крупнейшей открытой библиотеки научной литературы и монографий).
 

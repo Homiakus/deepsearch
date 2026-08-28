@@ -111,7 +111,9 @@ Tensile strength exceeds 65 MPa after standard UV post-curing.
     )
 
     out_dir = str(tmp_path / "run_out")
-    built = exporter.build_archive_structure([(artifact, extraction)], output_dir=out_dir)
+    built = exporter.build_archive_structure(
+        [(artifact, extraction)], output_dir=out_dir
+    )
 
     rag_chunks_file = os.path.join(built, "rag", "rag_chunks.jsonl")
     assert os.path.exists(rag_chunks_file)
@@ -153,13 +155,16 @@ doi: 10.1016/j.polymer.2025.1001
 
 def test_content_filter_accepts_articles_with_extensive_bibliography():
     """Verify that scientific articles with large reference lists are not falsely rejected as navigation pages."""
-    body_text = """# Comprehensive Review of Photopolymerization Kinetics
+    body_text = (
+        """# Comprehensive Review of Photopolymerization Kinetics
 
 Photopolymerization is a light-activated chain reaction that transforms liquid monomer formulations into solid cross-linked polymers.
 In stereolithography and digital light processing additive manufacturing, the kinetics of photoinitiation, propagation, and termination determine the cure depth and resolution of 3D printed objects.
 Dual-cure systems combining radical photopolymerization with thermal cationic polymerization have gained extensive traction in dental and aerospace manufacturing due to high mechanical modulus and low volumetric shrinkage.
 Experimental evaluation demonstrates that increasing exposure irradiance from five to twenty milliwatts per square centimeter accelerates double-bond conversion without compromising thermal stability.
-""" * 4  # Generates ~400 words of dense continuous article body
+"""
+        * 4
+    )  # Generates ~400 words of dense continuous article body
 
     bibliography = "\n\n## References\n\n" + "\n".join(
         f"- [{i}] Author et al., Paper Title {i}, [Link](https://doi.org/10.1000/182{i})"

@@ -94,7 +94,10 @@ def test_query_generator_expanded_materials_and_ai_translations():
     variants = q_gen.generate_variants(intent, goal_graph)
 
     queries_text = [v.query.lower() for v in variants]
-    assert any("solid state battery" in t or "graphene" in t or "perovskite" in t for t in queries_text)
+    assert any(
+        "solid state battery" in t or "graphene" in t or "perovskite" in t
+        for t in queries_text
+    )
 
 
 def test_query_generator_followup_variants():

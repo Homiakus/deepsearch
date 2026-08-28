@@ -73,7 +73,9 @@ class CandidateURLPolicy:
         parsed = urlparse(url or "")
         path = parsed.path.lower()
         query = parsed.query.lower()
-        return any(marker in path or marker in query for marker in cls.BINARY_PATH_MARKERS)
+        return any(
+            marker in path or marker in query for marker in cls.BINARY_PATH_MARKERS
+        )
 
     @classmethod
     def is_terminal_source_allowed(cls, url: str) -> bool:

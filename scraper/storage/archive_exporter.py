@@ -19,6 +19,7 @@ from pydantic import BaseModel, Field
 from scraper.acquisition.engine import CapturedArtifact
 from scraper.extraction.engine import ExtractionResult
 from scraper.normalization.text import recursive_sanitize, sanitize_unicode_string
+from scraper.search.chunking import StructureAwareChunker, StructuredChunk
 
 
 class SearchRunMetadata(BaseModel):
@@ -29,9 +30,6 @@ class SearchRunMetadata(BaseModel):
     max_pages: int = 100
     mode: str = "balanced"
     created_at: float = Field(default_factory=time.time)
-
-
-from scraper.search.chunking import StructureAwareChunker, StructuredChunk
 
 
 class RAGChunk(BaseModel):
@@ -178,9 +176,8 @@ class ArchiveExporter:
 
             for c_idx, s_chunk in enumerate(structured_chunks):
                 chunk_id = f"{safe_title}_c{c_idx + 1:03d}"
-                token_est = (
-                    s_chunk.token_estimate
-                    or int(len(s_chunk.text.split()) * 1.3)
+                token_est = s_chunk.token_estimate or int(
+                    len(s_chunk.text.split()) * 1.3
                 )
                 rag_chunk = RAGChunk(
                     chunk_id=chunk_id,

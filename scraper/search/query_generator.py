@@ -100,18 +100,33 @@ class QueryGenerator:
                 ("твердотельн", "solid state battery solid electrolyte conductivity"),
                 ("аккумулятор", "lithium ion battery cathode anode degradation"),
                 ("графен", "graphene 2D materials synthesis characterization"),
-                ("перовскит", "perovskite solar cells photovoltaic efficiency stability"),
-                ("сверхпровод", "superconductivity high temperature superconductor critical current"),
+                (
+                    "перовскит",
+                    "perovskite solar cells photovoltaic efficiency stability",
+                ),
+                (
+                    "сверхпровод",
+                    "superconductivity high temperature superconductor critical current",
+                ),
                 ("спектроскоп", "spectroscopy FTIR Raman XRD characterization"),
                 ("полупроводник", "semiconductor bandgap heterojunction transistor"),
                 ("композит", "composite materials carbon fiber reinforced matrix"),
-                ("микроконтроллер", "microcontroller embedded systems firmware ARM RISC-V"),
+                (
+                    "микроконтроллер",
+                    "microcontroller embedded systems firmware ARM RISC-V",
+                ),
                 # Computer Science, AI & Systems
                 ("нейросеть", "neural networks deep learning RAG LLM"),
                 ("трансформер", "transformer attention mechanism LLM"),
                 ("векторн", "vector database embeddings similarity search HNSW"),
-                ("обучение с подкреплением", "reinforcement learning policy gradient PPO RLHF"),
-                ("компьютерное зрение", "computer vision object detection segmentation"),
+                (
+                    "обучение с подкреплением",
+                    "reinforcement learning policy gradient PPO RLHF",
+                ),
+                (
+                    "компьютерное зрение",
+                    "computer vision object detection segmentation",
+                ),
                 ("генеративн", "generative AI diffusion models LLM"),
                 ("распределенн", "distributed consensus Raft Paxos replication"),
                 ("безопасност", "cybersecurity vulnerability exploit mitigation"),

@@ -54,11 +54,7 @@ class StructureAwareChunker:
         """Splits an oversized paragraph into sentence-bounded chunks."""
         import re
 
-        sentences = [
-            s.strip()
-            for s in re.split(r"(?<=[.!?])\s+", text)
-            if s.strip()
-        ]
+        sentences = [s.strip() for s in re.split(r"(?<=[.!?])\s+", text) if s.strip()]
         if not sentences:
             return [text]
 
@@ -109,7 +105,9 @@ class StructureAwareChunker:
 
         def _emit_chunk(block_text: str):
             nonlocal chunks
-            c_hash = hashlib.sha256(block_text.encode("utf-8", errors="replace")).hexdigest()
+            c_hash = hashlib.sha256(
+                block_text.encode("utf-8", errors="replace")
+            ).hexdigest()
             w_count = len(block_text.split())
             t_est = self.estimate_tokens(block_text)
 

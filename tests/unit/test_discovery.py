@@ -98,4 +98,3 @@ def test_provider_yield_tracker():
     tracker.record_call("flaky_prov", candidate_count=0, error=True)
     tracker.record_call("flaky_prov", candidate_count=0, error=True)
     assert tracker.get_health_factor("flaky_prov") == 0.2
-

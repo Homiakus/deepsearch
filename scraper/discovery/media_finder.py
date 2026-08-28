@@ -188,10 +188,14 @@ def extract_image_candidates(raw_html: str, base_url: str) -> List[Dict[str, Any
                         'meta[property="og:title"]'
                     )
                     page_title = (
-                        title_node.text(strip=True)
-                        if hasattr(title_node, "text")
-                        else str(title_node.attributes.get("content", ""))
-                    ) if title_node else ""
+                        (
+                            title_node.text(strip=True)
+                            if hasattr(title_node, "text")
+                            else str(title_node.attributes.get("content", ""))
+                        )
+                        if title_node
+                        else ""
+                    )
                     candidates.append(
                         {
                             "url": full_og_url,
@@ -304,7 +308,7 @@ async def fetch_wikimedia_topic_images(
     if not query:
         return []
 
-    clean_query = re.sub(r'[^\w\s-]', ' ', query).strip()
+    clean_query = re.sub(r"[^\w\s-]", " ", query).strip()
     encoded_query = urllib.parse.quote(clean_query or query)
     search_url = (
         f"https://commons.wikimedia.org/w/api.php?action=query&generator=search"
@@ -369,7 +373,7 @@ async def fetch_wikipedia_article_images(
     if not query:
         return []
 
-    clean_query = re.sub(r'[^\w\s-]', ' ', query).strip()
+    clean_query = re.sub(r"[^\w\s-]", " ", query).strip()
     encoded_query = urllib.parse.quote(clean_query or query)
     api_url = (
         f"https://en.wikipedia.org/w/api.php?action=query&generator=search"
@@ -423,7 +427,9 @@ def score_and_rank_images(
         return []
 
     # Clean and tokenize query terms (keeping meaningful short acronyms >= 2 chars, e.g. AI, 3D, ML, 5G)
-    raw_query_terms = [t.lower() for t in re.findall(r"[\w]+", query) if len(t) >= 2 or t.isalnum()]
+    raw_query_terms = [
+        t.lower() for t in re.findall(r"[\w]+", query) if len(t) >= 2 or t.isalnum()
+    ]
     query_terms = raw_query_terms
 
     scored_images: List[Dict[str, Any]] = []

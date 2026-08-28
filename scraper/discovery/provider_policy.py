@@ -18,9 +18,15 @@ class ProviderYieldTracker:
     def __init__(self):
         self._stats: Dict[str, Dict[str, Any]] = {}
 
-    def record_call(self, provider_name: str, candidate_count: int, error: bool = False):
+    def record_call(
+        self, provider_name: str, candidate_count: int, error: bool = False
+    ):
         if provider_name not in self._stats:
-            self._stats[provider_name] = {"calls": 0, "errors": 0, "total_candidates": 0}
+            self._stats[provider_name] = {
+                "calls": 0,
+                "errors": 0,
+                "total_candidates": 0,
+            }
         s = self._stats[provider_name]
         s["calls"] += 1
         if error:

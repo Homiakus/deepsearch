@@ -357,7 +357,10 @@ class DeepSearchPipeline:
 
                         transport = httpx.AsyncHTTPTransport(retries=2)
                         async with httpx.AsyncClient(
-                            transport=transport, timeout=10.0, follow_redirects=True, trust_env=False
+                            transport=transport,
+                            timeout=10.0,
+                            follow_redirects=True,
+                            trust_env=False,
                         ) as client:
                             xml_res = await client.get(
                                 f"https://www.ebi.ac.uk/europepmc/webservices/rest/{pmcid}/fullTextXML"
@@ -748,11 +751,13 @@ class DeepSearchPipeline:
                         if p_path and os.path.exists(p_path):
                             doc_id = pdf_doc.get("filename", "doc").replace(".pdf", "")
                             try:
-                                extracted_figs = pdf_figure_extractor.extract_figures_from_pdf(
-                                    pdf_path=p_path,
-                                    output_media_dir=media_temp_dir,
-                                    doc_id=doc_id,
-                                    max_figures=3,
+                                extracted_figs = (
+                                    pdf_figure_extractor.extract_figures_from_pdf(
+                                        pdf_path=p_path,
+                                        output_media_dir=media_temp_dir,
+                                        doc_id=doc_id,
+                                        max_figures=3,
+                                    )
                                 )
                                 for fig in extracted_figs:
                                     downloaded_media.append(fig)

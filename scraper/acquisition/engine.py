@@ -181,7 +181,9 @@ class AdaptiveAcquisitionEngine:
                     page_intelligence=pi,
                     elapsed_sec=http_res.elapsed_sec,
                 )
-            raise AcquisitionError(f"Failed to acquire page {url}: browser unavailable and HTTP failed")
+            raise AcquisitionError(
+                f"Failed to acquire page {url}: browser unavailable and HTTP failed"
+            )
 
         try:
             browser_res: BrowserResponse = await asyncio.wait_for(

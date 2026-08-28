@@ -183,4 +183,3 @@ def test_extract_image_candidates_with_og_and_srcset():
     urls = [c["url"] for c in candidates]
     assert "https://example.com/og_hero.jpg" in urls
     assert "https://example.com/pic_large.webp" in urls
-

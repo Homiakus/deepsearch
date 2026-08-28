@@ -46,7 +46,9 @@ impl UrlPolicy {
                 }
             }
             None => {
-                return Err(AcquisitionError::InvalidUrl("Missing host in URL".to_string()));
+                return Err(AcquisitionError::InvalidUrl(
+                    "Missing host in URL".to_string(),
+                ));
             }
         }
 
