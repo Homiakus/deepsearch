@@ -219,9 +219,7 @@ def diff_stats(base_ref: str = "HEAD") -> DiffStats:
     return DiffStats(files=len(paths), changed_lines=changed_lines, paths=paths)
 
 
-def enforce_diff_budget(
-    config: dict[str, Any], base_ref: str = "HEAD"
-) -> DiffStats:
+def enforce_diff_budget(config: dict[str, Any], base_ref: str = "HEAD") -> DiffStats:
     """Reject oversized or self-modifying implementation diffs."""
     stats = diff_stats(base_ref)
     safety = config["safety"]

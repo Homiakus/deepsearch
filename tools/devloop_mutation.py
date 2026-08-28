@@ -115,9 +115,7 @@ def run_python_mutation(
     # A tests-only change must prove that it did not weaken the existing suite.
     # New untracked source cannot be represented by a Git diff, so use full scope.
     effective_full = (
-        full
-        or (tests_changed and not targets)
-        or _python_source_is_untracked()
+        full or (tests_changed and not targets) or _python_source_is_untracked()
     )
     _clear_mutmut_workspace()
 
@@ -159,8 +157,7 @@ def run_rust_mutation(base_ref: str, full: bool) -> None:
     crate = ROOT / "rust" / "acquisition-worker"
     require_binary(
         "cargo-mutants",
-        "cargo install --locked "
-        f"cargo-mutants --version {_CARGO_MUTANTS_VERSION}",
+        f"cargo install --locked cargo-mutants --version {_CARGO_MUTANTS_VERSION}",
     )
     source, tests_changed = _rust_changes(base_ref)
     if not full and not source and not tests_changed:
@@ -168,9 +165,7 @@ def run_rust_mutation(base_ref: str, full: bool) -> None:
         return
 
     effective_full = (
-        full
-        or (tests_changed and not source)
-        or _rust_source_is_untracked()
+        full or (tests_changed and not source) or _rust_source_is_untracked()
     )
     if effective_full:
         run(
@@ -223,8 +218,7 @@ def run_go_mutation(base_ref: str, full: bool) -> None:
     module = ROOT / "orchestrator"
     require_binary(
         "gremlins",
-        "go install github.com/go-gremlins/gremlins/cmd/gremlins"
-        f"@v{_GREMLINS_VERSION}",
+        f"go install github.com/go-gremlins/gremlins/cmd/gremlins@v{_GREMLINS_VERSION}",
     )
     if not full and not _go_changed(base_ref):
         print("Go mutation: no changed Go source/tests; skipped.")
@@ -278,11 +272,5 @@ def mutation_required(config: dict[str, Any], task: Task) -> bool:
 
 def bootstrap_mutation_tools() -> None:
     """Install non-Python mutation engines at pinned versions."""
-    run(
-        "cargo install --locked "
-        f"cargo-mutants --version {_CARGO_MUTANTS_VERSION}"
-    )
-    run(
-        "go install github.com/go-gremlins/gremlins/cmd/gremlins"
-        f"@v{_GREMLINS_VERSION}"
-    )
+    run(f"cargo install --locked cargo-mutants --version {_CARGO_MUTANTS_VERSION}")
+    run(f"go install github.com/go-gremlins/gremlins/cmd/gremlins@v{_GREMLINS_VERSION}")

@@ -49,8 +49,7 @@ def generate_pairwise_cases(model: dict[str, Any]) -> list[dict[str, str]]:
         uncovered.difference_update(best_cover)
 
     return [
-        {axes[index][0]: value for index, value in enumerate(case)}
-        for case in selected
+        {axes[index][0]: value for index, value in enumerate(case)} for case in selected
     ]
 
 
@@ -66,9 +65,7 @@ def missing_pairwise_coverage(
     for case in cases:
         for left_index, (left_name, _) in enumerate(axes):
             for right_name, _ in axes[left_index + 1 :]:
-                covered.add(
-                    (left_name, case[left_name], right_name, case[right_name])
-                )
+                covered.add((left_name, case[left_name], right_name, case[right_name]))
 
     required = {
         (left_name, left, right_name, right)
