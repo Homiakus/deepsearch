@@ -45,6 +45,11 @@
       "plan_fingerprint": "fafffb9b36203461",
       "priority": "P1",
       "title": "Упростить и сделать честной acquisition policy"
+    },
+    "DS-10": {
+      "plan_fingerprint": "7b7fa337605b38f1",
+      "priority": "P1",
+      "title": "Подключить ограничения в реальный RunContext"
     }
   },
   "version": 1

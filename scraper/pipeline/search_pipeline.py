@@ -10,10 +10,12 @@ import json
 import asyncio
 import tempfile
 import logging
+import urllib.parse
 from typing import List, Optional, Tuple, Dict, Any
 from pydantic import BaseModel, Field
 
 from scraper.config import ExecutionMode
+from scraper.application.run_context import RunContext, RunContextOptions
 from scraper.normalization.canonicalizer import canonicalize_url
 from scraper.acquisition.engine import AdaptiveAcquisitionEngine, CapturedArtifact
 from scraper.extraction.engine import ExtractionEngine, ExtractionResult
@@ -96,7 +98,9 @@ class DeepSearchPipeline:
         self.acquisition_engine = acquisition_engine or AdaptiveAcquisitionEngine()
 
     async def execute(
-        self, opts: DeepSearchPipelineOptions
+        self,
+        opts: DeepSearchPipelineOptions,
+        run_context: Optional[RunContext] = None,
     ) -> DeepSearchPipelineResult:
         logger.info(
             "Starting DeepSearch Pipeline for query='%s', domain='%s', depth=%d",
@@ -104,6 +108,18 @@ class DeepSearchPipeline:
             opts.domain,
             opts.depth,
         )
+
+        if run_context is None:
+            run_context = RunContext.create(
+                RunContextOptions(
+                    run_id="ds_pipeline_run",
+                    query=opts.query,
+                    domain=opts.domain,
+                    depth=opts.depth,
+                    max_pages=opts.max_pages,
+                    mode=opts.mode,
+                )
+            )
 
         trace = SearchTrace()
         trace.record(TraceEventType.QUERY_ANALYZED, entity_id=opts.query, stage="init")
@@ -242,7 +258,10 @@ class DeepSearchPipeline:
             current_url = item.candidate.canonical_url or item.candidate.url
             c_url = canonicalize_url(current_url)
 
-            # Filter by domain only when auto_discover_sources is disabled (strict mode)
+            # 1. Cooperative cancellation and deadline check (§DS-10)
+            run_context.check_active()
+
+            # 2. Filter by domain only when auto_discover_sources is disabled (strict mode)
             if (
                 not opts.auto_discover_sources
                 and opts.domain
@@ -253,6 +272,41 @@ class DeepSearchPipeline:
                 )
                 return
 
+            # 3. URL Deduplication check (§17, §DS-10)
+            if run_context.deduplicator.is_url_duplicate(c_url):
+                await frontier.mark_state(
+                    item.id, CandidateState.REJECTED, error="URL_DUPLICATE"
+                )
+                return
+
+            # 4. Robots.txt policy check (§22, §DS-10)
+            parsed_u = urllib.parse.urlparse(current_url)
+            if not run_context.robots_manager.is_allowed(
+                current_url, domain=parsed_u.netloc
+            ):
+                rejection = {
+                    "stage": "robots",
+                    "url": current_url,
+                    "canonical_url": c_url,
+                    "candidate_title": item.candidate.title,
+                    "provider": item.candidate.provider,
+                    "document_type": "ROBOTS_DENIED",
+                    "reason_code": "ROBOTS_TXT_DISALLOWED",
+                    "signals": ["robots.txt disallow rule"],
+                    "status_code": 403,
+                    "strategy": "policy",
+                }
+                async with frontier_lock:
+                    rejections.append(rejection)
+                await frontier.mark_state(
+                    item.id, CandidateState.REJECTED, error="ROBOTS_TXT_DISALLOWED"
+                )
+                return
+
+            # 5. Host Rate Limiter token acquisition (§12, §DS-10)
+            if parsed_u.netloc:
+                await run_context.rate_limiter.acquire(parsed_u.netloc)
+
             try:
                 local_pending_pdfs: List[Dict[str, Any]] = []
                 artifact = await self.acquisition_engine.acquire_page(
@@ -261,6 +315,29 @@ class DeepSearchPipeline:
                     mode=opts.mode,
                     take_screenshot=opts.take_screenshot,
                 )
+
+                # Record rate limiter response metrics (§12)
+                if parsed_u.netloc:
+                    await run_context.rate_limiter.record_result(
+                        parsed_u.netloc, artifact.status_code, artifact.elapsed_sec
+                    )
+
+                # Record budget tracker consumption (§50, §DS-10)
+                was_browser = artifact.strategy_used in ("L3_BROWSER", "L5_VISUAL")
+                await run_context.budget_tracker.record_page(
+                    bytes_size=len(artifact.raw_content),
+                    depth=item.depth,
+                    was_browser=was_browser,
+                    browser_sec=artifact.elapsed_sec if was_browser else 0.0,
+                    was_visual=(artifact.strategy_used == "L5_VISUAL"),
+                )
+
+                # Content Deduplication check (§17, §DS-10)
+                if run_context.deduplicator.is_content_duplicate(artifact.raw_content):
+                    await frontier.mark_state(
+                        item.id, CandidateState.REJECTED, error="CONTENT_DUPLICATE"
+                    )
+                    return
 
                 extraction = ExtractionEngine.extract_from_html(
                     url=artifact.url, raw_html=artifact.text_content
