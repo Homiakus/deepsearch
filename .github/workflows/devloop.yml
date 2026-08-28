@@ -1,0 +1,85 @@
+name: Devloop Contract
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".deepsearch/**"
+      - "tools/devloop*.py"
+      - "tests/unit/test_devloop.py"
+      - "docs/architecture/CYCLIC_DEVELOPMENT_LOOP.md"
+      - "AGENTS.md"
+      - "pyproject.toml"
+      - ".github/workflows/devloop.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - ".deepsearch/**"
+      - "tools/devloop*.py"
+      - "tests/unit/test_devloop.py"
+      - "docs/architecture/CYCLIC_DEVELOPMENT_LOOP.md"
+      - "AGENTS.md"
+      - "pyproject.toml"
+      - ".github/workflows/devloop.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: devloop-contract-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install project
+        run: uv sync --all-extras --frozen
+
+      - name: Compile harness
+        run: uv run python -m compileall -q tools
+
+      - name: Lint harness
+        run: uv run ruff check tools/devloop*.py tests/unit/test_devloop.py
+
+      - name: Format contract
+        run: uv run ruff format --check tools/devloop*.py tests/unit/test_devloop.py
+
+      - name: Harness unit tests
+        run: uv run pytest tests/unit/test_devloop.py -q
+
+      - name: Verify next-task parser
+        run: uv run python tools/devloop.py next-task --json
+
+      - name: Verify multidimensional edge coverage
+        run: |
+          mkdir -p .deepsearch/runtime
+          uv run python tools/devloop.py edge-space \
+            --output .deepsearch/runtime/edge-cases.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          payload = json.loads(
+              Path(".deepsearch/runtime/edge-cases.json").read_text(encoding="utf-8")
+          )
+          assert payload["missing_pairs"] == 0
+          assert payload["scenario_count"] > 0
+          print(
+              f"pairwise scenarios={payload['scenario_count']}; "
+              f"targeted={len(payload['targeted_interactions'])}"
+          )
+          PY

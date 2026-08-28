@@ -59,3 +59,9 @@ include = ["scraper*"]
 pythonpath = ["."]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+
+[tool.mutmut]
+source_paths = ["scraper/"]
+pytest_add_cli_args_test_selection = ["tests/"]
+mutate_only_covered_lines = true
+max_stack_depth = 8

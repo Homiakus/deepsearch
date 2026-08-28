@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "axes": {
+    "input_shape": ["empty", "singleton", "typical", "near_limit"],
+    "boundary_relation": ["below", "exact", "above", "overflow_or_invalid"],
+    "ordering": ["canonical", "reversed", "duplicate_heavy", "adversarial"],
+    "state": ["fresh", "partial", "retrying", "cancelled"],
+    "dependency": ["healthy", "timeout", "malformed", "partial_failure"],
+    "concurrency": ["single", "parallel", "racy_interleaving"]
+  },
+  "targeted_interactions": [
+    {
+      "name": "security_redirect_rebinding",
+      "axes": ["boundary_relation", "state", "dependency"],
+      "reason": "security decisions can change across redirects, retries, and resolver state"
+    },
+    {
+      "name": "budget_retry_cancellation",
+      "axes": ["boundary_relation", "state", "concurrency"],
+      "reason": "budget counters must stay monotonic and bounded under retry/cancel races"
+    },
+    {
+      "name": "dedup_order_partial_failure",
+      "axes": ["ordering", "state", "dependency"],
+      "reason": "dedup/ranking must not become input-order dependent after partial failures"
+    },
+    {
+      "name": "unicode_size_export",
+      "axes": ["input_shape", "boundary_relation", "dependency"],
+      "reason": "large/corrupt content must preserve archive validity and explicit errors"
+    }
+  ],
+  "regression_rule": "Every confirmed defect adds its minimal counterexample; generalizable defects also extend an axis or targeted interaction."
+}

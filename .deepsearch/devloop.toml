@@ -1,0 +1,58 @@
+version = 1
+
+[plan]
+canonical = "docs/architecture/REFACTOR_PLAN.md"
+state_file = ".deepsearch/devloop-state.json"
+
+[git]
+branch = "main"
+
+[loop]
+max_iterations = 34
+
+[safety]
+max_files_changed = 12
+max_changed_lines = 900
+max_semantic_autofix_rounds = 2
+protected_paths = [
+  ".env",
+  ".deepsearch/devloop.toml",
+  ".deepsearch/edge-space.json",
+  "tools/devloop.py",
+  "tools/devloop_core.py",
+  "tools/devloop_edge.py",
+  "tools/devloop_mutation.py",
+  "tools/devloop_runner.py",
+  ".github/workflows/devloop.yml",
+  ".github/workflows/mutation-testing.yml",
+  "AGENTS.md",
+]
+
+[edge_space]
+model = ".deepsearch/edge-space.json"
+
+[commands]
+fast_gates = [
+  "uv run python -m compileall -q scraper tools",
+  "uv run ruff check .",
+  "uv run ruff format --check .",
+  "uv run pytest tests/ -q --maxfail=1",
+  "cargo test --manifest-path rust/acquisition-worker/Cargo.toml --all-targets --all-features -q",
+  "cd orchestrator && go test ./...",
+]
+full_gates = [
+  "uv run python -m compileall -q scraper tools",
+  "uv run ruff check .",
+  "uv run ruff format --check .",
+  "uv run pytest tests/ -q --durations=10",
+  "uv build",
+  "cargo fmt --manifest-path rust/acquisition-worker/Cargo.toml -- --check",
+  "cargo clippy --manifest-path rust/acquisition-worker/Cargo.toml --all-targets --all-features -- -D warnings",
+  "cargo test --manifest-path rust/acquisition-worker/Cargo.toml --all-targets --all-features",
+  "cd orchestrator && go test -race ./...",
+]
+
+[mutation]
+required_priorities = ["P0", "P1"]
+python_min_score = 80.0
+python_require_zero_survivors = true

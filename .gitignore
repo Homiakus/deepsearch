@@ -40,6 +40,12 @@ coverage.xml
 *.cover
 *.log
 htmlcov/
+.mutmut-cache
+mutants/
+**/mutants.out/
+
+# Devloop runtime
+.deepsearch/runtime/
 
 # Playwright & Browser Sessions
 .browser_profile/

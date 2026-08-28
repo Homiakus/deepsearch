@@ -1,0 +1,208 @@
+name: Mutation Testing
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "scraper/**/*.py"
+      - "tests/**/*.py"
+      - "rust/acquisition-worker/**/*.rs"
+      - "orchestrator/**/*.go"
+      - "pyproject.toml"
+      - "tools/devloop*.py"
+      - ".deepsearch/**"
+      - ".github/workflows/mutation-testing.yml"
+  push:
+    branches: [main]
+    paths:
+      - "scraper/**/*.py"
+      - "tests/**/*.py"
+      - "!tests/unit/test_devloop.py"
+      - "rust/acquisition-worker/**/*.rs"
+      - "orchestrator/**/*.go"
+  schedule:
+    - cron: "23 2 * * 1"
+  workflow_dispatch:
+    inputs:
+      scope:
+        description: "Mutation scope"
+        required: false
+        default: "full"
+        type: choice
+        options: [targeted, full]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mutation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  python-mutation:
+    name: Python test-of-tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install project
+        run: uv sync --all-extras --frozen
+
+      - name: Baseline tests
+        run: uv run pytest tests/ -q
+
+      - name: Pull-request mutation
+        if: github.event_name == 'pull_request'
+        run: |
+          git fetch origin "${{ github.base_ref }}"
+          uv run python tools/devloop.py mutation \
+            --scope targeted \
+            --base-ref "origin/${{ github.base_ref }}" \
+            --languages python
+
+      - name: Direct-push mutation
+        if: github.event_name == 'push'
+        run: |
+          uv run python tools/devloop.py mutation \
+            --scope targeted \
+            --base-ref "HEAD^" \
+            --languages python
+
+      - name: Full mutation
+        if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.scope == 'full')
+        run: uv run python tools/devloop.py mutation --scope full --languages python
+
+      - name: Manual targeted mutation
+        if: github.event_name == 'workflow_dispatch' && inputs.scope == 'targeted'
+        run: |
+          uv run python tools/devloop.py mutation \
+            --scope targeted \
+            --base-ref "HEAD^" \
+            --languages python
+
+      - name: Archive mutmut data
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-mutants
+          path: mutants/
+          if-no-files-found: ignore
+
+  rust-mutation:
+    name: Rust test-of-tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust/acquisition-worker
+
+      - name: Install cargo-mutants
+        run: cargo install --locked cargo-mutants --version 27.1.0
+
+      - name: Baseline tests
+        run: cargo test --manifest-path rust/acquisition-worker/Cargo.toml --all-targets --all-features
+
+      - name: Pull-request mutation
+        if: github.event_name == 'pull_request'
+        run: |
+          git fetch origin "${{ github.base_ref }}"
+          python tools/devloop.py mutation \
+            --scope targeted \
+            --base-ref "origin/${{ github.base_ref }}" \
+            --languages rust
+
+      - name: Direct-push mutation
+        if: github.event_name == 'push'
+        run: |
+          python tools/devloop.py mutation \
+            --scope targeted \
+            --base-ref "HEAD^" \
+            --languages rust
+
+      - name: Full mutation
+        if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.scope == 'full')
+        run: python tools/devloop.py mutation --scope full --languages rust
+
+      - name: Manual targeted mutation
+        if: github.event_name == 'workflow_dispatch' && inputs.scope == 'targeted'
+        run: |
+          python tools/devloop.py mutation \
+            --scope targeted \
+            --base-ref "HEAD^" \
+            --languages rust
+
+      - name: Archive cargo-mutants data
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rust-mutants
+          path: rust/acquisition-worker/mutants.out/
+          if-no-files-found: ignore
+
+  go-mutation:
+    name: Go test-of-tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.x"
+          cache-dependency-path: orchestrator/go.sum
+
+      - name: Install Gremlins
+        run: go install github.com/go-gremlins/gremlins/cmd/gremlins@v0.6.0
+
+      - name: Baseline tests
+        run: cd orchestrator && go test -race ./...
+
+      - name: Pull-request mutation
+        if: github.event_name == 'pull_request'
+        run: |
+          git fetch origin "${{ github.base_ref }}"
+          python tools/devloop.py mutation \
+            --scope targeted \
+            --base-ref "origin/${{ github.base_ref }}" \
+            --languages go
+
+      - name: Direct-push mutation
+        if: github.event_name == 'push'
+        run: |
+          python tools/devloop.py mutation \
+            --scope targeted \
+            --base-ref "HEAD^" \
+            --languages go
+
+      - name: Full mutation
+        if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.scope == 'full')
+        run: python tools/devloop.py mutation --scope full --languages go
+
+      - name: Manual targeted mutation
+        if: github.event_name == 'workflow_dispatch' && inputs.scope == 'targeted'
+        run: |
+          python tools/devloop.py mutation \
+            --scope targeted \
+            --base-ref "HEAD^" \
+            --languages go
