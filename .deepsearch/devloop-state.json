@@ -40,6 +40,11 @@
       "plan_fingerprint": "0b21034bf78140d4",
       "priority": "P0",
       "title": "Защитить REST API и файловый вывод"
+    },
+    "DS-09": {
+      "plan_fingerprint": "fafffb9b36203461",
+      "priority": "P1",
+      "title": "Упростить и сделать честной acquisition policy"
     }
   },
   "version": 1
