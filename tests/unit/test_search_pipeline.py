@@ -49,7 +49,9 @@ def mock_acquisition_engine():
 
 
 @pytest.mark.asyncio
-async def test_search_pipeline_execution(mock_acquisition_engine):
+async def test_search_pipeline_execution(mock_acquisition_engine, tmp_path):
+    output_dir = tmp_path / "research_test_out"
+    output_archive = tmp_path / "research_test_out.zip"
     opts = DeepSearchPipelineOptions(
         query="artificial intelligence",
         domain="example.com",
@@ -58,6 +60,8 @@ async def test_search_pipeline_execution(mock_acquisition_engine):
         max_pages=3,
         mode=ExecutionMode.FAST,
         enable_media_archiving=False,
+        output_dir_path=str(output_dir),
+        output_archive_path=str(output_archive),
     )
 
     with patch(

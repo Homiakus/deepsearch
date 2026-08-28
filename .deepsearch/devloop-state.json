@@ -10,6 +10,11 @@
       "plan_fingerprint": "db891c89c152cb67",
       "priority": "P0",
       "title": "Ввести минимальный обязательный CI-gate"
+    },
+    "DS-03": {
+      "plan_fingerprint": "68b10ff6d5b9c6bf",
+      "priority": "P0",
+      "title": "Сделать unit tests герметичными"
     }
   },
   "version": 1
