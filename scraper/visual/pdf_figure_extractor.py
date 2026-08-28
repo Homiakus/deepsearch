@@ -95,5 +95,23 @@ class PDFFigureExtractor:
             logger.warning("Failed extracting figures from PDF %s: %s", pdf_path, exc)
             return []
 
+    async def async_extract_figures_from_pdf(
+        self,
+        pdf_path: str,
+        output_media_dir: str,
+        doc_id: str,
+        max_figures: int = 5,
+    ) -> List[Dict[str, Any]]:
+        """Non-blocking asynchronous thread execution for PDF figure extraction."""
+        import asyncio
+
+        return await asyncio.to_thread(
+            self.extract_figures_from_pdf,
+            pdf_path=pdf_path,
+            output_media_dir=output_media_dir,
+            doc_id=doc_id,
+            max_figures=max_figures,
+        )
+
 
 pdf_figure_extractor = PDFFigureExtractor()

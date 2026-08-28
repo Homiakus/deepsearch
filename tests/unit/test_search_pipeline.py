@@ -1,5 +1,6 @@
-"""Unit tests for DeepSearch Pipeline and Dual Archive Exporter."""
+"""Unit tests for DeepSearch Pipeline, Stages, Lifecycle, and Exporter (DS-12)."""
 
+import asyncio
 import os
 import tempfile
 import pytest
@@ -8,9 +9,16 @@ from unittest.mock import AsyncMock, patch
 from scraper.config import ExecutionMode
 from scraper.acquisition.engine import CapturedArtifact, AdaptiveAcquisitionEngine
 from scraper.acquisition.page_classifier import PageIntelligence
+from scraper.application.run_context import RunContext, RunContextOptions
 from scraper.pipeline.search_pipeline import (
     DeepSearchPipeline,
     DeepSearchPipelineOptions,
+    PipelineWorkspace,
+    DiscoveryStage,
+    ScheduleStage,
+    AcquisitionExtractionStage,
+    MediaCollectionStage,
+    ExportStage,
 )
 from scraper.storage.archive_exporter import ArchiveExporter, SearchRunMetadata
 
@@ -82,6 +90,99 @@ async def test_search_pipeline_execution(mock_acquisition_engine, tmp_path):
 
 
 @pytest.mark.asyncio
+async def test_search_pipeline_stages_and_workspace(mock_acquisition_engine, tmp_path):
+    # Test Workspace lifecycle & fault injection
+    out_target = tmp_path / "target_out"
+    with PipelineWorkspace(output_dir_path=str(out_target)) as ws:
+        t1 = ws.create_temp_dir(prefix="test1_")
+        out = ws.resolve_output_dir()
+        assert os.path.exists(t1) and os.path.exists(out)
+    assert not os.path.exists(t1) and os.path.exists(str(out_target))
+
+    # Test Discovery & Schedule Stage
+    with patch(
+        "scraper.discovery.providers.registry.ProviderRegistry.search_parallel",
+        new_callable=AsyncMock,
+    ) as mock_search:
+        mock_search.return_value = []
+        disc_out = await DiscoveryStage().execute(
+            query="quantum computing", preferred_sources=["https://example.org/q1"]
+        )
+        assert len(disc_out.ranked_pool) >= 1
+        sched_out = await ScheduleStage().execute(disc_out.ranked_pool)
+        assert sched_out.enqueued_count >= 1
+
+    # Test Acquisition, Media & Export Stages
+    run_ctx = RunContext.create(
+        RunContextOptions(run_id="r1", query="quantum computing", max_pages=1)
+    )
+    pdf_tmp = tmp_path / "pdf_tmp"
+    pdf_tmp.mkdir()
+    acq_out = await AcquisitionExtractionStage(
+        acquisition_engine=mock_acquisition_engine
+    ).execute(
+        frontier=sched_out.frontier,
+        intent=disc_out.intent,
+        run_context=run_ctx,
+        pdf_temp_dir=str(pdf_tmp),
+        max_pages=1,
+        enable_media_archiving=False,
+    )
+    assert len(acq_out.acquired_results) == 1
+
+    media_out = await MediaCollectionStage().execute(
+        query="quantum computing",
+        enable_media_archiving=False,
+        min_media_count=1,
+        max_media_count=2,
+        raw_image_candidates=[],
+        downloaded_pdfs=[],
+        media_temp_dir=str(tmp_path),
+    )
+    assert media_out.downloaded_media == []
+
+    export_out = await ExportStage().execute(
+        query="quantum computing",
+        domain=None,
+        preferred_sources=[],
+        depth=1,
+        max_pages=1,
+        mode=ExecutionMode.BALANCED,
+        acquired_results=acq_out.acquired_results,
+        downloaded_pdfs=[],
+        downloaded_media=[],
+        rejections=[],
+        media_rejections=[],
+        output_dir=str(tmp_path / "export_test"),
+        output_archive_path=None,
+        min_media_count=1,
+        max_media_count=2,
+    )
+    assert export_out.total_pages_processed == 1
+
+
+@pytest.mark.asyncio
+async def test_pipeline_cancellation_semantics(mock_acquisition_engine):
+    run_ctx = RunContext.create(
+        RunContextOptions(run_id="cancel_run", query="cancellation test", max_pages=5)
+    )
+    run_ctx.cancel()
+    opts = DeepSearchPipelineOptions(
+        query="cancellation test",
+        preferred_sources=["https://example.com/seed1"],
+        max_pages=3,
+    )
+    with patch(
+        "scraper.discovery.providers.registry.ProviderRegistry.search_parallel",
+        new_callable=AsyncMock,
+    ) as mock_search:
+        mock_search.return_value = []
+        pipeline = DeepSearchPipeline(acquisition_engine=mock_acquisition_engine)
+        with pytest.raises(asyncio.CancelledError):
+            await pipeline.execute(opts, run_context=run_ctx)
+
+
+@pytest.mark.asyncio
 async def test_archive_exporter_files_and_rag_structure(mock_acquisition_engine):
     meta = SearchRunMetadata(
         query="quantum physics",
@@ -121,17 +222,14 @@ async def test_archive_exporter_files_and_rag_structure(mock_acquisition_engine)
             [(art, ext)], output_dir=tmp_dir, media_files=fake_media
         )
 
-        # 1. Verify files/
         files_folder = os.path.join(dir_out, "files")
         user_files = os.listdir(files_folder)
         assert len(user_files) == 1
 
-        # 2. Verify media/
         media_folder = os.path.join(dir_out, "media")
         assert os.path.exists(media_folder)
         assert len(os.listdir(media_folder)) == 1
 
-        # 3. Verify rag/
         rag_folder = os.path.join(dir_out, "rag")
         assert os.path.exists(os.path.join(rag_folder, "rag_chunks.jsonl"))
         assert os.path.exists(os.path.join(rag_folder, "rag_context.md"))

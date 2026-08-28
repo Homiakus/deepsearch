@@ -73,3 +73,14 @@ def extract_text_from_pdf_bytes(
     except Exception as exc:
         logger.warning("pypdf bytes text extraction failed: %s", exc)
         return ""
+
+
+async def async_extract_text_from_pdf_file(
+    file_path: str, max_pages: Optional[int] = None
+) -> str:
+    """Non-blocking asynchronous thread execution for PDF text extraction."""
+    import asyncio
+
+    return await asyncio.to_thread(
+        extract_text_from_pdf_file, file_path, max_pages=max_pages
+    )
