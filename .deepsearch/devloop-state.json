@@ -55,7 +55,13 @@
       "plan_fingerprint": "b50d8a47ada59930",
       "priority": "P1",
       "title": "Реализовать настоящий минимальный JobService"
+    },
+    "DS-12": {
+      "plan_fingerprint": "835011b2bc2db026",
+      "priority": "P1",
+      "title": "Разделить research pipeline на проверяемые стадии"
     }
   },
   "version": 1
 }
+
