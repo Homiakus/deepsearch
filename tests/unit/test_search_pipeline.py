@@ -232,6 +232,6 @@ async def test_archive_exporter_files_and_rag_structure(mock_acquisition_engine)
 
         rag_folder = os.path.join(dir_out, "rag")
         assert os.path.exists(os.path.join(rag_folder, "rag_chunks.jsonl"))
+        assert os.path.exists(os.path.join(rag_folder, "dataset.jsonl"))
         assert os.path.exists(os.path.join(rag_folder, "rag_context.md"))
-        assert os.path.exists(os.path.join(rag_folder, "rag_dataset.json"))
-        assert os.path.exists(os.path.join(rag_folder, "vector_index.json"))
+        assert not os.path.exists(os.path.join(rag_folder, "vector_index.json"))

@@ -23,8 +23,8 @@ class ExtractionResult(BaseModel):
     raw_markdown: str
     clean_markdown: str
     fit_markdown: str
-    extracted_records: Dict[str, FieldProvenance] = {}
-    tables: List[TableData] = []
+    extracted_records: Dict[str, FieldProvenance] = Field(default_factory=dict)
+    tables: List[TableData] = Field(default_factory=list)
     extraction_strategy: str = "E1_DETERMINISTIC"
     abstract_markdown: Optional[str] = None
     full_text_markdown: Optional[str] = None

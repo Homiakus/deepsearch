@@ -2,11 +2,12 @@
 
 Generates dual-format output structured archive:
 1. `files/`: Human-readable Markdown/HTML files with explicit origin links for users.
-2. `rag/`: LLM-optimized dataset (JSONL chunks, context markdown, vector index metadata) for LLMs.
+2. `rag/`: LLM-optimized dataset (JSONL chunks, context markdown) for LLMs.
 3. `manifest.json`: Root metadata manifest summarizing search config and inventory.
 4. Export to directory or packed `.zip` file.
 """
 
+import hashlib
 import os
 import json
 import zipfile
@@ -30,6 +31,9 @@ class SearchRunMetadata(BaseModel):
     max_pages: int = 100
     mode: str = "balanced"
     created_at: float = Field(default_factory=time.time)
+    run_status: str = "COMPLETED"
+    warnings: List[str] = Field(default_factory=list)
+    errors: List[str] = Field(default_factory=list)
 
 
 class RAGChunk(BaseModel):
@@ -45,6 +49,18 @@ class RAGChunk(BaseModel):
     parent_section_id: Optional[str] = None
     ordinal: int = 0
     provenance: Dict[str, Any] = Field(default_factory=dict)
+
+
+def _compute_file_sha256_and_size(file_path: Path) -> Tuple[str, int]:
+    """Compute sha256 hex digest and size in bytes for a file on disk."""
+    if not file_path.exists():
+        return "", 0
+    size = file_path.stat().st_size
+    sha256 = hashlib.sha256()
+    with open(file_path, "rb") as f:
+        while chunk := f.read(65536):
+            sha256.update(chunk)
+    return sha256.hexdigest(), size
 
 
 class ArchiveExporter:
@@ -86,6 +102,11 @@ class ArchiveExporter:
         rejections: Optional[List[Dict[str, Any]]] = None,
         quality_report: Optional[Dict[str, Any]] = None,
         media_quality: Optional[Dict[str, Any]] = None,
+        warnings: Optional[List[str]] = None,
+        errors: Optional[List[str]] = None,
+        run_status: Optional[str] = None,
+        vector_index: Optional[Dict[str, Any]] = None,
+        include_rag_dataset_json: bool = False,
     ) -> str:
         """Builds the uncompressed folder structure containing `files/`, `pdfs/`, `media/`, `rag/`, and `manifest.json`."""
         out_path = Path(output_dir)
@@ -99,7 +120,7 @@ class ArchiveExporter:
         media_dir.mkdir(parents=True, exist_ok=True)
         rag_dir.mkdir(parents=True, exist_ok=True)
 
-        manifest_files = []
+        manifest_files: List[Dict[str, Any]] = []
         all_rag_chunks: List[RAGChunk] = []
         rag_context_lines = [
             "# DeepSearch RAG Context Corpus",
@@ -150,13 +171,18 @@ class ArchiveExporter:
             user_md_path.write_text(
                 sanitize_unicode_string(user_content), encoding="utf-8"
             )
+
+            file_sha, file_size = _compute_file_sha256_and_size(user_md_path)
             manifest_files.append(
                 {
                     "id": safe_title,
                     "file_path": f"files/{user_md_filename}",
                     "url": artifact.url,
                     "title": safe_title,
+                    "type": "markdown",
                     "strategy": artifact.strategy_used,
+                    "size_bytes": file_size,
+                    "sha256": file_sha,
                 }
             )
 
@@ -234,6 +260,7 @@ class ArchiveExporter:
                 if src_file and os.path.exists(src_file) and filename:
                     dst_path = pdfs_dir / filename
                     shutil.copy2(src_file, dst_path)
+                    pdf_sha, pdf_size = _compute_file_sha256_and_size(dst_path)
                     manifest_files.append(
                         {
                             "id": filename,
@@ -241,8 +268,8 @@ class ArchiveExporter:
                             "url": pdf_info.get("url", ""),
                             "title": filename,
                             "type": "pdf",
-                            "size_bytes": pdf_info.get("size_bytes", 0),
-                            "sha256": pdf_info.get("sha256", ""),
+                            "size_bytes": pdf_size or pdf_info.get("size_bytes", 0),
+                            "sha256": pdf_sha or pdf_info.get("sha256", ""),
                             "license": pdf_info.get("license", "UNKNOWN_LICENSE"),
                             "author": pdf_info.get("author", "UNKNOWN_AUTHOR"),
                             "source_domain": pdf_info.get("source_domain", ""),
@@ -260,6 +287,7 @@ class ArchiveExporter:
                 if src_file and os.path.exists(src_file) and filename:
                     dst_path = media_dir / filename
                     shutil.copy2(src_file, dst_path)
+                    media_sha, media_size = _compute_file_sha256_and_size(dst_path)
                     caption = media_info.get("caption") or f"Topic Media {m_idx}"
                     score = media_info.get("relevance_score", 1.0)
                     lic = media_info.get("license", "UNKNOWN_LICENSE")
@@ -272,8 +300,8 @@ class ArchiveExporter:
                             "title": caption,
                             "type": "image",
                             "relevance_score": score,
-                            "size_bytes": media_info.get("size_bytes", 0),
-                            "sha256": media_info.get("sha256", ""),
+                            "size_bytes": media_size or media_info.get("size_bytes", 0),
+                            "sha256": media_sha or media_info.get("sha256", ""),
                             "mime_type": media_info.get("content_type", ""),
                             "width": media_info.get("width"),
                             "height": media_info.get("height"),
@@ -322,37 +350,25 @@ class ArchiveExporter:
             sanitize_unicode_string("\n".join(rag_context_lines)), encoding="utf-8"
         )
 
-        # Save `rag/rag_dataset.json`
-        dataset_path = rag_dir / "rag_dataset.json"
-        dataset_path.write_text(
-            json.dumps(
-                recursive_sanitize(structured_records), indent=2, ensure_ascii=False
-            ),
-            encoding="utf-8",
-        )
+        # Save `rag/rag_dataset.json` only when explicitly requested
+        if include_rag_dataset_json:
+            dataset_path = rag_dir / "rag_dataset.json"
+            dataset_path.write_text(
+                json.dumps(
+                    recursive_sanitize(structured_records), indent=2, ensure_ascii=False
+                ),
+                encoding="utf-8",
+            )
 
-        # Save `rag/vector_index.json`
-        vector_index_path = rag_dir / "vector_index.json"
-        vector_meta = {
-            "total_vectors": len(all_rag_chunks),
-            "dimensions": 1536,
-            "metric": "cosine",
-            "vectors": [
-                {
-                    "id": c.chunk_id,
-                    "payload": {
-                        "source_url": c.source_url,
-                        "title": c.title,
-                        "text": c.text[:200],
-                    },
-                }
-                for c in all_rag_chunks
-            ],
-        }
-        vector_index_path.write_text(
-            json.dumps(recursive_sanitize(vector_meta), indent=2, ensure_ascii=False),
-            encoding="utf-8",
-        )
+        # Save `rag/vector_index.json` ONLY if actual embeddings/vectors are provided
+        if vector_index and vector_index.get("vectors"):
+            vector_index_path = rag_dir / "vector_index.json"
+            vector_index_path.write_text(
+                json.dumps(
+                    recursive_sanitize(vector_index), indent=2, ensure_ascii=False
+                ),
+                encoding="utf-8",
+            )
 
         # --- 5. Root Manifest (`manifest.json`) ---
         rejection_records = rejections or []
@@ -371,8 +387,22 @@ class ArchiveExporter:
                 encoding="utf-8",
             )
 
+        all_warnings = list(self.metadata.warnings)
+        if warnings:
+            all_warnings.extend(warnings)
+
+        all_errors = list(self.metadata.errors)
+        if errors:
+            all_errors.extend(errors)
+
+        final_status = run_status or self.metadata.run_status or "COMPLETED"
+
         manifest_data = {
-            "deepsearch_version": "1.0",
+            "schema_version": "2.0.0",
+            "deepsearch_version": "1.0.0",
+            "run_status": final_status,
+            "warnings": all_warnings,
+            "errors": all_errors,
             "metadata": self.metadata.model_dump(),
             "summary": {
                 "total_documents": len(results),
@@ -396,7 +426,7 @@ class ArchiveExporter:
         return str(out_path)
 
     def pack_zip_archive(self, input_dir: str, output_zip_path: str) -> str:
-        """Packs the directory into a standalone `.zip` archive."""
+        """Packs the directory into a standalone `.zip` archive with deterministic sorting."""
         zip_path = Path(output_zip_path)
         if zip_path.suffix != ".zip":
             zip_path = zip_path.with_suffix(".zip")
@@ -405,10 +435,14 @@ class ArchiveExporter:
 
         with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zipf:
             root_path = Path(input_dir)
-            for file in root_path.rglob("*"):
-                if file.is_file():
-                    arcname = file.relative_to(root_path)
-                    zipf.write(file, arcname)
+            # Sort files deterministically for reproducible archives
+            all_files = sorted(
+                [f for f in root_path.rglob("*") if f.is_file()],
+                key=lambda p: str(p.relative_to(root_path)),
+            )
+            for file in all_files:
+                arcname = file.relative_to(root_path)
+                zipf.write(file, arcname)
 
         return str(zip_path)
 
