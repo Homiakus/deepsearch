@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 from scraper.config import settings
 from scraper.acquisition.http_fetcher import HTTPFetcher
 from scraper.exceptions import BrowserPoolError
+from scraper.security.url_policy import url_security_policy
 
 try:
     from playwright.async_api import async_playwright, Playwright, Browser
@@ -186,17 +187,21 @@ class BrowserPoolManager:
 
         page.on("response", handle_response)
 
-        # Resource blocking (§10): disable heavy media unless visual_mode is true
-        if not visual_mode:
+        # SSRF subresource guard (§DS-07) and resource blocking (§10)
+        async def route_handler(route):
+            req = route.request
+            try:
+                url_security_policy.validate_url(req.url)
+            except Exception:
+                await route.abort("blockedbyclient")
+                return
 
-            async def route_handler(route):
-                req = route.request
-                if req.resource_type in ["media", "font"]:
-                    await route.abort()
-                else:
-                    await route.continue_()
+            if not visual_mode and req.resource_type in ["media", "font"]:
+                await route.abort()
+            else:
+                await route.continue_()
 
-            await page.route("**/*", route_handler)
+        await page.route("**/*", route_handler)
 
         try:
             res = await page.goto(

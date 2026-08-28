@@ -1,19 +1,15 @@
-"""Async HTTP Fetcher (§6 L1, §72 SSRF, §73 Protocols, §74 Download Safety)."""
+"""Async HTTP Fetcher (§6 L1, §72 SSRF, §73 Protocols, §74 Download Safety, §DS-07)."""
 
-import ipaddress
-import socket
-import urllib.parse
+from __future__ import annotations
+
 import httpx
 from typing import Dict, Optional, List
 from pydantic import BaseModel, Field
 from scraper.config import settings
-from scraper.exceptions import SSRFError
+from scraper.exceptions import SSRFBlockedError
+from scraper.security.url_policy import url_security_policy
 
-
-class SSRFValidationError(SSRFError, ValueError):
-    """Raised when target URL resolves to a restricted private IP address."""
-
-    pass
+SSRFValidationError = SSRFBlockedError
 
 
 class HTTPResponse(BaseModel):
@@ -43,44 +39,15 @@ STEALTH_BROWSER_HEADERS = {
 
 
 class HTTPFetcher:
-    """Async HTTP Client with SSRF protection and download safety checks."""
-
-    PRIVATE_NETWORKS = [
-        ipaddress.ip_network("127.0.0.0/8"),
-        ipaddress.ip_network("10.0.0.0/8"),
-        ipaddress.ip_network("172.16.0.0/12"),
-        ipaddress.ip_network("192.168.0.0/16"),
-        ipaddress.ip_network("169.254.0.0/16"),
-        ipaddress.ip_network("::1/128"),
-        ipaddress.ip_network("fc00::/7"),
-    ]
+    """Async HTTP Client with SSRF protection and download safety checks (§DS-07)."""
 
     def __init__(self, timeout_sec: float = 30.0):
         self.timeout_sec = timeout_sec
 
     @classmethod
-    def validate_url_security(cls, url: str):
-        """Validate protocol and check for SSRF (§72, §73)."""
-        parsed = urllib.parse.urlparse(url)
-        if parsed.scheme.lower() not in settings.security.allowed_protocols:
-            raise SSRFValidationError(f"Protocol '{parsed.scheme}' is not allowed.")
-
-        hostname = parsed.hostname
-        if not hostname:
-            raise SSRFValidationError("Invalid URL hostname.")
-
-        if settings.security.block_private_ips:
-            try:
-                ip_addrs = socket.getaddrinfo(hostname, None)
-                for family, _, _, _, sockaddr in ip_addrs:
-                    ip = ipaddress.ip_address(sockaddr[0])
-                    for net in cls.PRIVATE_NETWORKS:
-                        if ip in net:
-                            raise SSRFValidationError(
-                                f"Access to private IP {ip} is blocked."
-                            )
-            except socket.gaierror:
-                pass  # DNS resolution error handled downstream
+    def validate_url_security(cls, url: str) -> None:
+        """Validate protocol and check for SSRF via central URL security policy (§DS-07)."""
+        url_security_policy.validate_url(url)
 
     async def fetch(
         self,
@@ -88,8 +55,8 @@ class HTTPFetcher:
         headers: Optional[Dict[str, str]] = None,
         proxy: Optional[str] = None,
     ) -> HTTPResponse:
-        """Fetch URL content via direct HTTP request with streaming size checks (§74)."""
-        self.validate_url_security(url)
+        """Fetch URL content via direct HTTP request with streaming size checks and redirect security hooks (§74, §DS-07)."""
+        await url_security_policy.async_validate_url(url)
 
         req_headers = dict(STEALTH_BROWSER_HEADERS)
         if headers:
@@ -98,7 +65,7 @@ class HTTPFetcher:
         async def _validate_redirect_hook(response: httpx.Response):
             if response.is_redirect and "location" in response.headers:
                 redirect_url = str(response.url.join(response.headers["location"]))
-                self.validate_url_security(redirect_url)
+                url_security_policy.validate_url(redirect_url)
 
         transport = httpx.AsyncHTTPTransport(retries=1, verify=False)
         async with httpx.AsyncClient(

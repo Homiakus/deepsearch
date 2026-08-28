@@ -1,6 +1,6 @@
-"""Media Acquisition Downloader Engine (§6, §74 Download Safety).
+"""Media Acquisition Downloader Engine (§6, §74 Download Safety, §DS-07).
 
-Asynchronously downloads binary files (PDFs, Word documents, images) with size limits,
+Asynchronously downloads binary files (PDFs, Word documents, images) with SSRF checks, size limits,
 path sanitization, image metadata extraction (dimensions, format), and SHA-256 content addressable tracking.
 """
 
@@ -12,6 +12,7 @@ import urllib.parse
 import httpx
 from typing import Optional, Dict, Any
 from scraper.config import settings
+from scraper.security.url_policy import url_security_policy
 
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".gif", ".svg"}
 
@@ -54,7 +55,12 @@ async def download_media_file(
     timeout_sec: float = 20.0,
     caption: str = "",
 ) -> Optional[Dict[str, Any]]:
-    """Downloads binary file asynchronously with size limits, SHA-256, and image dimension extraction."""
+    """Downloads binary file asynchronously with SSRF validation, size limits, SHA-256, and image dimension extraction (§DS-07)."""
+    try:
+        await url_security_policy.async_validate_url(url)
+    except Exception:
+        return None
+
     os.makedirs(output_dir, exist_ok=True)
     filename = sanitize_media_filename(url, prefix=filename_prefix)
     target_path = os.path.join(output_dir, filename)
@@ -67,6 +73,11 @@ async def download_media_file(
 
     headers = {"User-Agent": user_agent}
 
+    async def _validate_redirect_hook(response: httpx.Response):
+        if response.is_redirect and "location" in response.headers:
+            redirect_url = str(response.url.join(response.headers["location"]))
+            url_security_policy.validate_url(redirect_url)
+
     try:
         transport = httpx.AsyncHTTPTransport(retries=1)
         async with httpx.AsyncClient(
@@ -74,6 +85,7 @@ async def download_media_file(
             timeout=timeout_sec,
             follow_redirects=True,
             trust_env=False,
+            event_hooks={"response": [_validate_redirect_hook]},
         ) as client:
             res = await client.get(url, headers=headers)
             if res.status_code != 200:

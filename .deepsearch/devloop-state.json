@@ -30,6 +30,11 @@
       "plan_fingerprint": "3138c59eaa02d51a",
       "priority": "P0",
       "title": "Свести конфигурацию к одному проверяемому контракту"
+    },
+    "DS-07": {
+      "plan_fingerprint": "0c13769e361c90b8",
+      "priority": "P0",
+      "title": "Закрыть единый сетевой security boundary"
     }
   },
   "version": 1
