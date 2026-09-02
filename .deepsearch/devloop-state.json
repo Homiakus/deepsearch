@@ -150,6 +150,11 @@
       "plan_fingerprint": "e42c881de29ff115",
       "priority": "P1",
       "title": "Проверить frontier, budget и limiter через stateful model и управляемое время"
+    },
+    "DS-31": {
+      "plan_fingerprint": "6b0618371fd02e1d",
+      "priority": "P1",
+      "title": "Ввести fault injection и проверить graceful degradation всего рабочего пути"
     }
   },
   "version": 1

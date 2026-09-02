@@ -278,3 +278,98 @@ async def test_single_failure_is_not_empty_success(tmp_path):
     assert result.total_pages_processed == 0
     assert result.quality_gate_passed is False
     assert len(result.manifest.get("rejections", [])) >= 1
+
+
+@pytest.mark.asyncio
+async def test_fault_matrix_partial_degradation_and_rejections(tmp_path):
+    """FRAG-DEPENDENCY/FRAG-RECOVERY: Faults across sources yield graceful partial results without empty success."""
+    import httpx
+
+    output_dir = tmp_path / "partial_out"
+
+    async def mock_faulty_acquire(url, canonical_url, **kwargs):
+        if "ok" in url:
+            html = "<html><body><h1>Fault Injection Test Page</h1><p>Comprehensive article discussing fault injection test methodology, resilience patterns, and degradation verification in distributed web scrapers.</p></body></html>"
+            return CapturedArtifact(
+                url=url,
+                canonical_url=canonical_url,
+                strategy_used="L1_HTTP",
+                status_code=200,
+                content_type="text/html",
+                raw_content=html.encode("utf-8"),
+                text_content=html,
+                page_intelligence=PageIntelligence(
+                    content_type="text/html",
+                    static_score=0.9,
+                    js_dependency_score=0.1,
+                    content_quality=0.95,
+                ),
+            )
+        elif "dns_failure" in url:
+            raise httpx.ConnectError("DNS name resolution failed")
+        elif "timeout" in url:
+            raise httpx.ReadTimeout("Socket read timed out")
+        elif "malformed" in url:
+            raise ValueError("Malformed byte sequence in chunked transfer")
+        raise RuntimeError("Unexpected failure")
+
+    engine = AdaptiveAcquisitionEngine()
+    engine.acquire_page = AsyncMock(side_effect=mock_faulty_acquire)
+
+    opts = DeepSearchPipelineOptions(
+        query="fault injection test",
+        preferred_sources=[
+            "https://example.com/ok_source",
+            "https://example.com/dns_failure",
+            "https://example.com/timeout",
+            "https://example.com/malformed",
+        ],
+        output_dir_path=str(output_dir),
+        max_pages=4,
+        enable_media_archiving=False,
+    )
+
+    with patch(
+        "scraper.discovery.providers.registry.ProviderRegistry.search_parallel",
+        new_callable=AsyncMock,
+    ) as mock_search:
+        mock_search.return_value = []
+        pipeline = DeepSearchPipeline(acquisition_engine=engine)
+        result = await pipeline.execute(opts)
+
+    # 1 page succeeded, 3 failed
+    assert result.total_pages_processed == 1
+    assert os.path.exists(result.dir_path)
+    # Manifest lists rejections with failure reasons
+    rejections = result.manifest.get("rejections", [])
+    assert len(rejections) == 3
+    rejection_urls = [r.get("url") for r in rejections]
+    assert "https://example.com/dns_failure" in rejection_urls
+    assert "https://example.com/timeout" in rejection_urls
+    assert "https://example.com/malformed" in rejection_urls
+
+    # Files folder only contains the succeeded page
+    files_dir = os.path.join(result.dir_path, "files")
+    assert len(os.listdir(files_dir)) == 1
+
+
+@pytest.mark.asyncio
+async def test_fault_injection_workspace_cleans_up_on_failure(tmp_path):
+    """FRAG-RECOVERY: Workspace does not leak temporary directories or files on pipeline failure."""
+    out_target = tmp_path / "workspace_fail_out"
+    created_temp_dirs = []
+
+    try:
+        with PipelineWorkspace(output_dir_path=str(out_target)) as ws:
+            t1 = ws.create_temp_dir(prefix="stage1_")
+            t2 = ws.create_temp_dir(prefix="stage2_")
+            created_temp_dirs.extend([t1, t2])
+            assert os.path.exists(t1) and os.path.exists(t2)
+            # Simulate fatal pipeline error
+            raise RuntimeError("Fatal unhandled worker failure")
+    except RuntimeError:
+        pass
+
+    # Verify all temporary directories were safely cleaned up
+    for t_dir in created_temp_dirs:
+        assert not os.path.exists(t_dir), f"Temp dir {t_dir} leaked!"

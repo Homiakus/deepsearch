@@ -41,8 +41,13 @@ STEALTH_BROWSER_HEADERS = {
 class HTTPFetcher:
     """Async HTTP Client with SSRF protection and download safety checks (§DS-07)."""
 
-    def __init__(self, timeout_sec: float = 30.0):
+    def __init__(
+        self,
+        timeout_sec: float = 30.0,
+        transport: httpx.AsyncBaseTransport | None = None,
+    ):
         self.timeout_sec = timeout_sec
+        self.transport = transport
 
     @classmethod
     def validate_url_security(cls, url: str) -> None:
@@ -67,7 +72,7 @@ class HTTPFetcher:
                 redirect_url = str(response.url.join(response.headers["location"]))
                 url_security_policy.validate_url(redirect_url)
 
-        transport = httpx.AsyncHTTPTransport(retries=1, verify=False)
+        transport = self.transport or httpx.AsyncHTTPTransport(retries=1, verify=False)
         async with httpx.AsyncClient(
             transport=transport,
             timeout=self.timeout_sec,
@@ -99,6 +104,11 @@ class HTTPFetcher:
                 res.headers.get("content-type", "").split(";")[0].strip().lower()
             )
 
+            try:
+                elapsed_sec = res.elapsed.total_seconds()
+            except Exception:
+                elapsed_sec = 0.0
+
             return HTTPResponse(
                 url=str(res.url),
                 status_code=res.status_code,
@@ -113,7 +123,7 @@ class HTTPFetcher:
                 )
                 else "",
                 content_type=content_type,
-                elapsed_sec=res.elapsed.total_seconds(),
+                elapsed_sec=elapsed_sec,
                 redirect_chain=[str(r.url) for r in res.history],
             )
 
