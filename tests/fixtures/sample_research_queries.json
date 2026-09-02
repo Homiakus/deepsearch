@@ -1,0 +1,23 @@
+[
+  {
+    "id": "laser-cutting-polymers",
+    "topic": "Laser Cutting of Transparent Photopolymers",
+    "query": "laser cutting transparent photopolymers parameter optimization kerf width heat affected zone",
+    "domain": "engineering",
+    "mode": "research"
+  },
+  {
+    "id": "papanicolaou-lbc",
+    "topic": "Papanicolaou Liquid-Based Cytology Protocols",
+    "query": "Papanicolaou liquid-based cytology automated screening cervical cancer Bethesda system",
+    "domain": "biomedical",
+    "mode": "research"
+  },
+  {
+    "id": "alopecia-areata",
+    "topic": "Alopecia Areata Immunotherapy",
+    "query": "alopecia areata JAK inhibitors tofacitinib baricitinib clinical trials",
+    "domain": "biomedical",
+    "mode": "research"
+  }
+]
