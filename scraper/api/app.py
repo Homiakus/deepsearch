@@ -53,6 +53,17 @@ def create_app() -> FastAPI:
 
         return render_dashboard_html()
 
+    # Prometheus metrics exposition endpoint (§68, DS-23)
+    @app.get("/metrics")
+    async def get_prometheus_metrics():
+        from fastapi import Response
+        from scraper.monitoring.telemetry import telemetry
+
+        return Response(
+            content=telemetry.get_prometheus_exposition(),
+            media_type="text/plain; version=0.0.4; charset=utf-8",
+        )
+
     return app
 
 
