@@ -85,6 +85,11 @@
       "plan_fingerprint": "fb213d86c47fc44b",
       "priority": "P1",
       "title": "Выбрать один источник истины для хранения и миграций"
+    },
+    "DS-18": {
+      "plan_fingerprint": "a7f7ee0d885eef8d",
+      "priority": "P2",
+      "title": "Сократить зависимости и количество модулей"
     }
   },
   "version": 1

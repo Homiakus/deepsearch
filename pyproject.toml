@@ -9,30 +9,22 @@ description = "Adaptive Web Scraping & Retrieval Platform"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-    "crawlee[playwright,httpx]>=0.4.0",
-    "playwright>=1.40.0",
     "httpx[http2]>=0.27.0",
     "fastapi>=0.110.0",
     "uvicorn[standard]>=0.28.0",
     "pydantic>=2.6.0",
     "pydantic-settings>=2.2.0",
     "sqlalchemy[asyncio]>=2.0.28",
-    "asyncpg>=0.29.0",
     "aiosqlite>=0.20.0",
     "alembic>=1.13.0",
+    "playwright>=1.40.0",
     "qdrant-client>=1.8.0",
-    "redis>=5.0.0",
     "zstandard>=0.22.0",
     "typer>=0.9.0",
     "rich>=13.7.0",
     "selectolax>=0.3.20",
     "trafilatura>=1.8.0",
     "markdownify>=0.11.6",
-    "beautifulsoup4>=4.12.0",
-    "lxml>=5.1.0",
-    "jinja2>=3.1.3",
-    "opentelemetry-api>=1.23.0",
-    "opentelemetry-sdk>=1.23.0",
     "prometheus-client>=0.20.0",
     "python-multipart>=0.0.9",
     "pillow>=10.2.0",
@@ -42,12 +34,31 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+browser = [
+    "playwright>=1.40.0",
+]
+api = [
+    "fastapi>=0.110.0",
+    "uvicorn[standard]>=0.28.0",
+    "python-multipart>=0.0.9",
+]
+mcp = [
+    "mcp>=1.1.0,<2.0.0",
+]
+pdf = [
+    "pypdf>=4.0.0",
+    "pillow>=10.2.0",
+]
+storage = [
+    "asyncpg>=0.29.0",
+    "redis>=5.0.0",
+]
 dev = [
     "pytest>=8.0.0",
     "pytest-asyncio>=0.23.0",
     "pytest-cov>=4.1.0",
     "mypy>=1.9.0",
-    "ruff>=0.3.0"
+    "ruff>=0.3.0",
 ]
 
 [project.scripts]
@@ -101,5 +112,3 @@ omit = ["tests/*"]
 [tool.coverage.report]
 show_missing = true
 fail_under = 0
-
-
