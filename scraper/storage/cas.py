@@ -1,7 +1,7 @@
-"""Content-Addressable Storage (CAS) Engine with Zstandard Compression (§44, §45)."""
-
+import asyncio
 import hashlib
 import os
+import uuid
 
 from scraper.config import settings
 
@@ -31,14 +31,25 @@ class ContentAddressableStore:
         return os.path.join(dir_path, f"{content_hash}.zst")
 
     def store(self, content: bytes) -> tuple[str, int]:
-        """Store content by hash. Returns (content_hash, byte_size)."""
+        """Store content by hash atomically. Returns (content_hash, byte_size)."""
         content_hash = hashlib.sha256(content).hexdigest()
         file_path = self._get_path(content_hash)
 
         if not os.path.exists(file_path):
             compressed = self.cctx.compress(content) if ZSTD_AVAILABLE else content
-            with open(file_path, "wb") as f:
-                f.write(compressed)
+            tmp_path = f"{file_path}.tmp.{uuid.uuid4().hex[:8]}"
+            try:
+                with open(tmp_path, "wb") as f:
+                    f.write(compressed)
+                os.replace(tmp_path, file_path)
+            except Exception:
+                if os.path.exists(tmp_path):
+                    try:
+                        os.remove(tmp_path)
+                    except OSError:
+                        pass
+                if not os.path.exists(file_path):
+                    raise
 
         return content_hash, len(content)
 
@@ -54,6 +65,14 @@ class ContentAddressableStore:
         if ZSTD_AVAILABLE:
             return self.dctx.decompress(compressed)
         return compressed
+
+    async def async_store(self, content: bytes) -> tuple[str, int]:
+        """Non-blocking async wrapper to store content offloaded to thread pool."""
+        return await asyncio.to_thread(self.store, content)
+
+    async def async_retrieve(self, content_hash: str) -> bytes | None:
+        """Non-blocking async wrapper to retrieve content offloaded to thread pool."""
+        return await asyncio.to_thread(self.retrieve, content_hash)
 
 
 def get_cas_store(backend: str | None = None) -> ContentAddressableStore:

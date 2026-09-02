@@ -167,9 +167,49 @@
       "title": "Найти complexity cliffs и худшие реалистичные входы"
     },
     "DS-34": {
-      "plan_fingerprint": "a60708b03c3839f5",
+      "plan_fingerprint": "6a2863a96e8c5131",
       "priority": "P2",
       "title": "Ввести targeted mutation gate и закрывать FRAG только после повторного индекса"
+    },
+    "DS-35": {
+      "plan_fingerprint": "f1bf7445b2673d5e",
+      "priority": "P0",
+      "title": "Подключение SncSinCore к Go-оркестратору и реализация Epistemic Activity"
+    },
+    "DS-36": {
+      "plan_fingerprint": "9fcb465c6724af80",
+      "priority": "P0",
+      "title": "Реализация Epistemic Bridge & IPC Daemon в Go-контуре"
+    },
+    "DS-37": {
+      "plan_fingerprint": "8333da13d334640c",
+      "priority": "P0",
+      "title": "Создание типизированного Python-клиента EpistemicClient и DTO"
+    },
+    "DS-38": {
+      "plan_fingerprint": "056dc5a3d7fd4775",
+      "priority": "P1",
+      "title": "Рефакторинг SearchEngine: замена Top-K на Epistemic Evidence Subgraphs"
+    },
+    "DS-39": {
+      "plan_fingerprint": "786a37079861c1f5",
+      "priority": "P1",
+      "title": "Интеграция формирования SIH-графов в Extraction и ArchiveExporter"
+    },
+    "DS-40": {
+      "plan_fingerprint": "fd223003bfc7e949",
+      "priority": "P1",
+      "title": "Обновление REST API, MCP Server и CLI для работы с Epistemic Memory"
+    },
+    "DS-41": {
+      "plan_fingerprint": "f535886bd05bc8ca",
+      "priority": "P2",
+      "title": "Очистка legacy-зависимостей и устаревшего векторного кода"
+    },
+    "DS-42": {
+      "plan_fingerprint": "dd9eb8f426a70aab",
+      "priority": "P2",
+      "title": "Комплексные бенчмарки, мутационное тестирование и валидация надежности"
     }
   },
   "version": 1

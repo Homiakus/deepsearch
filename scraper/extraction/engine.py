@@ -1,5 +1,6 @@
 """Extraction Engine (§31, §32, §33 Confidence, §34 Provenance)."""
 
+import asyncio
 import time
 from typing import Any
 
@@ -72,4 +73,13 @@ class ExtractionEngine:
             extracted_records=records,
             tables=tables,
             extraction_strategy="E1_DETERMINISTIC",
+        )
+
+    @classmethod
+    async def async_extract_from_html(
+        cls, url: str, raw_html: str, selectors: dict[str, str] | None = None
+    ) -> ExtractionResult:
+        """Asynchronous non-blocking HTML extraction offloaded to a worker thread."""
+        return await asyncio.to_thread(
+            cls.extract_from_html, url=url, raw_html=raw_html, selectors=selectors
         )

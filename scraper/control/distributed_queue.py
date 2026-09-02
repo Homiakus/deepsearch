@@ -8,6 +8,7 @@ import json
 import logging
 import time
 from abc import ABC, abstractmethod
+from collections import deque
 from typing import Any
 
 from scraper.config import settings
@@ -55,7 +56,7 @@ class InMemoryDistributedQueue(DistributedQueueAdapter):
 
     def __init__(self, max_capacity: int = 50000):
         self.max_capacity = max_capacity
-        self._queue: list[tuple[str, CrawlRequest]] = []
+        self._queue: deque[tuple[str, CrawlRequest]] = deque()
         self._pending: dict[
             str, tuple[str, CrawlRequest, float]
         ] = {}  # msg_id -> (consumer, req, lease_time)
@@ -75,11 +76,17 @@ class InMemoryDistributedQueue(DistributedQueueAdapter):
             return True
 
     async def push_batch(self, requests: list[CrawlRequest]) -> int:
-        pushed = 0
-        for req in requests:
-            if await self.push(req):
+        async with self._lock:
+            pushed = 0
+            for req in requests:
+                if len(self._queue) >= self.max_capacity:
+                    break
+                self._msg_counter += 1
+                msg_id = f"mem-{self._msg_counter}-{int(time.time() * 1000)}"
+                req.state = RequestState.QUEUED
+                self._queue.append((msg_id, req))
                 pushed += 1
-        return pushed
+            return pushed
 
     async def pop_batch(
         self, consumer_name: str, count: int = 10, block_ms: int = 100
@@ -90,7 +97,7 @@ class InMemoryDistributedQueue(DistributedQueueAdapter):
             leased = []
             now = time.time()
             while self._queue and len(leased) < count:
-                msg_id, req = self._queue.pop(0)
+                msg_id, req = self._queue.popleft()
                 req.state = RequestState.LEASED
                 req.lease_expires_at = now + 60.0
                 self._pending[msg_id] = (consumer_name, req, now)
@@ -136,7 +143,7 @@ class InMemoryDistributedQueue(DistributedQueueAdapter):
 
 
 class RedisStreamsDistributedQueue(DistributedQueueAdapter):
-    """Production Redis Streams Queue with Consumer Groups and Auto-Lease Reclaim."""
+    """Production Redis Streams Queue with Consumer Groups, Pipelining and Auto-Lease Reclaim."""
 
     def __init__(
         self,
@@ -180,11 +187,19 @@ class RedisStreamsDistributedQueue(DistributedQueueAdapter):
             return False
 
     async def push_batch(self, requests: list[CrawlRequest]) -> int:
-        count = 0
-        for req in requests:
-            if await self.push(req):
-                count += 1
-        return count
+        if not requests:
+            return 0
+        try:
+            client = await self._get_client()
+            pipe = client.pipeline(transaction=False)
+            for req in requests:
+                req.state = RequestState.QUEUED
+                pipe.xadd(self.stream_key, {"payload": req.model_dump_json()})
+            results = await pipe.execute()
+            return sum(1 for r in results if r)
+        except Exception as e:
+            logger.error(f"Failed to push batch to Redis stream: {e}")
+            return 0
 
     async def pop_batch(
         self, consumer_name: str, count: int = 10, block_ms: int = 2000
@@ -220,6 +235,41 @@ class RedisStreamsDistributedQueue(DistributedQueueAdapter):
             return results
         except Exception as e:
             logger.error(f"Failed to read from Redis stream group: {e}")
+            return []
+
+    async def reclaim_expired_leases(
+        self, consumer_name: str, min_idle_ms: int = 60000, count: int = 10
+    ) -> list[tuple[str, CrawlRequest]]:
+        """Auto-reclaim unacknowledged messages from stalled or dead workers via XAUTOCLAIM."""
+        try:
+            client = await self._get_client()
+            res = await client.xautoclaim(
+                self.stream_key,
+                self.group_name,
+                consumer_name,
+                min_idle_time=min_idle_ms,
+                start_id="0-0",
+                count=count,
+            )
+            reclaimed: list[tuple[str, CrawlRequest]] = []
+            if res and len(res) >= 2:
+                messages = res[1]
+                for msg_id, fields in messages:
+                    if not fields:
+                        continue
+                    raw_payload = fields.get("payload")
+                    if raw_payload:
+                        try:
+                            req_data = json.loads(raw_payload)
+                            req = CrawlRequest(**req_data)
+                            req.state = RequestState.LEASED
+                            req.lease_expires_at = time.time() + 60.0
+                            reclaimed.append((msg_id, req))
+                        except Exception:
+                            await client.xack(self.stream_key, self.group_name, msg_id)
+            return reclaimed
+        except Exception as e:
+            logger.debug(f"Redis xautoclaim error: {e}")
             return []
 
     async def ack(self, message_id: str) -> bool:

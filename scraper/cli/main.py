@@ -356,5 +356,101 @@ def download_file(
     asyncio.run(_run())
 
 
+epistemic_app = typer.Typer(
+    help="SncSinCore / SIH Epistemic Memory graph operations (§DS-40)",
+    add_completion=False,
+)
+app.add_typer(epistemic_app, name="epistemic")
+
+
+@epistemic_app.command("health")
+def epistemic_health():
+    """Check health of Go SncSinCore Epistemic Bridge daemon."""
+    from scraper.retrieval.epistemic_client import epistemic_client
+
+    async def _run():
+        healthy = await epistemic_client.is_healthy()
+        if healthy:
+            console.print(
+                "[bold green]SncSinCore Epistemic Bridge: ONLINE[/bold green]"
+            )
+        else:
+            console.print(
+                "[bold yellow]SncSinCore Epistemic Bridge: OFFLINE (In-Memory Fallback Active)[/bold yellow]"
+            )
+
+    asyncio.run(_run())
+
+
+@epistemic_app.command("query")
+def epistemic_query(
+    question: str = typer.Argument(..., help="Proposition or requirement to verify"),
+    intent: str = typer.Option(
+        "factual",
+        "--intent",
+        "-i",
+        help="Query intent: factual|definitional|comparative|temporal|causal|counterfactual",
+    ),
+    context: str = typer.Option("", "--context", "-c", help="Contextual domain anchor"),
+    strict_context: bool = typer.Option(
+        False, "--strict", help="Reject out-of-context propositions"
+    ),
+):
+    """Execute mathematical evidence-subgraph verification query over epistemic corpus."""
+    from scraper.retrieval.epistemic_client import epistemic_client
+    from scraper.retrieval.epistemic_models import (
+        EpistemicIntent,
+        EpistemicQueryRequest,
+        EpistemicRequirementInput,
+        EpistemicRequirementKind,
+    )
+
+    async def _run():
+        try:
+            req_intent = EpistemicIntent(intent.lower())
+        except ValueError:
+            console.print(
+                f"[bold red]Error:[/bold red] Invalid intent '{intent}'. Valid intents: {[i.value for i in EpistemicIntent]}"
+            )
+            raise typer.Exit(code=2)
+
+        req = EpistemicQueryRequest(
+            run_id="cli_epistemic",
+            text=question,
+            intent=req_intent,
+            context=context,
+            strict_context=strict_context,
+            requirements=[
+                EpistemicRequirementInput(
+                    id="req_cli",
+                    kind=EpistemicRequirementKind.FACT,
+                    text=f"Verify evidence for: {question}",
+                    criticality=1.0,
+                    minimum_coverage=0.75,
+                )
+            ],
+        )
+
+        resp = await epistemic_client.query(req)
+        status_color = (
+            "green"
+            if resp.status == "complete"
+            else ("yellow" if resp.status == "partial" else "red")
+        )
+
+        console.print(
+            Panel(
+                f"[bold {status_color}]Epistemic Status: {resp.status.upper()}[/bold {status_color}]\n"
+                f"Digest SHA256: [cyan]{resp.digest_sha256}[/cyan]\n"
+                f"Evidence Coverage: [magenta]{resp.coverage * 100:.1f}%[/magenta]\n"
+                f"Paths Verified: [yellow]{len(resp.artifact.evidence_paths)}[/yellow]\n\n"
+                f"[bold]Safe Context Pack:[/bold]\n{resp.context_pack_text}",
+                title=f"Epistemic Verification: '{question}'",
+            )
+        )
+
+    asyncio.run(_run())
+
+
 if __name__ == "__main__":
     app()

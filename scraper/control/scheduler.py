@@ -1,7 +1,5 @@
-"""Crawl Request Scheduler and Frontier Management (§14, §15, §18)."""
-
 import asyncio
-import bisect
+import heapq
 import time
 import uuid
 from collections.abc import Callable
@@ -46,7 +44,7 @@ class CrawlRequest(BaseModel):
 
 
 class RequestFrontier:
-    """In-memory & async bounded request queue frontier with lease semantics (§15)."""
+    """In-memory & async bounded request queue frontier with heap-based priority scheduling and lease semantics (§15)."""
 
     def __init__(
         self,
@@ -55,12 +53,25 @@ class RequestFrontier:
     ):
         self.max_capacity = max_capacity
         self._now_wall = now_wall
-        self._queue: list[CrawlRequest] = []
+        self._heap: list[
+            tuple[float, float, str]
+        ] = []  # (-priority, created_at, req_id)
         self._discovered_urls: set[str] = set()
         self._requests_by_id: dict[str, CrawlRequest] = {}
         self._leased_request_ids: set[str] = set()
+        self._enqueued_ids: set[str] = set()
         self._lock = asyncio.Lock()
         self._condition = asyncio.Condition(self._lock)
+
+    @property
+    def _queue(self) -> list[CrawlRequest]:
+        """Backward-compatible property returning list of currently queued requests."""
+        return [
+            self._requests_by_id[req_id]
+            for req_id in self._enqueued_ids
+            if req_id in self._requests_by_id
+            and self._requests_by_id[req_id].state == RequestState.QUEUED
+        ]
 
     async def add_request(self, req: CrawlRequest) -> bool:
         """Add request to frontier if canonical URL hasn't been queued/processed."""
@@ -68,25 +79,27 @@ class RequestFrontier:
             if req.canonical_url in self._discovered_urls:
                 return False
 
-            if len(self._queue) >= self.max_capacity:
+            if len(self._enqueued_ids) >= self.max_capacity:
                 # Backpressure: reject or drop low priority (§13)
                 return False
 
+            now = self._now_wall()
             req.state = RequestState.QUEUED
-            req.updated_at = self._now_wall()
+            req.updated_at = now
             self._discovered_urls.add(req.canonical_url)
             self._requests_by_id[req.id] = req
-            bisect.insort(self._queue, req, key=lambda r: -r.priority)
+            self._enqueued_ids.add(req.id)
+            heapq.heappush(self._heap, (-req.priority, req.created_at, req.id))
             self._condition.notify_all()
             return True
 
     async def lease_request(
         self, lease_duration_sec: float = 60.0
     ) -> CrawlRequest | None:
-        """Lease the highest priority available request (§15 at-least-once)."""
+        """Lease the highest priority available request (§15 at-least-once) in O(log N)."""
         async with self._condition:
             now = self._now_wall()
-            # Clean up only currently leased requests that have expired (O(leased) not O(all))
+            # Clean up only currently leased requests that have expired
             if self._leased_request_ids:
                 expired_ids = [
                     req_id
@@ -101,17 +114,24 @@ class RequestFrontier:
                     req.state = RequestState.QUEUED
                     req.lease_expires_at = None
                     self._leased_request_ids.discard(req_id)
-                    if req not in self._queue:
-                        bisect.insort(self._queue, req, key=lambda r: -r.priority)
+                    if req_id not in self._enqueued_ids:
+                        self._enqueued_ids.add(req_id)
+                        heapq.heappush(
+                            self._heap, (-req.priority, req.created_at, req_id)
+                        )
 
-            while self._queue:
-                candidate = self._queue.pop(0)
-                if candidate.state in (
+            while self._heap:
+                _, _, req_id = heapq.heappop(self._heap)
+                self._enqueued_ids.discard(req_id)
+                candidate = self._requests_by_id.get(req_id)
+                if candidate is None or candidate.state in (
                     RequestState.DONE,
                     RequestState.DEAD,
                     RequestState.SKIPPED,
+                    RequestState.LEASED,
                 ):
                     continue
+
                 candidate.state = RequestState.LEASED
                 candidate.updated_at = now
                 candidate.lease_expires_at = now + lease_duration_sec
@@ -138,8 +158,7 @@ class RequestFrontier:
                 ):
                     req.lease_expires_at = None
                     self._leased_request_ids.discard(req_id)
-                    if req in self._queue:
-                        self._queue.remove(req)
+                    self._enqueued_ids.discard(req_id)
 
     async def retry_request(self, req_id: str, delay_sec: float = 2.0):
         """Schedule request retry with incremented attempt count (§24)."""
@@ -147,7 +166,7 @@ class RequestFrontier:
             if req_id in self._requests_by_id:
                 req = self._requests_by_id[req_id]
                 self._leased_request_ids.discard(req_id)
-                if req in self._queue:
+                if req_id in self._enqueued_ids:
                     return
                 if req.state in (
                     RequestState.DONE,
@@ -160,14 +179,15 @@ class RequestFrontier:
                 if req.attempt > req.max_attempts:
                     req.state = RequestState.DEAD
                     req.lease_expires_at = None
+                    self._enqueued_ids.discard(req_id)
                 else:
                     req.state = RequestState.QUEUED
                     req.lease_expires_at = None
                     req.priority = max(
                         0.0, req.priority - 5.0
                     )  # Lower priority on retry
-                    if req not in self._queue:
-                        bisect.insort(self._queue, req, key=lambda r: -r.priority)
+                    self._enqueued_ids.add(req_id)
+                    heapq.heappush(self._heap, (-req.priority, req.updated_at, req_id))
                     self._condition.notify_all()
 
     async def stats(self) -> dict[str, int]:

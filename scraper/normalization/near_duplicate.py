@@ -1,10 +1,6 @@
-"""Near-Duplicate Fingerprint Engine (DS-SI34).
-
-Uses 64-bit SimHash over tokens/shingles to detect syndicated and mirror copies.
-"""
-
 import hashlib
 import re
+import threading
 from collections import namedtuple
 
 NearDupCheckResult = namedtuple(
@@ -13,13 +9,32 @@ NearDupCheckResult = namedtuple(
 
 
 class NearDuplicateDetector:
-    """Manages 64-bit SimHash index with Hamming distance clustering."""
+    """Manages 64-bit SimHash index with Multi-Index Hash tables and Hamming distance clustering."""
 
     def __init__(self, hamming_threshold: int = 12):
         self.hamming_threshold = hamming_threshold
         self._fingerprints: dict[str, int] = {}  # doc_id -> simhash_int
         self._clusters: dict[int, list[str]] = {}  # cluster_id -> [doc_ids]
+        self._tables: list[dict[int, set[str]]] = [{}, {}, {}, {}]  # 4 x 16-bit buckets
         self._next_cluster_id = 1
+        self._lock = threading.Lock()
+
+    def clear(self) -> None:
+        """Clear all registered fingerprints and clusters."""
+        with self._lock:
+            self._fingerprints.clear()
+            self._clusters.clear()
+            self._tables = [{}, {}, {}, {}]
+            self._next_cluster_id = 1
+
+    @staticmethod
+    def _get_blocks(fp: int) -> tuple[int, int, int, int]:
+        return (
+            fp & 0xFFFF,
+            (fp >> 16) & 0xFFFF,
+            (fp >> 32) & 0xFFFF,
+            (fp >> 48) & 0xFFFF,
+        )
 
     @staticmethod
     def compute_simhash(
@@ -67,30 +82,63 @@ class NearDuplicateDetector:
         return (h1 ^ h2).bit_count()
 
     def register_document(self, doc_id: str, text: str) -> NearDupCheckResult:
-        """Registers a document and returns NearDupCheckResult(is_near_dup, existing_doc_id, cluster_id)."""
+        """Registers a document using Multi-Index lookup and returns NearDupCheckResult."""
         fp = self.compute_simhash(text)
         if fp == 0:
             return NearDupCheckResult(False, None, 0)
 
-        for existing_id, existing_fp in self._fingerprints.items():
-            dist = self.hamming_distance(fp, existing_fp)
-            if dist <= self.hamming_threshold:
-                # Find cluster
-                cluster_id = 0
-                for cid, members in self._clusters.items():
-                    if existing_id in members:
-                        cluster_id = cid
-                        members.append(doc_id)
-                        break
-                self._fingerprints[doc_id] = fp
-                return NearDupCheckResult(True, existing_id, cluster_id)
+        with self._lock:
+            # Candidate pre-filtering: check for direct candidates via 4-block index
+            blocks = self._get_blocks(fp)
+            candidates: set[str] = set()
+            for i, b in enumerate(blocks):
+                if b in self._tables[i]:
+                    candidates.update(self._tables[i][b])
 
-        # New unique cluster
-        cid = self._next_cluster_id
-        self._next_cluster_id += 1
-        self._clusters[cid] = [doc_id]
-        self._fingerprints[doc_id] = fp
-        return NearDupCheckResult(False, None, cid)
+            # If candidates found via block matches, check them first
+            for existing_id in candidates:
+                existing_fp = self._fingerprints.get(existing_id)
+                if existing_fp is not None:
+                    dist = self.hamming_distance(fp, existing_fp)
+                    if dist <= self.hamming_threshold:
+                        cluster_id = 0
+                        for cid, members in self._clusters.items():
+                            if existing_id in members:
+                                cluster_id = cid
+                                members.append(doc_id)
+                                break
+                        self._fingerprints[doc_id] = fp
+                        for idx, blk in enumerate(blocks):
+                            self._tables[idx].setdefault(blk, set()).add(doc_id)
+                        return NearDupCheckResult(True, existing_id, cluster_id)
+
+            # Fallback scan over non-candidate fingerprints only if candidates didn't match
+            # (guarantees completeness for hamming_threshold > 15)
+            if len(self._fingerprints) < 1000 or self.hamming_threshold > 15:
+                for existing_id, existing_fp in list(self._fingerprints.items()):
+                    if existing_id in candidates:
+                        continue
+                    dist = self.hamming_distance(fp, existing_fp)
+                    if dist <= self.hamming_threshold:
+                        cluster_id = 0
+                        for cid, members in self._clusters.items():
+                            if existing_id in members:
+                                cluster_id = cid
+                                members.append(doc_id)
+                                break
+                        self._fingerprints[doc_id] = fp
+                        for idx, blk in enumerate(blocks):
+                            self._tables[idx].setdefault(blk, set()).add(doc_id)
+                        return NearDupCheckResult(True, existing_id, cluster_id)
+
+            # New unique cluster
+            cid = self._next_cluster_id
+            self._next_cluster_id += 1
+            self._clusters[cid] = [doc_id]
+            self._fingerprints[doc_id] = fp
+            for idx, blk in enumerate(blocks):
+                self._tables[idx].setdefault(blk, set()).add(doc_id)
+            return NearDupCheckResult(False, None, cid)
 
 
 near_duplicate_detector = NearDuplicateDetector(hamming_threshold=12)

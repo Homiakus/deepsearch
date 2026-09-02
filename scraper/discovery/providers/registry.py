@@ -17,6 +17,7 @@ from scraper.discovery.providers.base import (
 from scraper.discovery.providers.crossref import CrossRefProvider
 from scraper.discovery.providers.europe_pmc import EuropePMCProvider
 from scraper.discovery.providers.github import GitHubProvider
+from scraper.discovery.providers.keenable import KeenableSearchProvider
 from scraper.discovery.providers.openalex import OpenAlexProvider
 from scraper.discovery.providers.pubmed import PubMedProvider
 from scraper.discovery.providers.regional_academic import RegionalAcademicProvider
@@ -47,6 +48,7 @@ class ProviderRegistry:
     def __init__(self):
         self._providers: dict[str, DiscoveryProvider] = {}
         # Register standard default providers
+        self.register(KeenableSearchProvider())
         self.register(WikipediaProvider())
         self.register(ArxivProvider())
         self.register(EuropePMCProvider())

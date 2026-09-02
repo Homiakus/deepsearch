@@ -700,6 +700,102 @@ Fragility Index =
 
 **Готово когда:** FRAG закрывается только при зелёном counterexample, relevant property/state model, fault test при внешней зависимости, отсутствии critical surviving mutants и пересчитанном FI с объяснением остаточного риска.
 
+### DS-35 — Подключение SncSinCore к Go-оркестратору и реализация Epistemic Activity
+
+**Приоритет:** P0
+
+**Что делаем:** подключаем `github.com/Homiakus/SncSinCore` в Go-оркестратор (`orchestrator/go.mod`). Реализуем `orchestrator/internal/epistemic/engine.go` для управления графами SIH (`epmemory`, `memoryv2`) и Axiom workflow activity `ExecuteEpistemicQuery` / `IngestExtractedDocument`.
+
+**Где делаем:** `orchestrator/go.mod`, `orchestrator/internal/epistemic/engine.go`, `orchestrator/internal/epistemic/engine_test.go`, `orchestrator/internal/activities/epistemic_activity.go`, `orchestrator/tests/plan_test.go`.
+
+**Как проверить:** `cd orchestrator && go test -race -v ./internal/epistemic/... ./internal/activities/...` проходит; верифицируется детерминизм криптографического артефакта `sih.epistemic-artifact/1.0`.
+
+**Готово когда:** Go-оркестратор компилируется без CGo, все тесты на гонки проходят (`-race`), сформированный артефакт проходит валидацию `artifact.Validate()`.
+
+### DS-36 — Реализация Epistemic Bridge & IPC Daemon в Go-контуре
+
+**Приоритет:** P0
+
+**Что делаем:** реализуем локальный HTTP/IPC JSON-RPC демон (`orchestrator/cmd/epistemic-daemon/main.go`) для обслуживания запросов от Python-рантайма со строгими тайм-аутами и отменой контекстов (`context.WithTimeoutCause`).
+
+**Где делаем:** `orchestrator/cmd/epistemic-daemon/main.go`, `orchestrator/internal/server/epistemic_handler.go`, `orchestrator/internal/server/epistemic_handler_test.go`.
+
+**Как проверить:** `cd orchestrator && go test -race ./internal/server/...` проходит; параллельные 50 клиентов не вызывают утечек горутин или дескрипторов.
+
+**Готово когда:** демон запускается за <10ms, потребляет <20MB RAM и отдаёт валидные JSON-артефакты на эндпоинты `/api/v1/epistemic/query` и `/api/v1/epistemic/ingest`.
+
+### DS-37 — Создание типизированного Python-клиента EpistemicClient и DTO
+
+**Приоритет:** P0
+
+**Что делаем:** создаём типизированный клиент `scraper/retrieval/epistemic_client.py` и Pydantic v2 модели `scraper/retrieval/epistemic_models.py` с поддержкой MockTransport, Circuit Breaker и автономного fallback-исполнения.
+
+**Где делаем:** `scraper/retrieval/epistemic_client.py`, `scraper/retrieval/epistemic_models.py`, `tests/unit/test_epistemic_client.py`.
+
+**Как проверить:** `uv run pytest tests/unit/test_epistemic_client.py -q` проходит с отключённой сетью (`--disable-socket`); mypy строгой типизации проходит без ошибок.
+
+**Готово когда:** клиент обеспечивает 100% герметичность тестов, типизированную валидацию DTO и корректную обработку сетевых/процессных сбоев.
+
+### DS-38 — Рефакторинг SearchEngine: замена Top-K на Epistemic Evidence Subgraphs
+
+**Приоритет:** P1
+
+**Что делаем:** переключаем `SearchEngine.search_passages()` на `EpistemicClient`, преобразуя поисковые запросы в структурированные эпистемические запросы с требованиями (`RequirementInput`) и заполнением объяснительных трасс (`explain.why_retrieved`) реальными путями графа SIH.
+
+**Где делаем:** `scraper/search/search_engine.py`, `scraper/application/service.py`, `scraper/contracts/__init__.py`, `tests/unit/test_search_engine.py`, `tests/unit/test_epistemic_search.py`.
+
+**Как проверить:** `uv run pytest tests/unit/test_search_engine.py tests/unit/test_epistemic_search.py -q` проходит; существующие интерфейсы (`CLI`, `FastAPI`, `MCP`) сохраняют обратную совместимость.
+
+**Готово когда:** вероятностный Top-K поиск заменён на детерминированные графовые доказательства, вывод содержит проверенные пути и сертификат покрытия требований.
+
+### DS-39 — Интеграция формирования SIH-графов в Extraction и ArchiveExporter
+
+**Приоритет:** P1
+
+**Что делаем:** внедряем `scraper/extraction/sih_compiler.py` для извлечения триплетов утверждений и связей из извлечённого контента, добавляем `sih_corpus.json` и `sih_artifact.json` в экспорт `ArchiveExporter`.
+
+**Где делаем:** `scraper/extraction/engine.py`, `scraper/extraction/sih_compiler.py`, `scraper/storage/archive_exporter.py`, `tests/unit/test_archive_exporter.py`.
+
+**Как проверить:** `uv run pytest tests/unit/test_archive_exporter.py -q` проходит; созданный ZIP-архив валидируется схемой SncSinCore.
+
+**Готово когда:** экспорт исследований формирует криптографически проверяемый манифест доказательств и связей.
+
+### DS-40 — Обновление REST API, MCP Server и CLI для работы с Epistemic Memory
+
+**Приоритет:** P1
+
+**Что делаем:** расширяем REST-маршруты (`/api/v1/epistemic/query`), инструменты MCP (`query_epistemic_memory`, `search_evidence` с безопасным `ContextPack`) и CLI-команды (`scraper epistemic query`).
+
+**Где делаем:** `scraper/api/routes.py`, `scraper/mcp/server.py`, `scraper/cli/main.py`, `tests/unit/test_api.py`, `tests/unit/test_mcp_server.py`, `tests/unit/test_cli.py`.
+
+**Как проверить:** `uv run pytest tests/unit/test_api.py tests/unit/test_mcp_server.py tests/unit/test_cli.py -q` проходит без ошибок.
+
+**Готово когда:** все публичные транспорты предоставляют доступ к эпистемической памяти и защищённому контексту.
+
+### DS-41 — Очистка legacy-зависимостей и устаревшего векторного кода
+
+**Приоритет:** P2
+
+**Что делаем:** переводим тяжёлые векторные библиотеки (`fastembed`, `qdrant-client`) в optional dev-зависимости или удаляем; удаляем неиспользуемые fastembed-обёртки.
+
+**Где делаем:** `pyproject.toml`, `scraper/config.py`, `scraper/storage/vector_store.py`.
+
+**Как проверить:** `uv sync --extra dev --frozen && uv run ruff check . && uv run mypy scraper && uv run pytest tests/ -q` проходит; размер сборки сокращён.
+
+**Готово когда:** базовый дистрибутив не требует внешних ML-рантаймов и запускается без Qdrant.
+
+### DS-42 — Комплексные бенчмарки, мутационное тестирование и валидация надежности
+
+**Приоритет:** P2
+
+**Что делаем:** создаём бенчмарки пропускной способности и аллокаций памяти (`benchmarks/epistemic_bench_test.go`), интеграционные тесты (`tests/integration/test_epistemic_pipeline.py`) и проводим мутационное тестирование ключевых путей.
+
+**Где делаем:** `benchmarks/epistemic_bench_test.go`, `tests/integration/test_epistemic_pipeline.py`, `docs/architecture/REFACTOR_PLAN.md`, `.deepsearch/devloop-state.json`.
+
+**Как проверить:** `python tools/devloop.py validate` и `python tools/devloop.py mutation --scope targeted` подтверждают отсутствие регрессий.
+
+**Готово когда:** p95 latency запроса < 50ms на 100k узлов, 0 выживших критических мутантов.
+
 ## 7. Порядок выполнения
 
 | Этап | Пункты | Результат этапа |

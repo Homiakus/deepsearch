@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+
 import httpx
 from pydantic import BaseModel, Field
 
@@ -39,20 +41,83 @@ STEALTH_BROWSER_HEADERS = {
 
 
 class HTTPFetcher:
-    """Async HTTP Client with SSRF protection and download safety checks (§DS-07)."""
+    """Async HTTP Client with connection pooling, SSRF protection and download safety checks (§DS-07)."""
 
     def __init__(
         self,
         timeout_sec: float = 30.0,
         transport: httpx.AsyncBaseTransport | None = None,
+        max_connections: int = 100,
+        max_keepalive_connections: int = 20,
     ):
         self.timeout_sec = timeout_sec
         self.transport = transport
+        self.max_connections = max_connections
+        self.max_keepalive_connections = max_keepalive_connections
+        self._client: httpx.AsyncClient | None = None
+        self._lock = asyncio.Lock()
 
     @classmethod
     def validate_url_security(cls, url: str) -> None:
         """Validate protocol and check for SSRF via central URL security policy (§DS-07)."""
         url_security_policy.validate_url(url)
+
+    async def __aenter__(self) -> HTTPFetcher:
+        await self._get_client()
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
+        await self.close()
+
+    async def _get_client(self, proxy: str | None = None) -> httpx.AsyncClient:
+        if proxy is not None:
+            # Dedicated client for explicit proxy override
+            transport = self.transport or httpx.AsyncHTTPTransport(
+                retries=1,
+                verify=False,
+                limits=httpx.Limits(
+                    max_connections=self.max_connections,
+                    max_keepalive_connections=self.max_keepalive_connections,
+                    keepalive_expiry=30.0,
+                ),
+            )
+            return httpx.AsyncClient(
+                transport=transport,
+                timeout=self.timeout_sec,
+                follow_redirects=True,
+                max_redirects=settings.security.max_redirects,
+                proxy=proxy,
+                trust_env=False,
+                event_hooks={"response": [self._validate_redirect_hook]},
+            )
+
+        if self._client is None or self._client.is_closed:
+            async with self._lock:
+                if self._client is None or self._client.is_closed:
+                    transport = self.transport or httpx.AsyncHTTPTransport(
+                        retries=1,
+                        verify=False,
+                        limits=httpx.Limits(
+                            max_connections=self.max_connections,
+                            max_keepalive_connections=self.max_keepalive_connections,
+                            keepalive_expiry=30.0,
+                        ),
+                    )
+                    self._client = httpx.AsyncClient(
+                        transport=transport,
+                        timeout=self.timeout_sec,
+                        follow_redirects=True,
+                        max_redirects=settings.security.max_redirects,
+                        trust_env=False,
+                        event_hooks={"response": [self._validate_redirect_hook]},
+                    )
+        return self._client
+
+    @staticmethod
+    async def _validate_redirect_hook(response: httpx.Response) -> None:
+        if response.is_redirect and "location" in response.headers:
+            redirect_url = str(response.url.join(response.headers["location"]))
+            url_security_policy.validate_url(redirect_url)
 
     async def fetch(
         self,
@@ -67,21 +132,10 @@ class HTTPFetcher:
         if headers:
             req_headers.update(headers)
 
-        async def _validate_redirect_hook(response: httpx.Response):
-            if response.is_redirect and "location" in response.headers:
-                redirect_url = str(response.url.join(response.headers["location"]))
-                url_security_policy.validate_url(redirect_url)
+        client = await self._get_client(proxy=proxy)
+        is_temporary_client = proxy is not None
 
-        transport = self.transport or httpx.AsyncHTTPTransport(retries=1, verify=False)
-        async with httpx.AsyncClient(
-            transport=transport,
-            timeout=self.timeout_sec,
-            follow_redirects=True,
-            max_redirects=settings.security.max_redirects,
-            proxy=proxy,
-            trust_env=False,
-            event_hooks={"response": [_validate_redirect_hook]},
-        ) as client:
+        try:
             req = client.build_request("GET", url, headers=req_headers)
             res = await client.send(req, stream=True)
 
@@ -126,6 +180,13 @@ class HTTPFetcher:
                 elapsed_sec=elapsed_sec,
                 redirect_chain=[str(r.url) for r in res.history],
             )
+        finally:
+            if is_temporary_client:
+                await client.aclose()
 
     async def close(self) -> None:
-        """Release any client session resources."""
+        """Release pooled client session resources."""
+        async with self._lock:
+            if self._client is not None and not self._client.is_closed:
+                await self._client.aclose()
+                self._client = None

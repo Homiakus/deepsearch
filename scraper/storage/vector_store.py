@@ -24,11 +24,18 @@ except ImportError:
 
 
 class VectorStoreManager:
-    """Manages Qdrant vector database collections for text and visual multivectors (§42)."""
+    """[DEPRECATED: DS-41] Legacy Qdrant vector database collection manager.
+
+    Superceded by SncSinCore Epistemic Memory for deterministic evidence subgraphs.
+    Retained for backward compatibility with experimental dense vector plugins.
+    """
 
     DEFAULT_COLLECTION = "deepsearch_chunks"
 
     def __init__(self, url: str | None = None, collection_name: str | None = None):
+        logger.debug(
+            "Initializing legacy VectorStoreManager (superceded by SncSinCore Epistemic Memory)"
+        )
         self.url = url or settings.qdrant_url
         self.collection_name = collection_name or self.DEFAULT_COLLECTION
         self.client: QdrantClient | None = None
@@ -79,23 +86,28 @@ class VectorStoreManager:
     def upsert_text_embedding(
         self, doc_id: str, vector: list[float], payload: dict[str, Any]
     ) -> bool:
-        if not self.client:
+        return self.upsert_text_embeddings_batch([(doc_id, vector, payload)])
+
+    def upsert_text_embeddings_batch(
+        self, records: list[tuple[str, list[float], dict[str, Any]]]
+    ) -> bool:
+        """Batch upsert multiple text embedding points in a single Qdrant request."""
+        if not self.client or not records:
             return False
         try:
-            self.ensure_collection(vector_size=len(vector))
+            vector_size = len(records[0][1])
+            self.ensure_collection(vector_size=vector_size)
+            points = [
+                PointStruct(id=doc_id, vector=vector, payload=payload)
+                for doc_id, vector, payload in records
+            ]
             self.client.upsert(
                 collection_name=self.collection_name,
-                points=[
-                    PointStruct(
-                        id=doc_id,
-                        vector=vector,
-                        payload=payload,
-                    )
-                ],
+                points=points,
             )
             return True
         except Exception as e:
-            logger.error("Failed to upsert point %s: %s", doc_id, e)
+            logger.error("Failed to batch upsert %d points: %s", len(records), e)
             return False
 
     def search_text(

@@ -461,6 +461,86 @@ async def deepsearch_search(query: str, limit: int = 10) -> str:
 
 
 @mcp.tool()
+async def deepsearch_epistemic_query(
+    query: str,
+    intent: Literal[
+        "factual",
+        "definitional",
+        "comparative",
+        "temporal",
+        "causal",
+        "counterfactual",
+    ] = "factual",
+    context: str = "",
+    strict_context: bool = False,
+    max_tokens: int = 2048,
+) -> str:
+    """Executes deterministic mathematical evidence-subgraph query via SNC Epistemic Memory (DS-40).
+
+    Args:
+        query: Proposition or requirement to verify against indexed epistemic graph.
+        intent: Reasoning intent for subgraph extraction.
+        context: Optional topic context anchor.
+        strict_context: If True, reject evidence outside topic context.
+        max_tokens: Maximum tokens in synthesized safe context pack.
+    """
+    if not query or not query.strip():
+        return json.dumps(
+            {"status": "failed", "error": "Query parameter cannot be empty."},
+            indent=2,
+            ensure_ascii=False,
+        )
+
+    try:
+        from scraper.retrieval.epistemic_client import epistemic_client
+        from scraper.retrieval.epistemic_models import (
+            EpistemicIntent,
+            EpistemicQueryRequest,
+            EpistemicRequirementInput,
+            EpistemicRequirementKind,
+        )
+
+        req = EpistemicQueryRequest(
+            run_id=f"mcp_{uuid.uuid4().hex[:8]}",
+            text=query.strip(),
+            intent=EpistemicIntent(intent),
+            context=context.strip(),
+            strict_context=strict_context,
+            requirements=[
+                EpistemicRequirementInput(
+                    id=f"req_{uuid.uuid4().hex[:6]}",
+                    kind=EpistemicRequirementKind.FACT,
+                    text=f"Verify evidence: {query.strip()}",
+                    criticality=1.0,
+                    minimum_coverage=0.75,
+                )
+            ],
+            max_tokens=max_tokens,
+        )
+
+        resp = await epistemic_client.query(req)
+        return json.dumps(
+            {
+                "status": "success",
+                "epistemic_status": resp.status,
+                "digest_sha256": resp.digest_sha256,
+                "coverage": resp.coverage,
+                "context_pack_text": resp.context_pack_text,
+                "artifact": resp.artifact.model_dump(),
+            },
+            indent=2,
+            ensure_ascii=False,
+        )
+    except Exception as exc:
+        logger.exception("Epistemic query failed for '%s': %s", query, exc)
+        return json.dumps(
+            {"status": "failed", "query": query, "error": str(exc)},
+            indent=2,
+            ensure_ascii=False,
+        )
+
+
+@mcp.tool()
 async def deepsearch_capabilities() -> str:
     """Returns the canonical capability matrix (§DS-01) with honest status tiers (stable, experimental, disabled)."""
     from scraper.contracts.capabilities import get_capability_matrix

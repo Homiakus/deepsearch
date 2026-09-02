@@ -20,6 +20,7 @@ from pydantic import BaseModel, Field
 
 from scraper.acquisition.engine import CapturedArtifact
 from scraper.extraction.engine import ExtractionResult
+from scraper.extraction.sih_compiler import compile_markdown_to_sih
 from scraper.normalization.text import recursive_sanitize, sanitize_unicode_string
 from scraper.search.chunking import StructureAwareChunker, StructuredChunk
 
@@ -115,14 +116,18 @@ class ArchiveExporter:
         pdfs_dir = out_path / "pdfs"
         media_dir = out_path / "media"
         rag_dir = out_path / "rag"
+        sih_dir = out_path / "sih"
 
         files_dir.mkdir(parents=True, exist_ok=True)
         pdfs_dir.mkdir(parents=True, exist_ok=True)
         media_dir.mkdir(parents=True, exist_ok=True)
         rag_dir.mkdir(parents=True, exist_ok=True)
+        sih_dir.mkdir(parents=True, exist_ok=True)
 
         manifest_files: list[dict[str, Any]] = []
         all_rag_chunks: list[RAGChunk] = []
+        all_sih_nodes: list[dict[str, Any]] = []
+        all_sih_edges: list[dict[str, Any]] = []
         rag_context_lines = [
             "# DeepSearch RAG Context Corpus",
             f"> Search Query: {self.metadata.query}",
@@ -187,12 +192,25 @@ class ArchiveExporter:
                 }
             )
 
-            # --- 2. LLM RAG Dataset Generation (`rag/`) ---
+            # --- 2. LLM RAG Dataset & SIH Graph Generation (`rag/`, `sih/`) ---
             text_for_rag = (
                 extraction.full_text_markdown
                 or extraction.fit_markdown
                 or extraction.clean_markdown
             )
+
+            # Compile into SIH nodes & edges
+            doc_nodes, doc_edges = compile_markdown_to_sih(
+                doc_id=safe_title,
+                url=artifact.url,
+                title=safe_title,
+                markdown_text=text_for_rag,
+            )
+            all_sih_nodes.extend([n.model_dump(exclude_none=True) for n in doc_nodes])
+            all_sih_edges.extend(
+                [e.model_dump(by_alias=True, exclude_none=True) for e in doc_edges]
+            )
+
             structured_chunks = self._chunk_text(
                 text=text_for_rag,
                 doc_id=safe_title,
@@ -317,6 +335,30 @@ class ArchiveExporter:
                         f"  *Source*: [{media_info.get('url')}]({media_info.get('url')}) | *License*: {lic} | *Author*: {auth} | *Relevance Score*: {score:.2f}\n"
                     )
 
+        # Save `sih/sih_corpus.json`
+        sih_corpus_path = sih_dir / "sih_corpus.json"
+        sih_corpus_data = {
+            "version": "v1.0",
+            "nodes": all_sih_nodes,
+            "edges": all_sih_edges,
+        }
+        sih_corpus_path.write_text(
+            json.dumps(
+                recursive_sanitize(sih_corpus_data), indent=2, ensure_ascii=False
+            ),
+            encoding="utf-8",
+        )
+        sih_sha, sih_size = _compute_file_sha256_and_size(sih_corpus_path)
+        manifest_files.append(
+            {
+                "id": "sih_corpus",
+                "file_path": "sih/sih_corpus.json",
+                "type": "epistemic_corpus",
+                "size_bytes": sih_size,
+                "sha256": sih_sha,
+            }
+        )
+
         # Save `rag/rag_chunks.jsonl`
         jsonl_path = rag_dir / "rag_chunks.jsonl"
         with open(jsonl_path, "w", encoding="utf-8") as f:
@@ -408,6 +450,8 @@ class ArchiveExporter:
             "summary": {
                 "total_documents": len(results),
                 "total_rag_chunks": len(all_rag_chunks),
+                "total_sih_nodes": len(all_sih_nodes),
+                "total_sih_edges": len(all_sih_edges),
                 "total_user_files": len(manifest_files),
                 "total_pdfs": total_pdf_files,
                 "total_media_files": total_media_files,

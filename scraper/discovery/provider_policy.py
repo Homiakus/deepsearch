@@ -216,8 +216,9 @@ class ProviderPolicy:
                         )
                     )
 
-            # 3. Grounding & Open Web Fallback (WebSearch & Wikipedia; opt-in only sources excluded by default)
+            # 3. Grounding & Open Web Fallback (Keenable, WebSearch & Wikipedia; opt-in only sources excluded by default)
             for prov_name, limit in [
+                ("keenable", 20),
                 ("web_search", 15),
                 ("wikipedia", 5),
             ]:

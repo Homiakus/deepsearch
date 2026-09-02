@@ -1,5 +1,7 @@
 github.com/DataDog/zstd v1.4.5 h1:EndNeuB0l9syBZhut0wns3gV1hL8zX8LIu6ZiVHWLIQ=
 github.com/DataDog/zstd v1.4.5/go.mod h1:1jcaCB/ufaK+sKp1NBhlGmpz41jOoPQ35bpF36t7BBo=
+github.com/Homiakus/SncSinCore v0.0.0-20260902111520-b223d10b609c h1:62r7NbinlPfLhWM61/1W3gLnu8eELuAR/At2PvDlEMI=
+github.com/Homiakus/SncSinCore v0.0.0-20260902111520-b223d10b609c/go.mod h1:XJpVhAhYo7A8TP2fNYUtgLmZ3IL2RFJ5VsJ+JLrjVQE=
 github.com/Homiakus/axiom v0.0.0-20260814202332-55bcc0134b6c h1:J8zedx67j1e+se2JM3Yok1zhsa5CFnP39Hb5LvZSnrs=
 github.com/Homiakus/axiom v0.0.0-20260814202332-55bcc0134b6c/go.mod h1:cWtVdzMbj9kRF3Azn0vWPPqD4yRm9Xgk2aRmWi7d6xQ=
 github.com/beorn7/perks v1.0.1 h1:VlbKKnNfV8bJzeqoa4cOKqO6bYr3WgKZxO8Z16+hsOM=
@@ -92,6 +94,8 @@ golang.org/x/sys v0.0.0-20190412213103-97732733099d/go.mod h1:h1NjWce9XRLGQEsW7w
 golang.org/x/sys v0.0.0-20200930185726-fdedc70b468f/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 golang.org/x/sys v0.18.0 h1:DBdB3niSjOA/O0blCZBqDefyWNYveAYMNF1Wum0DYQ4=
 golang.org/x/sys v0.18.0/go.mod h1:/VUhepiaJMQUp4+oa/7Zr1D23ma6VTLIYjOOTFZPUcA=
+golang.org/x/sys v0.47.0 h1:o7XGOvZQCADBQQ4Y7VNq2dRWQR7JmOUW8Kxx4ZsNgWs=
+golang.org/x/sys v0.47.0/go.mod h1:4GL1E5IUh+htKOUEOaiffhrAeqysfVGipDYzABqnCmw=
 golang.org/x/text v0.3.0/go.mod h1:NqM8EUOU14njkJ3fqMW+pc6Ldnwhi/IjpwHt7yyuwOQ=
 golang.org/x/text v0.3.3/go.mod h1:5Zoc/QRtKVWzQhOtBMvqHzDpF6irO9z98xDceosuGiQ=
 golang.org/x/text v0.14.0 h1:ScX5w1eTa3QqT8oi6+ziP7dTV1S2+ALU0bI+0zXKWiQ=

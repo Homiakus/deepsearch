@@ -82,6 +82,7 @@ class BrowserPoolManager:
         self._playwright: Playwright | None = None
         self._browser: Browser | None = None
         self._lock = asyncio.Lock()
+        self._semaphore = asyncio.Semaphore(contexts_per_browser)
         self._storage_state_path = Path(".browser_profile/storage_state.json")
         self._init_failed: bool = False
 
@@ -141,115 +142,150 @@ class BrowserPoolManager:
         if not self._browser:
             raise BrowserPoolError("Browser pool is uninitialized.")
 
-        # Context options with realistic browser signature
-        storage_state = (
-            str(self._storage_state_path) if self._storage_state_path.exists() else None
-        )
-
-        context_kwargs = {
-            "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36",
-            "viewport": {"width": 1366, "height": 768}
-            if visual_mode
-            else {"width": 1280, "height": 800},
-            "locale": "en-US",
-            "timezone_id": "America/New_York",
-            "extra_http_headers": {
-                "Accept-Language": "en-US,en;q=0.9,ru;q=0.8",
-                "Sec-CH-UA": '"Chromium";v="130", "Google Chrome";v="130", "Not?A_Brand";v="99"',
-                "Sec-CH-UA-Mobile": "?0",
-                "Sec-CH-UA-Platform": '"Windows"',
-                "Sec-Fetch-Dest": "document",
-                "Sec-Fetch-Mode": "navigate",
-                "Sec-Fetch-Site": "none",
-                "Sec-Fetch-User": "?1",
-                "Upgrade-Insecure-Requests": "1",
-            },
-        }
-        if storage_state:
-            context_kwargs["storage_state"] = storage_state
-
-        context = await self._browser.new_context(**context_kwargs)
-
-        # Inject anti-detection stealth script before document scripts run
-        await context.add_init_script(STEALTH_EVASION_SCRIPT)
-
-        page = await context.new_page()
-        network_logs: list[dict[str, Any]] = []
-
-        # Intercept network requests (§29 Network Intelligence)
-        def handle_response(res):
-            network_logs.append(
-                {
-                    "url": res.url,
-                    "status": res.status,
-                    "mime": res.headers.get("content-type", ""),
-                    "size": 0,
-                }
+        async with self._semaphore:
+            # Context options with realistic browser signature
+            storage_state = (
+                str(self._storage_state_path)
+                if self._storage_state_path.exists()
+                else None
             )
 
-        page.on("response", handle_response)
+            context_kwargs = {
+                "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36",
+                "viewport": {"width": 1366, "height": 768}
+                if visual_mode
+                else {"width": 1280, "height": 800},
+                "locale": "en-US",
+                "timezone_id": "America/New_York",
+                "extra_http_headers": {
+                    "Accept-Language": "en-US,en;q=0.9,ru;q=0.8",
+                    "Sec-CH-UA": '"Chromium";v="130", "Google Chrome";v="130", "Not?A_Brand";v="99"',
+                    "Sec-CH-UA-Mobile": "?0",
+                    "Sec-CH-UA-Platform": '"Windows"',
+                    "Sec-Fetch-Dest": "document",
+                    "Sec-Fetch-Mode": "navigate",
+                    "Sec-Fetch-Site": "none",
+                    "Sec-Fetch-User": "?1",
+                    "Upgrade-Insecure-Requests": "1",
+                },
+            }
+            if storage_state:
+                context_kwargs["storage_state"] = storage_state
 
-        # SSRF subresource guard (§DS-07) and resource blocking (§10)
-        async def route_handler(route):
-            req = route.request
-            try:
-                url_security_policy.validate_url(req.url)
-            except Exception:
-                await route.abort("blockedbyclient")
-                return
+            context = await self._browser.new_context(**context_kwargs)
 
-            if not visual_mode and req.resource_type in ["media", "font"]:
-                await route.abort()
-            else:
+            # Inject anti-detection stealth script before document scripts run
+            await context.add_init_script(STEALTH_EVASION_SCRIPT)
+
+            page = await context.new_page()
+            network_logs: list[dict[str, Any]] = []
+
+            # Intercept network requests (§29 Network Intelligence)
+            def handle_response(res):
+                network_logs.append(
+                    {
+                        "url": res.url,
+                        "status": res.status,
+                        "mime": res.headers.get("content-type", ""),
+                        "size": 0,
+                    }
+                )
+
+            page.on("response", handle_response)
+
+            # Tracker / heavy analytics domains to block in all browser sessions
+            BLOCKED_DOMAINS = (
+                "google-analytics.com",
+                "googletagmanager.com",
+                "mc.yandex.ru",
+                "metrika.yandex.ru",
+                "doubleclick.net",
+                "connect.facebook.net",
+                "facebook.com/tr",
+                "clarity.ms",
+                "hotjar.com",
+                "criteo.net",
+            )
+
+            # SSRF subresource guard (§DS-07) and resource blocking (§10)
+            async def route_handler(route):
+                req = route.request
+                req_url = req.url
+                try:
+                    url_security_policy.validate_url(req_url)
+                except Exception:
+                    await route.abort("blockedbyclient")
+                    return
+
+                # Block telemetry/trackers unconditionally
+                if any(domain in req_url for domain in BLOCKED_DOMAINS):
+                    await route.abort()
+                    return
+
+                # Aggressive lean resource filtering in non-visual mode
+                if not (visual_mode or take_screenshot):
+                    if req.resource_type in [
+                        "image",
+                        "media",
+                        "font",
+                        "stylesheet",
+                        "other",
+                    ]:
+                        await route.abort()
+                        return
+                elif not visual_mode and req.resource_type in ["media", "font"]:
+                    await route.abort()
+                    return
+
                 await route.continue_()
 
-        await page.route("**/*", route_handler)
+            await page.route("**/*", route_handler)
 
-        try:
-            res = await page.goto(
-                url,
-                wait_until="domcontentloaded",
-                timeout=int(
-                    settings.adaptive.browser_navigation_timeout_seconds * 1000
-                ),
-            )
-            status_code = res.status if res else 200
+            try:
+                res = await page.goto(
+                    url,
+                    wait_until="domcontentloaded",
+                    timeout=int(
+                        settings.adaptive.browser_navigation_timeout_seconds * 1000
+                    ),
+                )
+                status_code = res.status if res else 200
 
-            if wait_for_selector:
-                try:
-                    await page.wait_for_selector(
-                        wait_for_selector,
-                        timeout=int(
-                            settings.adaptive.browser_selector_timeout_seconds * 1000
-                        ),
-                    )
-                except Exception:
-                    pass
+                if wait_for_selector:
+                    try:
+                        await page.wait_for_selector(
+                            wait_for_selector,
+                            timeout=int(
+                                settings.adaptive.browser_selector_timeout_seconds
+                                * 1000
+                            ),
+                        )
+                    except Exception:
+                        pass
+                elif visual_mode:
+                    await page.wait_for_timeout(200)
 
-            # Optional brief settling wait for challenge resolution
-            await page.wait_for_timeout(1200)
+                content = await page.content()
+                screenshot_bytes = None
 
-            content = await page.content()
-            screenshot_bytes = None
+                if take_screenshot or visual_mode:
+                    try:
+                        screenshot_bytes = await page.screenshot(
+                            type="png", full_page=False
+                        )
+                    except Exception:
+                        pass
 
-            if take_screenshot or visual_mode:
-                try:
-                    screenshot_bytes = await page.screenshot(
-                        type="png", full_page=False
-                    )
-                except Exception:
-                    pass
-
-            return BrowserResponse(
-                url=page.url,
-                status_code=status_code,
-                content=content,
-                screenshot_bytes=screenshot_bytes,
-                network_requests=network_logs,
-                headers=dict(res.headers) if res else {},
-            )
-        finally:
-            await context.close()
+                return BrowserResponse(
+                    url=page.url,
+                    status_code=status_code,
+                    content=content,
+                    screenshot_bytes=screenshot_bytes,
+                    network_requests=network_logs,
+                    headers=dict(res.headers) if res else {},
+                )
+            finally:
+                await context.close()
 
     async def close(self):
         """Close browser instance and clean up Playwright resources."""

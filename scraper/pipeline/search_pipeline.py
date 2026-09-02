@@ -334,7 +334,7 @@ class DeepSearchPipeline:
         rej_list: list[dict[str, Any]] = list(rejections)
         source_lineage = SourceLineage()
 
-        concurrency_limit = max(1, min(getattr(opts, "concurrency", 4) or 4, 6))
+        concurrency_limit = max(1, getattr(opts, "concurrency", 4) or 4)
         active_workers = 0
         stop_event = asyncio.Event()
         frontier_lock = asyncio.Lock()
@@ -425,7 +425,7 @@ class DeepSearchPipeline:
                     )
                     return
 
-                extraction = ExtractionEngine.extract_from_html(
+                extraction = await ExtractionEngine.async_extract_from_html(
                     url=artifact.url, raw_html=artifact.text_content
                 )
 

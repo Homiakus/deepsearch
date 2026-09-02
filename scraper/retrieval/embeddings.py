@@ -37,28 +37,42 @@ class FastEmbedEngine:
             self._initialized = True
         return self._model
 
-    def embed_text_dense(self, text: str) -> list[float]:
-        """Embeds single text string into a float vector."""
-        model = self._get_model()
-        if model is not None:
-            try:
-                embeddings = list(model.embed([text]))
-                return embeddings[0].tolist()
-            except Exception as e:
-                logger.warning("FastEmbed embed failed: %s", e)
-
-        # Fallback deterministic pseudo-embedding for offline/test environments
+    def _pseudo_embed(self, text: str) -> list[float]:
         vec = [0.0] * self.dimension
         for word in text.lower().split():
             h = int(hashlib.md5(word.encode("utf-8")).hexdigest(), 16)
             idx = h % self.dimension
             vec[idx] += 1.0
 
-        # Normalize L2 norm
         norm = sum(x * x for x in vec) ** 0.5
         if norm > 0:
             vec = [x / norm for x in vec]
         return vec
+
+    def embed_text_dense(self, text: str) -> list[float]:
+        """Embeds single text string into a float vector."""
+        batch = self.embed_texts_batch([text])
+        return batch[0] if batch else self._pseudo_embed(text)
+
+    def embed_texts_batch(self, texts: list[str]) -> list[list[float]]:
+        """Embeds a batch of text strings into float vectors using SIMD batching."""
+        if not texts:
+            return []
+        model = self._get_model()
+        if model is not None:
+            try:
+                embeddings = list(model.embed(texts))
+                return [emb.tolist() for emb in embeddings]
+            except Exception as e:
+                logger.warning("FastEmbed batch embed failed: %s", e)
+
+        return [self._pseudo_embed(t) for t in texts]
+
+    async def async_embed_texts_batch(self, texts: list[str]) -> list[list[float]]:
+        """Non-blocking async wrapper for batch embedding execution."""
+        import asyncio
+
+        return await asyncio.to_thread(self.embed_texts_batch, texts)
 
 
 embedding_engine = FastEmbedEngine()

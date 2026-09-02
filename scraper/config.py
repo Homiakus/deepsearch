@@ -178,6 +178,9 @@ class Settings(BaseSettings):
     crossref_email: str | None = None
     semantic_scholar_api_key: str | None = None
     enable_arxiv: bool = True
+    keenable_api_key: str | None = None
+    keenable_api_url: str = "https://api.keenable.ai"
+    enable_keenable: bool = True
 
     # Rate Limiting
     rate_limit_rps: float = Field(default=10.0, ge=0.1, le=10000.0)

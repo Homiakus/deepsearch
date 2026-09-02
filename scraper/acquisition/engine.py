@@ -186,7 +186,34 @@ class AdaptiveAcquisitionEngine:
                 elapsed_sec=time.time() - start_t,
             )
         except Exception as e:
-            # Fallback to HTTP result if available
+            # Fallback 1: Keenable Clean Markdown API fallback
+            if getattr(settings, "enable_keenable", True):
+                try:
+                    from scraper.acquisition.keenable_fetcher import keenable_fetcher
+
+                    k_res = await keenable_fetcher.fetch(url, timeout_sec=10.0)
+                    if k_res.success and k_res.clean_markdown:
+                        logger.info(
+                            "Successfully recovered page %s via Keenable AI Fetch", url
+                        )
+                        pi = classify_page(url, 200, {}, k_res.clean_markdown)
+                        return CapturedArtifact(
+                            url=url,
+                            canonical_url=canonical_url,
+                            strategy_used="L2_KEENABLE",
+                            status_code=200,
+                            content_type="text/markdown",
+                            raw_content=k_res.clean_markdown.encode("utf-8"),
+                            text_content=k_res.clean_markdown,
+                            page_intelligence=pi,
+                            elapsed_sec=time.time() - start_t,
+                        )
+                except Exception as k_exc:
+                    logger.debug(
+                        "Keenable fallback fetch failed for %s: %s", url, k_exc
+                    )
+
+            # Fallback 2: HTTP result if available
             if http_res:
                 logger.warning(
                     "Browser tier failed for %s, falling back to HTTP result: %s",

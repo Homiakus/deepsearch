@@ -33,11 +33,26 @@ from scraper.contracts.capabilities import (
     require_capability,
 )
 from scraper.monitoring.telemetry import telemetry
+from scraper.retrieval.epistemic_client import epistemic_client
+from scraper.retrieval.epistemic_models import (
+    EpistemicEdgeInput,
+    EpistemicNodeInput,
+    EpistemicQueryRequest,
+    EpistemicQueryResponse,
+)
 from scraper.search.search_engine import SearchResponse, SearchResultItem
 from scraper.storage.exporters.obsidian import ObsidianVaultExporter
 from scraper.storage.exporters.zotero import ZoteroLibraryExporter
 
 router = APIRouter(prefix="/api/v1")
+
+
+class EpistemicIngestApiRequest(BaseModel):
+    run_id: str
+    doc_id: str
+    url: str
+    nodes: list[EpistemicNodeInput]
+    edges: list[EpistemicEdgeInput] = []
 
 
 class InspectRequest(BaseModel):
@@ -232,6 +247,30 @@ async def search_query_detailed(
         message="Search executed against indexed vector corpus"
         if state == FeatureAvailabilityState.READY
         else "Index empty or not configured",
+    )
+
+
+@router.post("/epistemic/query", response_model=EpistemicQueryResponse)
+async def query_epistemic_memory(
+    req: EpistemicQueryRequest,
+    _auth: str = Depends(verify_api_key),
+):
+    """Execute mathematical evidence-subgraph query over SNC/SIH Epistemic Memory (DS-40)."""
+    return await epistemic_client.query(req)
+
+
+@router.post("/epistemic/ingest")
+async def ingest_epistemic_memory(
+    req: EpistemicIngestApiRequest,
+    _auth: str = Depends(verify_api_key),
+):
+    """Ingest extracted nodes and relations into SIH knowledge graph (DS-40)."""
+    return await epistemic_client.ingest(
+        run_id=req.run_id,
+        doc_id=req.doc_id,
+        url=req.url,
+        nodes=req.nodes,
+        edges=req.edges,
     )
 
 

@@ -10,6 +10,14 @@ from pydantic import BaseModel, Field
 
 from scraper.application.models import FeatureAvailabilityState
 from scraper.research.query_normalizer import normalize_query
+from scraper.retrieval.epistemic_client import EpistemicClient, epistemic_client
+from scraper.retrieval.epistemic_models import (
+    EpistemicIntent,
+    EpistemicQueryRequest,
+    EpistemicQueryResponse,
+    EpistemicRequirementInput,
+    EpistemicRequirementKind,
+)
 from scraper.search.embeddings.dense import dense_embedder
 from scraper.search.rerank.base import RerankedPassage
 from scraper.search.rerank.cross_encoder import cross_encoder_reranker
@@ -56,8 +64,13 @@ class SearchResponse(BaseModel):
 class SearchEngine:
     """Evidence-driven hybrid retrieval engine without synthetic fake results."""
 
-    def __init__(self, vector_store: VectorStoreManager | None = None):
+    def __init__(
+        self,
+        vector_store: VectorStoreManager | None = None,
+        epistemic: EpistemicClient | None = None,
+    ):
         self.vector_store = vector_store or VectorStoreManager()
+        self.epistemic = epistemic or epistemic_client
 
     def get_feature_state(self) -> FeatureAvailabilityState:
         if not self.vector_store or not self.vector_store.client:
@@ -65,6 +78,37 @@ class SearchEngine:
         if not self.vector_store.has_documents():
             return FeatureAvailabilityState.INDEX_EMPTY
         return FeatureAvailabilityState.READY
+
+    async def search_epistemic(
+        self,
+        query: str,
+        run_id: str = "search_epistemic",
+        intent: EpistemicIntent = EpistemicIntent.FACTUAL,
+        context: str = "",
+        strict_context: bool = False,
+        max_latency_ms: int = 2000,
+        max_tokens: int = 2048,
+    ) -> EpistemicQueryResponse:
+        """Query SncSinCore Epistemic Memory graph directly."""
+        req = EpistemicQueryRequest(
+            run_id=run_id,
+            text=query,
+            intent=intent,
+            context=context,
+            strict_context=strict_context,
+            requirements=[
+                EpistemicRequirementInput(
+                    id=f"req_{hash(query) & 0xFFFF}",
+                    kind=EpistemicRequirementKind.FACT,
+                    text=f"Verify evidence for: {query}",
+                    criticality=1.0,
+                    minimum_coverage=0.75,
+                )
+            ],
+            max_latency_ms=max_latency_ms,
+            max_tokens=max_tokens,
+        )
+        return await self.epistemic.query(req)
 
     def search_passages(
         self,

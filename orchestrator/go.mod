@@ -6,6 +6,7 @@ require github.com/Homiakus/axiom v0.0.0-20260814202332-55bcc0134b6c
 
 require (
 	github.com/DataDog/zstd v1.4.5 // indirect
+	github.com/Homiakus/SncSinCore v0.0.0-20260902111520-b223d10b609c // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/cockroachdb/errors v1.11.3 // indirect
@@ -29,7 +30,7 @@ require (
 	github.com/prometheus/procfs v0.9.0 // indirect
 	github.com/rogpeppe/go-internal v1.9.0 // indirect
 	golang.org/x/exp v0.0.0-20230626212559-97b1e661b5df // indirect
-	golang.org/x/sys v0.18.0 // indirect
+	golang.org/x/sys v0.47.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	google.golang.org/protobuf v1.33.0 // indirect
 )

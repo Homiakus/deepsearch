@@ -59,6 +59,18 @@ async def discover_diverse_seeds(
 
     # Fallback to direct provider lookups if parallel candidates empty
     if not discovered:
+        p_keen = provider_registry.get("keenable")
+        if p_keen:
+            try:
+                keen_candidates = await p_keen.search(
+                    ProviderSearchRequest(query=query, max_results=5, language="en")
+                )
+                for c in keen_candidates:
+                    if is_matching_domain(c.url, domain) and c.url not in discovered:
+                        discovered.append(c.url)
+            except Exception as exc:
+                logger.debug("Keenable fallback search error: %s", exc)
+
         p_wiki = provider_registry.get("wikipedia")
         if p_wiki:
             wiki_candidates = await p_wiki.search(
