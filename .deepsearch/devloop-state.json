@@ -100,6 +100,11 @@
       "plan_fingerprint": "adfacba521f4c974",
       "priority": "P2",
       "title": "Выровнять CLI, REST и MCP"
+    },
+    "DS-21": {
+      "plan_fingerprint": "dea85b2e243c1e12",
+      "priority": "P2",
+      "title": "Исправить MCP lifecycle и конфигурацию"
     }
   },
   "version": 1

@@ -1,100 +1,14 @@
 {
   "mcpServers": {
-    "paper-distill": {
-      "command": "uvx",
-      "args": ["paper-distill-mcp"],
-      "description": "11-source academic paper aggregator (OpenAlex, Semantic Scholar, PubMed, arXiv, Papers with Code, CrossRef, Europe PMC, bioRxiv, DBLP, CORE, Unpaywall)"
-    },
-    "scholar": {
-      "command": "pip",
-      "args": ["install", "scholar-mcp-server[all]"],
-      "description": "9-source concurrent search + multi-source PDF download + AI paper analysis"
-    },
-    "zotero": {
-      "command": "npx",
-      "args": ["@xevos117/mcp-zotero"],
-      "env": {
-        "UNPAYWALL_EMAIL": "${UNPAYWALL_EMAIL}"
-      },
-      "description": "Zotero integration: Unpaywall OA PDF, citation formatting (APA, IEEE, etc.)"
-    },
-    "markitdown": {
-      "command": "pip",
-      "args": ["install", "markitdown-mcp"],
-      "description": "Microsoft MarkItDown: PDF, Word, PowerPoint, Excel, Images → clean Markdown"
-    },
-    "postgres": {
-      "command": "npx",
-      "args": ["@modelcontextprotocol/server-postgres"],
-      "env": {
-        "DATABASE_URL": "${DATABASE_URL}"
-      },
-      "description": "PostgreSQL read-only access for AI agents"
-    },
-    "sequential-thinking": {
-      "command": "npx",
-      "args": ["@modelcontextprotocol/server-sequential-thinking"],
-      "description": "Multi-step reasoning chain for enhanced /ask responses"
-    },
-    "memory": {
-      "command": "npx",
-      "args": ["@modelcontextprotocol/server-memory"],
-      "description": "Persistent knowledge graph memory for cross-session search context"
-    },
-    "chrome-devtools": {
-      "command": "npx",
-      "args": ["chrome-devtools-mcp"],
-      "description": "Browser automation: DOM inspection, network analysis, performance tracing"
-    },
-    "brave-search": {
-      "command": "npx",
-      "args": ["@modelcontextprotocol/server-brave-search"],
-      "env": {
-        "BRAVE_API_KEY": "${BRAVE_API_KEY}"
-      },
-      "description": "Brave web search for broader web content discovery"
-    },
-    "fetch": {
-      "command": "npx",
-      "args": ["@modelcontextprotocol/server-fetch"],
-      "description": "Universal URL content fetcher (HTML, JSON, text, PDF)"
-    },
-    "openalex": {
-      "command": "npm",
-      "args": ["install", "-g", "openalex-mcp"],
-      "description": "Dedicated OpenAlex access: 240M+ works, concept classification"
-    },
-    "pdf-reader": {
-      "command": "npx",
-      "args": ["@a3tai/mcp-pdf-reader"],
-      "description": "Structured PDF extraction: text, images, tables, coordinates"
-    },
-    "deepsearch-server": {
-      "command": "python",
-      "args": ["-m", "scraper.mcp.server"],
+    "deepsearch": {
+      "command": "uv",
+      "args": [
+        "run",
+        "python",
+        "-m",
+        "scraper.mcp.server"
+      ],
       "description": "DeepSearch Adaptive Scraping, Retrieval & RAG Research Platform MCP Server"
-    }
-  },
-  "deepsearch": {
-    "providers": [
-      "openalex",
-      "semantic_scholar",
-      "crossref",
-      "arxiv",
-      "pubmed",
-      "europepmc",
-      "core",
-      "doaj"
-    ],
-    "exportFormats": ["markdown"],
-    "endpoints": {
-      "search": "POST /api/v1/search",
-      "deepSearch": "POST /api/v1/deep-search",
-      "exportSearch": "POST /api/v1/export/search",
-      "exportPaper": "POST /api/v1/export/paper",
-      "ask": "POST /api/v1/ask",
-      "health": "GET /api/v1/health",
-      "metrics": "GET /metrics"
     }
   }
 }

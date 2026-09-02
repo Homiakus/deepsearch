@@ -16,10 +16,10 @@ if ($Action -eq "start") {
 }
 elseif ($Action -eq "test" -or $Action -eq "health") {
     Write-Host "Running stdio JSON-RPC health check..." -ForegroundColor Yellow
-    & "C:\Users\KDFX Modes\AppData\Local\Programs\Python\Python313\python.exe" "$PSScriptRoot\scripts\mcp_manager.py" test
+    uv run python "$PSScriptRoot\scripts\mcp_manager.py" test
 }
 elseif ($Action -eq "config") {
-    & "C:\Users\KDFX Modes\AppData\Local\Programs\Python\Python313\python.exe" "$PSScriptRoot\scripts\mcp_manager.py" config
+    uv run python "$PSScriptRoot\scripts\mcp_manager.py" config
 }
 else {
     Write-Host "Usage: .\run_mcp.ps1 [start | test | config]" -ForegroundColor Red

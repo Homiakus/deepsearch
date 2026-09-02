@@ -1,12 +1,14 @@
-"""DeepSearch MCP Server Management & Health Check Tool.
+"""DeepSearch MCP Server Management & Health Check Tool (§DS-21).
 
 Provides commands to start the MCP server, test stdio JSON-RPC connectivity,
 and generate client configurations for Claude Desktop, Cursor, and VS Code.
+All operational and diagnostic logs are routed strictly to stderr.
 """
 
 import sys
 import os
 import json
+import time
 import subprocess
 import argparse
 from pathlib import Path
@@ -14,24 +16,27 @@ from pathlib import Path
 WORKSPACE_ROOT = Path(__file__).resolve().parent.parent
 
 
+def log_diag(msg: str):
+    """Outputs diagnostic status messages strictly to stderr to preserve stdout stream isolation."""
+    print(msg, file=sys.stderr, flush=True)
+
+
 def start_server():
     """Starts the DeepSearch MCP server over stdio transport."""
     env = os.environ.copy()
     env["PYTHONPATH"] = str(WORKSPACE_ROOT)
 
-    # Prefer uv run python if available
     cmd = [sys.executable, "-m", "scraper.mcp.server"]
-    print(f"[MCP Manager] Starting DeepSearch MCP Server: {' '.join(cmd)}")
-    print(f"[MCP Manager] Workspace Root: {WORKSPACE_ROOT}")
-    print("[MCP Manager] Server listening on stdio...\n")
+    log_diag(f"[MCP Manager] Starting DeepSearch MCP Server: {' '.join(cmd)}")
+    log_diag(f"[MCP Manager] Workspace Root: {WORKSPACE_ROOT}")
+    log_diag("[MCP Manager] Server listening on stdio...\n")
 
-    sys.stdout.flush()
     os.execve(sys.executable, cmd, env)
 
 
-def health_check():
+def health_check(timeout_seconds: float = 10.0) -> bool:
     """Runs a JSON-RPC 2.0 stdio handshake to verify MCP server health and tool registrations."""
-    print(f"[MCP Manager] Initiating MCP Server Health Check on {WORKSPACE_ROOT}...")
+    log_diag(f"[MCP Manager] Initiating MCP Server Health Check on {WORKSPACE_ROOT}...")
 
     env = os.environ.copy()
     env["PYTHONPATH"] = str(WORKSPACE_ROOT)
@@ -59,11 +64,13 @@ def health_check():
     }
 
     initialized_notification = {"jsonrpc": "2.0", "method": "notifications/initialized"}
-
     list_tools_req = {"jsonrpc": "2.0", "id": 2, "method": "tools/list"}
 
     try:
-        # Write JSON-RPC requests
+        if proc.stdin is None or proc.stdout is None:
+            raise RuntimeError("Failed to open subprocess pipes for MCP health check.")
+
+        # Send initialize and tools/list requests
         proc.stdin.write(json.dumps(init_req) + "\n")
         proc.stdin.write(json.dumps(initialized_notification) + "\n")
         proc.stdin.write(json.dumps(list_tools_req) + "\n")
@@ -71,13 +78,22 @@ def health_check():
 
         tools_found = []
         server_info = {}
+        deadline = time.time() + timeout_seconds
 
-        for line in proc.stdout:
-            line = line.strip()
+        while time.time() < deadline:
+            line = proc.stdout.readline()
             if not line:
+                if proc.poll() is not None:
+                    break
+                time.sleep(0.05)
                 continue
+
+            line_str = line.strip()
+            if not line_str:
+                continue
+
             try:
-                msg = json.loads(line)
+                msg = json.loads(line_str)
                 if msg.get("id") == 1:
                     server_info = msg.get("result", {}).get("serverInfo", {})
                 elif msg.get("id") == 2:
@@ -87,16 +103,26 @@ def health_check():
             except json.JSONDecodeError:
                 continue
 
-        proc.terminate()
-        proc.wait(timeout=3)
+        if not tools_found and proc.poll() is not None:
+            stderr_err = proc.stderr.read() if proc.stderr else ""
+            log_diag(
+                f"[ERROR] MCP Server process exited early with code {proc.returncode}: {stderr_err}"
+            )
+            return False
 
-        print("\n=== MCP Server Health Check Status ===")
-        print("Status: OK [SUCCESS]")
-        print(f"Server Name: {server_info.get('name', 'deepsearch')}")
-        print(f"Server Version: {server_info.get('version', 'unknown')}")
-        print(f"Registered MCP Tools ({len(tools_found)}):")
+        if not tools_found:
+            log_diag(
+                f"[ERROR] MCP Server Health Check timed out after {timeout_seconds}s without receiving tools/list."
+            )
+            return False
+
+        log_diag("\n=== MCP Server Health Check Status ===")
+        log_diag("Status: OK [SUCCESS]")
+        log_diag(f"Server Name: {server_info.get('name', 'deepsearch')}")
+        log_diag(f"Server Version: {server_info.get('version', 'unknown')}")
+        log_diag(f"Registered MCP Tools ({len(tools_found)}):")
         for tool_name in tools_found:
-            print(f"  - {tool_name}")
+            log_diag(f"  - {tool_name}")
 
         expected_tools = {
             "deepsearch_research",
@@ -104,23 +130,29 @@ def health_check():
             "deepsearch_inspect",
             "deepsearch_extract",
             "deepsearch_search",
+            "deepsearch_crawl",
+            "deepsearch_capabilities",
         }
         missing = expected_tools - set(tools_found)
         if missing:
-            print(f"\n[WARNING] Missing expected tools: {missing}")
+            log_diag(f"\n[WARNING] Missing expected tools: {missing}")
 
         return True
 
     except Exception as exc:
-        print(f"\n[ERROR] MCP Server Health Check Failed: {exc}")
-        if proc.poll() is None:
-            proc.kill()
+        log_diag(f"\n[ERROR] MCP Server Health Check Failed: {exc}")
         return False
+    finally:
+        if proc.poll() is None:
+            try:
+                proc.terminate()
+                proc.wait(timeout=2)
+            except Exception:
+                proc.kill()
 
 
 def generate_configs():
     """Generates ready-to-use JSON configs for standard MCP client environments."""
-    python_exe = sys.executable.replace("\\", "/")
     workspace_str = str(WORKSPACE_ROOT).replace("\\", "/")
 
     claude_desktop_config = {
@@ -142,29 +174,33 @@ def generate_configs():
     raw_python_config = {
         "mcpServers": {
             "deepsearch": {
-                "command": python_exe,
-                "args": ["-m", "scraper.mcp.server"],
+                "command": "uv",
+                "args": ["run", "python", "-m", "scraper.mcp.server"],
                 "cwd": workspace_str,
                 "env": {"PYTHONPATH": workspace_str},
             }
         }
     }
 
-    print("=================================================================")
-    print(" 1. Recommended Config (using uv package manager):")
-    print("=================================================================")
+    log_diag("=================================================================")
+    log_diag(" 1. Recommended Config (using uv package manager):")
+    log_diag("=================================================================")
     print(json.dumps(claude_desktop_config, indent=2))
 
-    print("\n=================================================================")
-    print(" 2. Direct Python Config (using absolute Python path):")
-    print("=================================================================")
+    log_diag("\n=================================================================")
+    log_diag(" 2. Direct Python Config (using workspace relative environment):")
+    log_diag("=================================================================")
     print(json.dumps(raw_python_config, indent=2))
-    print("\n[Save locations]:")
-    print("  - Claude Desktop Windows: %APPDATA%\\Claude\\claude_desktop_config.json")
-    print(
+    log_diag("\n[Save locations]:")
+    log_diag(
+        "  - Claude Desktop Windows: %APPDATA%\\Claude\\claude_desktop_config.json"
+    )
+    log_diag(
         "  - Claude Desktop macOS:   ~/Library/Application Support/Claude/claude_desktop_config.json"
     )
-    print("  - Cursor / VS Code:       .mcp/mcp.json in workspace or settings.json\n")
+    log_diag(
+        "  - Cursor / VS Code:       .mcp/mcp.json in workspace or settings.json\n"
+    )
 
 
 def main():
