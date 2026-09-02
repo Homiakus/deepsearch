@@ -4,13 +4,14 @@ Enables secure storage, retrieval, and automated injection of authenticated sess
 bearer tokens, and cookies across crawl executions.
 """
 
-import os
-import json
-import time
 import base64
 import hashlib
-from typing import Dict, Optional, Any, List
+import json
+import os
+import time
+from typing import Any
 from urllib.parse import urlparse
+
 from pydantic import BaseModel, Field
 
 from scraper.config import settings
@@ -27,12 +28,12 @@ class AuthSession(BaseModel):
     """Encapsulates authenticated domain session data."""
 
     domain: str
-    cookies: Dict[str, str] = Field(default_factory=dict)
-    headers: Dict[str, str] = Field(default_factory=dict)
-    bearer_token: Optional[str] = None
+    cookies: dict[str, str] = Field(default_factory=dict)
+    headers: dict[str, str] = Field(default_factory=dict)
+    bearer_token: str | None = None
     created_at: float = Field(default_factory=time.time)
-    expires_at: Optional[float] = None
-    metadata: Dict[str, Any] = Field(default_factory=dict)
+    expires_at: float | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
     def is_expired(self) -> bool:
         if self.expires_at is None:
@@ -51,7 +52,7 @@ class SessionVault:
         self.vault_path = vault_path
         self._key = hashlib.sha256(secret_key.encode("utf-8")).digest()
         os.makedirs(os.path.dirname(os.path.abspath(self.vault_path)), exist_ok=True)
-        self._sessions: Dict[str, AuthSession] = {}
+        self._sessions: dict[str, AuthSession] = {}
         self._load_vault()
 
     def _encrypt(self, plaintext: bytes) -> bytes:
@@ -103,7 +104,7 @@ class SessionVault:
         self._sessions[session.domain.lower()] = session
         self._save_vault()
 
-    def get_session(self, domain: str) -> Optional[AuthSession]:
+    def get_session(self, domain: str) -> AuthSession | None:
         """Retrieve valid session for domain or parent domain."""
         domain = domain.lower()
         if domain in self._sessions:
@@ -131,7 +132,7 @@ class SessionVault:
             return True
         return False
 
-    def list_domains(self) -> List[str]:
+    def list_domains(self) -> list[str]:
         """List active unexpired domains."""
         active = []
         for domain, s in list(self._sessions.items()):
@@ -140,8 +141,8 @@ class SessionVault:
         return active
 
     def inject_for_url(
-        self, url: str, headers: Optional[Dict[str, str]] = None
-    ) -> Dict[str, str]:
+        self, url: str, headers: dict[str, str] | None = None
+    ) -> dict[str, str]:
         """Inject cookies and auth headers into outgoing request headers for a given URL."""
         res_headers = dict(headers or {})
         parsed = urlparse(url)

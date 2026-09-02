@@ -2,8 +2,9 @@
 
 import logging
 import urllib.parse
+
 import httpx
-from typing import List
+
 from scraper.discovery.providers.base import ProviderDescriptor, ProviderSearchRequest
 from scraper.search.candidates import SourceCandidate
 
@@ -20,7 +21,7 @@ class WikipediaProvider:
         cost_class="FREE",
     )
 
-    async def search(self, request: ProviderSearchRequest) -> List[SourceCandidate]:
+    async def search(self, request: ProviderSearchRequest) -> list[SourceCandidate]:
         lang = request.language if request.language in ("en", "ru") else "en"
         url = f"https://{lang}.wikipedia.org/w/api.php?action=opensearch&search={urllib.parse.quote(request.query)}&limit={request.max_results}&namespace=0&format=json"
         candidates = []

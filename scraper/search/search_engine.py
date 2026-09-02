@@ -4,27 +4,28 @@ Combines query normalization, dense + sparse retrieval, reciprocal rank fusion,
 cross-encoder reranking, and domain diversity selection with full explanation trace.
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any
+
 from pydantic import BaseModel, Field
 
 from scraper.application.models import FeatureAvailabilityState
-from scraper.storage.vector_store import VectorStoreManager
 from scraper.research.query_normalizer import normalize_query
 from scraper.search.embeddings.dense import dense_embedder
+from scraper.search.rerank.base import RerankedPassage
+from scraper.search.rerank.cross_encoder import cross_encoder_reranker
 from scraper.search.retrieval.hybrid import (
     RetrievalHit,
     weighted_reciprocal_rank_fusion,
 )
-from scraper.search.rerank.cross_encoder import cross_encoder_reranker
 from scraper.search.selection.diversity import diversity_selector
-from scraper.search.rerank.base import RerankedPassage
+from scraper.storage.vector_store import VectorStoreManager
 
 
 class SearchExplainTrace(BaseModel):
     why_retrieved: str = ""
-    matched_terms: List[str] = Field(default_factory=list)
-    dense_rank: Optional[int] = None
-    sparse_rank: Optional[int] = None
+    matched_terms: list[str] = Field(default_factory=list)
+    dense_rank: int | None = None
+    sparse_rank: int | None = None
     fusion_score: float = 0.0
     rerank_score: float = 0.0
     authority_score: float = 0.5
@@ -40,22 +41,22 @@ class SearchResultItem(BaseModel):
     retrieval_type: str = "hybrid"  # dense | sparse | hybrid
     source_type: str = "UNKNOWN"
     authority_score: float = 0.5
-    explain: Optional[SearchExplainTrace] = None
-    provenance: Dict[str, Any] = Field(default_factory=dict)
+    explain: SearchExplainTrace | None = None
+    provenance: dict[str, Any] = Field(default_factory=dict)
 
 
 class SearchResponse(BaseModel):
     query: str
     state: FeatureAvailabilityState
-    results: List[SearchResultItem] = Field(default_factory=list)
+    results: list[SearchResultItem] = Field(default_factory=list)
     total_count: int = 0
-    message: Optional[str] = None
+    message: str | None = None
 
 
 class SearchEngine:
     """Evidence-driven hybrid retrieval engine without synthetic fake results."""
 
-    def __init__(self, vector_store: Optional[VectorStoreManager] = None):
+    def __init__(self, vector_store: VectorStoreManager | None = None):
         self.vector_store = vector_store or VectorStoreManager()
 
     def get_feature_state(self) -> FeatureAvailabilityState:
@@ -70,10 +71,10 @@ class SearchEngine:
         query: str,
         limit: int = 10,
         explain: bool = False,
-        source_type_filter: Optional[str] = None,
-        run_id_filter: Optional[str] = None,
-        document_id_filter: Optional[str] = None,
-    ) -> List[SearchResultItem]:
+        source_type_filter: str | None = None,
+        run_id_filter: str | None = None,
+        document_id_filter: str | None = None,
+    ) -> list[SearchResultItem]:
         """Hybrid search combining dense semantic vectors and sparse lexical tokens with reranking and diversity."""
         state = self.get_feature_state()
         if state != FeatureAvailabilityState.READY:
@@ -96,7 +97,7 @@ class SearchEngine:
             top_k=limit * 3,
             filter_payload=filters if filters else None,
         )
-        dense_hits: List[RetrievalHit] = []
+        dense_hits: list[RetrievalHit] = []
         for rank, h in enumerate(raw_hits, start=1):
             p = h.get("payload", {})
             dense_hits.append(
@@ -116,7 +117,7 @@ class SearchEngine:
             )
 
         # 2. Simulated Sparse Hits from lexical term matching
-        sparse_hits: List[RetrievalHit] = []
+        sparse_hits: list[RetrievalHit] = []
         for dh in dense_hits:
             if any(
                 t.lower() in dh.text.lower() for t in norm_q.normalized_text.split()
@@ -132,7 +133,7 @@ class SearchEngine:
         )
 
         # 4. Reranking
-        reranked: List[RerankedPassage] = cross_encoder_reranker.rerank(
+        reranked: list[RerankedPassage] = cross_encoder_reranker.rerank(
             query=norm_q.normalized_text,
             candidates=fused,
             top_n=limit * 2,
@@ -180,19 +181,19 @@ class SearchEngine:
 
         return items
 
-    def search_text(self, query: str, limit: int = 10) -> List[SearchResultItem]:
+    def search_text(self, query: str, limit: int = 10) -> list[SearchResultItem]:
         return self.search_passages(query, limit=limit, explain=False)
 
-    def search_documents(self, query: str, limit: int = 10) -> List[SearchResultItem]:
+    def search_documents(self, query: str, limit: int = 10) -> list[SearchResultItem]:
         return self.search_passages(query, limit=limit, explain=False)
 
-    def search_evidence(self, query: str, limit: int = 10) -> List[SearchResultItem]:
+    def search_evidence(self, query: str, limit: int = 10) -> list[SearchResultItem]:
         return self.search_passages(query, limit=limit, explain=True)
 
-    def search_hybrid(self, query: str, limit: int = 10) -> List[SearchResultItem]:
+    def search_hybrid(self, query: str, limit: int = 10) -> list[SearchResultItem]:
         return self.search_passages(query, limit=limit, explain=False)
 
-    def search_visual(self, query: str, limit: int = 10) -> List[SearchResultItem]:
+    def search_visual(self, query: str, limit: int = 10) -> list[SearchResultItem]:
         """Multimodal visual retrieval guarded by pixel_rag capability (§39, §DS-16)."""
         from scraper.contracts.capabilities import require_capability
 

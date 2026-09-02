@@ -3,17 +3,16 @@
 Generates targeted follow-up search queries directly addressing identified research gaps.
 """
 
-from typing import List
 from scraper.research.gaps import ResearchGap
-from scraper.search.query_models import SearchQueryVariant, QueryType
+from scraper.search.query_models import QueryType, SearchQueryVariant
 
 
 class FollowupQueryGenerator:
     """Produces targeted follow-up queries for uncovered gaps and contradictions."""
 
     @staticmethod
-    def generate_followup_queries(gaps: List[ResearchGap]) -> List[SearchQueryVariant]:
-        followups: List[SearchQueryVariant] = []
+    def generate_followup_queries(gaps: list[ResearchGap]) -> list[SearchQueryVariant]:
+        followups: list[SearchQueryVariant] = []
 
         for gap in gaps:
             if gap.gap_type == "UNRESOLVED_CONTRADICTION":

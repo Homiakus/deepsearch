@@ -5,12 +5,13 @@ Enables high-concurrency, fault-tolerant distributed crawling across multiple wo
 
 import asyncio
 import json
-import time
 import logging
+import time
 from abc import ABC, abstractmethod
-from typing import Dict, List, Optional, Any, Tuple
-from scraper.control.scheduler import CrawlRequest, RequestState
+from typing import Any
+
 from scraper.config import settings
+from scraper.control.scheduler import CrawlRequest, RequestState
 
 logger = logging.getLogger(__name__)
 
@@ -21,39 +22,32 @@ class DistributedQueueAdapter(ABC):
     @abstractmethod
     async def push(self, request: CrawlRequest) -> bool:
         """Push a crawl request into the distributed queue."""
-        pass
 
     @abstractmethod
-    async def push_batch(self, requests: List[CrawlRequest]) -> int:
+    async def push_batch(self, requests: list[CrawlRequest]) -> int:
         """Push a batch of crawl requests into the distributed queue."""
-        pass
 
     @abstractmethod
     async def pop_batch(
         self, consumer_name: str, count: int = 10, block_ms: int = 2000
-    ) -> List[Tuple[str, CrawlRequest]]:
+    ) -> list[tuple[str, CrawlRequest]]:
         """Pop leased requests from the queue for a consumer. Returns (message_id, request) pairs."""
-        pass
 
     @abstractmethod
     async def ack(self, message_id: str) -> bool:
         """Acknowledge completed processing of a request."""
-        pass
 
     @abstractmethod
     async def nack(self, message_id: str, requeue: bool = True) -> bool:
         """Negative acknowledge: signal failure to process."""
-        pass
 
     @abstractmethod
-    async def get_stats(self) -> Dict[str, Any]:
+    async def get_stats(self) -> dict[str, Any]:
         """Return operational statistics of the queue."""
-        pass
 
     @abstractmethod
     async def close(self) -> None:
         """Cleanly close connection and resources."""
-        pass
 
 
 class InMemoryDistributedQueue(DistributedQueueAdapter):
@@ -61,9 +55,9 @@ class InMemoryDistributedQueue(DistributedQueueAdapter):
 
     def __init__(self, max_capacity: int = 50000):
         self.max_capacity = max_capacity
-        self._queue: List[Tuple[str, CrawlRequest]] = []
-        self._pending: Dict[
-            str, Tuple[str, CrawlRequest, float]
+        self._queue: list[tuple[str, CrawlRequest]] = []
+        self._pending: dict[
+            str, tuple[str, CrawlRequest, float]
         ] = {}  # msg_id -> (consumer, req, lease_time)
         self._ack_count = 0
         self._nack_count = 0
@@ -80,7 +74,7 @@ class InMemoryDistributedQueue(DistributedQueueAdapter):
             self._queue.append((msg_id, request))
             return True
 
-    async def push_batch(self, requests: List[CrawlRequest]) -> int:
+    async def push_batch(self, requests: list[CrawlRequest]) -> int:
         pushed = 0
         for req in requests:
             if await self.push(req):
@@ -89,7 +83,7 @@ class InMemoryDistributedQueue(DistributedQueueAdapter):
 
     async def pop_batch(
         self, consumer_name: str, count: int = 10, block_ms: int = 100
-    ) -> List[Tuple[str, CrawlRequest]]:
+    ) -> list[tuple[str, CrawlRequest]]:
         async with self._lock:
             if not self._queue:
                 return []
@@ -125,7 +119,7 @@ class InMemoryDistributedQueue(DistributedQueueAdapter):
                 return True
             return False
 
-    async def get_stats(self) -> Dict[str, Any]:
+    async def get_stats(self) -> dict[str, Any]:
         async with self._lock:
             return {
                 "backend": "in_memory",
@@ -185,7 +179,7 @@ class RedisStreamsDistributedQueue(DistributedQueueAdapter):
             logger.error(f"Failed to push to Redis stream: {e}")
             return False
 
-    async def push_batch(self, requests: List[CrawlRequest]) -> int:
+    async def push_batch(self, requests: list[CrawlRequest]) -> int:
         count = 0
         for req in requests:
             if await self.push(req):
@@ -194,7 +188,7 @@ class RedisStreamsDistributedQueue(DistributedQueueAdapter):
 
     async def pop_batch(
         self, consumer_name: str, count: int = 10, block_ms: int = 2000
-    ) -> List[Tuple[str, CrawlRequest]]:
+    ) -> list[tuple[str, CrawlRequest]]:
         try:
             client = await self._get_client()
             entries = await client.xreadgroup(
@@ -204,7 +198,7 @@ class RedisStreamsDistributedQueue(DistributedQueueAdapter):
                 count=count,
                 block=block_ms,
             )
-            results: List[Tuple[str, CrawlRequest]] = []
+            results: list[tuple[str, CrawlRequest]] = []
             if entries:
                 for _, message_list in entries:
                     for msg_id, fields in message_list:
@@ -261,7 +255,7 @@ class RedisStreamsDistributedQueue(DistributedQueueAdapter):
             logger.error(f"Failed to nack Redis message {message_id}: {e}")
             return False
 
-    async def get_stats(self) -> Dict[str, Any]:
+    async def get_stats(self) -> dict[str, Any]:
         try:
             client = await self._get_client()
             length = await client.xlen(self.stream_key)
@@ -280,7 +274,7 @@ class RedisStreamsDistributedQueue(DistributedQueueAdapter):
             self._redis = None
 
 
-def get_distributed_queue(backend: Optional[str] = None) -> DistributedQueueAdapter:
+def get_distributed_queue(backend: str | None = None) -> DistributedQueueAdapter:
     """Factory function for Distributed Queue adapter based on config or explicit backend."""
     selected = backend or settings.distributed_queue_backend
     if selected.lower() == "redis":

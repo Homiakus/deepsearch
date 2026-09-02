@@ -5,14 +5,14 @@ from __future__ import annotations
 import asyncio
 import logging
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
-from typing import Dict, Optional, List
+
 from pydantic import BaseModel, Field
 
+from scraper.acquisition.engine import AdaptiveAcquisitionEngine, CapturedArtifact
 from scraper.config import ExecutionMode
 from scraper.exceptions import BudgetExceededError
-from scraper.acquisition.engine import AdaptiveAcquisitionEngine, CapturedArtifact
 from scraper.normalization.canonicalizer import canonicalize_url
 
 logger = logging.getLogger(__name__)
@@ -38,7 +38,7 @@ class JobHandle(BaseModel):
     job_id: str
     status: JobLifecycleState = JobLifecycleState.QUEUED
     url: str
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class JobStatus(BaseModel):
@@ -48,9 +48,9 @@ class JobStatus(BaseModel):
     progress: float = 0.0
     pages_processed: int = 0
     max_pages: int = 20
-    errors: List[str] = Field(default_factory=list)
+    errors: list[str] = Field(default_factory=list)
     created_at: datetime
-    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class JobResult(BaseModel):
@@ -59,8 +59,8 @@ class JobResult(BaseModel):
     status: JobLifecycleState
     pages_processed: int
     artifacts_count: int
-    errors: List[str] = Field(default_factory=list)
-    completed_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    errors: list[str] = Field(default_factory=list)
+    completed_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class JobService:
@@ -68,7 +68,7 @@ class JobService:
 
     def __init__(
         self,
-        acquisition_engine: Optional[AdaptiveAcquisitionEngine] = None,
+        acquisition_engine: AdaptiveAcquisitionEngine | None = None,
         max_queue_capacity: int = 100,
         max_concurrent_jobs: int = 3,
     ):
@@ -76,10 +76,10 @@ class JobService:
         self.max_queue_capacity = max_queue_capacity
         self.max_concurrent_jobs = max_concurrent_jobs
 
-        self._jobs: Dict[str, JobStatus] = {}
-        self._results: Dict[str, JobResult] = {}
-        self._tasks: Dict[str, asyncio.Task] = {}
-        self._cancellation_events: Dict[str, asyncio.Event] = {}
+        self._jobs: dict[str, JobStatus] = {}
+        self._results: dict[str, JobResult] = {}
+        self._tasks: dict[str, asyncio.Task] = {}
+        self._cancellation_events: dict[str, asyncio.Event] = {}
         self._semaphore = asyncio.Semaphore(max_concurrent_jobs)
         self._lock = asyncio.Lock()
 
@@ -97,7 +97,7 @@ class JobService:
                 )
 
             job_id = f"job_{uuid.uuid4().hex[:10]}"
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
             status_obj = JobStatus(
                 job_id=job_id,
                 url=req.url,
@@ -128,7 +128,7 @@ class JobService:
                 raise KeyError(f"Job '{job_id}' not found")
             return self._jobs[job_id]
 
-    async def get_result(self, job_id: str) -> Optional[JobResult]:
+    async def get_result(self, job_id: str) -> JobResult | None:
         """Returns the final outcome of a completed job, None if still running (§DS-11)."""
         async with self._lock:
             if job_id not in self._jobs:
@@ -157,7 +157,7 @@ class JobService:
                 task.cancel()
 
             status_obj.status = JobLifecycleState.CANCELLED
-            status_obj.updated_at = datetime.now(timezone.utc)
+            status_obj.updated_at = datetime.now(UTC)
             return True
 
     async def _run_job(self, job_id: str, req: JobRequest):
@@ -168,10 +168,10 @@ class JobService:
 
             status_obj = self._jobs[job_id]
             status_obj.status = JobLifecycleState.RUNNING
-            status_obj.updated_at = datetime.now(timezone.utc)
+            status_obj.updated_at = datetime.now(UTC)
 
-            artifacts: List[CapturedArtifact] = []
-            errors: List[str] = []
+            artifacts: list[CapturedArtifact] = []
+            errors: list[str] = []
 
             try:
                 c_url = canonicalize_url(req.url)
@@ -199,7 +199,7 @@ class JobService:
                 status_obj.status = JobLifecycleState.FAILED
             finally:
                 status_obj.errors = errors
-                status_obj.updated_at = datetime.now(timezone.utc)
+                status_obj.updated_at = datetime.now(UTC)
 
                 res = JobResult(
                     job_id=job_id,
@@ -208,7 +208,7 @@ class JobService:
                     pages_processed=len(artifacts),
                     artifacts_count=len(artifacts),
                     errors=errors,
-                    completed_at=datetime.now(timezone.utc),
+                    completed_at=datetime.now(UTC),
                 )
                 self._results[job_id] = res
 

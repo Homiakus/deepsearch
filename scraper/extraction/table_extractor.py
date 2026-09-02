@@ -2,22 +2,23 @@
 
 import csv
 import io
-from typing import List, Dict, Any, Optional
-from selectolax.parser import HTMLParser
+from typing import Any
+
 from pydantic import BaseModel, Field
+from selectolax.parser import HTMLParser
 
 
 class TableData(BaseModel):
     table_index: int
-    headers: List[str] = Field(default_factory=list)
-    rows: List[List[str]] = Field(default_factory=list)
+    headers: list[str] = Field(default_factory=list)
+    rows: list[list[str]] = Field(default_factory=list)
     html: str = ""
-    json_data: List[Dict[str, Any]] = Field(default_factory=list)
+    json_data: list[dict[str, Any]] = Field(default_factory=list)
     csv: str = ""
     markdown: str = ""
 
 
-def _clean_cell_text(text: Optional[str]) -> str:
+def _clean_cell_text(text: str | None) -> str:
     """Sanitize cell text: normalize whitespace and remove lone control characters."""
     if not text:
         return ""
@@ -35,7 +36,7 @@ def _escape_markdown_cell(text: str) -> str:
     return " ".join(sanitized.strip().split())
 
 
-def extract_tables_from_html(raw_html: str) -> List[TableData]:
+def extract_tables_from_html(raw_html: str) -> list[TableData]:
     """Extracts tables from HTML simultaneously into HTML, JSON, CSV, and Markdown (§36).
 
     Correctly handles rowspan, colspan, unequal rows, and escaped characters.
@@ -44,15 +45,15 @@ def extract_tables_from_html(raw_html: str) -> List[TableData]:
         return []
 
     parser = HTMLParser(raw_html)
-    tables: List[TableData] = []
+    tables: list[TableData] = []
 
     for idx, table_node in enumerate(parser.css("table")):
         table_html = table_node.html or ""
 
         # 2D Grid representing normalized table cells
-        grid: List[List[Optional[str]]] = []
-        is_header_grid: List[List[bool]] = []
-        is_thead_row: List[bool] = []
+        grid: list[list[str | None]] = []
+        is_header_grid: list[list[bool]] = []
+        is_thead_row: list[bool] = []
 
         all_trs = table_node.css("tr")
         if not all_trs:
@@ -128,7 +129,7 @@ def extract_tables_from_html(raw_html: str) -> List[TableData]:
             continue
 
         # Normalize grid (fill None and pad unequal rows with "")
-        normalized_grid: List[List[str]] = []
+        normalized_grid: list[list[str]] = []
         for r_cells in grid:
             norm_r = [c if c is not None else "" for c in r_cells]
             while len(norm_r) < max_cols:
@@ -168,7 +169,7 @@ def extract_tables_from_html(raw_html: str) -> List[TableData]:
 
         # 1. JSON representation
         # Ensure unique dictionary keys
-        seen_keys: Dict[str, int] = {}
+        seen_keys: dict[str, int] = {}
         unique_headers = []
         for h in headers:
             base_key = h or "col"

@@ -1,7 +1,8 @@
 """Quality evaluation models and decision states (§52, DS-A19)."""
 
 from enum import Enum
-from typing import Dict, Any
+from typing import Any
+
 from pydantic import BaseModel, Field
 
 
@@ -19,4 +20,4 @@ class ContentQualityReport(BaseModel):
     boilerplate_ratio: float = Field(default=0.0, ge=0.0, le=1.0)
     language_confidence: float = Field(default=1.0, ge=0.0, le=1.0)
     is_challenge_or_shell: bool = False
-    details: Dict[str, Any] = Field(default_factory=dict)
+    details: dict[str, Any] = Field(default_factory=dict)

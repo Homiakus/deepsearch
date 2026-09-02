@@ -5,9 +5,9 @@ and empirical information value density (statistical significance, sample sizes,
 """
 
 import re
-from typing import List
-from scraper.search.retrieval.hybrid import FusedResult
+
 from scraper.search.rerank.base import RerankedPassage
+from scraper.search.retrieval.hybrid import FusedResult
 
 
 class LocalCrossEncoderReranker:
@@ -41,8 +41,8 @@ class LocalCrossEncoderReranker:
         return min(0.20, hits * 0.05)
 
     def rerank(
-        self, query: str, candidates: List[FusedResult], top_n: int = 10
-    ) -> List[RerankedPassage]:
+        self, query: str, candidates: list[FusedResult], top_n: int = 10
+    ) -> list[RerankedPassage]:
         q_tokens = [t for t in re.findall(r"\w+", query.lower()) if len(t) > 2]
         reranked = []
 

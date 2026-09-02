@@ -11,7 +11,6 @@ Covers:
 import json
 from pathlib import Path
 
-
 from scraper.acquisition.engine import CapturedArtifact
 from scraper.acquisition.page_classifier import PageIntelligence
 from scraper.extraction.engine import ExtractionResult

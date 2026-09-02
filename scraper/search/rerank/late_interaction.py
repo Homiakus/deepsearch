@@ -1,16 +1,15 @@
 """Late-Interaction ColBERT-style MaxSim Reranker (DS-SI42)."""
 
-from typing import List
-from scraper.search.retrieval.hybrid import FusedResult
 from scraper.search.rerank.base import RerankedPassage
+from scraper.search.retrieval.hybrid import FusedResult
 
 
 class LateInteractionReranker:
     """ColBERT-style token-level MaxSim late interaction scoring."""
 
     def rerank(
-        self, query: str, candidates: List[FusedResult], top_n: int = 10
-    ) -> List[RerankedPassage]:
+        self, query: str, candidates: list[FusedResult], top_n: int = 10
+    ) -> list[RerankedPassage]:
         q_words = query.lower().split()
         results = []
 

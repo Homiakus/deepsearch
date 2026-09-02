@@ -1,13 +1,14 @@
 """Evidence and coverage activity (§4, DS-A09, DS-A29, DS-A30)."""
 
-from typing import Any, Dict, List
 import uuid
+from typing import Any
+
 from scraper.orchestration.protocol import ActivityResult, ResourceUsage
 
 
-async def run_evidence_activity(input_data: Dict[str, Any]) -> ActivityResult:
+async def run_evidence_activity(input_data: dict[str, Any]) -> ActivityResult:
     """Extracts factual claims and evidence links from indexed chunks."""
-    chunks: List[Dict[str, Any]] = input_data.get("indexed_chunks", [])
+    chunks: list[dict[str, Any]] = input_data.get("indexed_chunks", [])
 
     claims = []
     evidence_items = []
@@ -49,7 +50,7 @@ async def run_evidence_activity(input_data: Dict[str, Any]) -> ActivityResult:
 
 
 async def run_coverage_evaluation_activity(
-    input_data: Dict[str, Any],
+    input_data: dict[str, Any],
 ) -> ActivityResult:
     """Evaluates coverage sufficiency and information gain."""
     graph = input_data.get("evidence_graph", {})

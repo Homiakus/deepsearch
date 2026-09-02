@@ -9,10 +9,10 @@ this engine extracts the DOI/Title and queries global Open Access networks:
 4. PubMed Central / Europe PMC REST APIs
 """
 
-import re
 import logging
+import re
 import urllib.parse
-from typing import Optional, List
+
 import httpx
 from pydantic import BaseModel
 
@@ -29,16 +29,16 @@ SPRINGER_ARTICLE_REGEX = re.compile(
 
 
 class OpenAccessPaper(BaseModel):
-    doi: Optional[str] = None
-    title: Optional[str] = None
+    doi: str | None = None
+    title: str | None = None
     is_open_access: bool = False
-    oa_status: Optional[str] = None  # gold, green, bronze, hybrid
-    pdf_url: Optional[str] = None
-    landing_page_url: Optional[str] = None
-    repository_institution: Optional[str] = None
-    authors: List[str] = []
-    year: Optional[int] = None
-    abstract: Optional[str] = None
+    oa_status: str | None = None  # gold, green, bronze, hybrid
+    pdf_url: str | None = None
+    landing_page_url: str | None = None
+    repository_institution: str | None = None
+    authors: list[str] = []
+    year: int | None = None
+    abstract: str | None = None
 
 
 class OpenAccessResolver:
@@ -55,7 +55,7 @@ class OpenAccessResolver:
         }
 
     @staticmethod
-    def extract_doi_from_url_or_text(text: str) -> Optional[str]:
+    def extract_doi_from_url_or_text(text: str) -> str | None:
         """Extract clean DOI string from a URL or text."""
         if not text:
             return None
@@ -79,7 +79,7 @@ class OpenAccessResolver:
 
         return None
 
-    async def resolve_doi_unpaywall(self, doi: str) -> Optional[OpenAccessPaper]:
+    async def resolve_doi_unpaywall(self, doi: str) -> OpenAccessPaper | None:
         """Query Unpaywall API for Open Access locations."""
         clean_doi = urllib.parse.quote(doi, safe="")
         url = f"https://api.unpaywall.org/v2/{clean_doi}?email={self.user_email}"
@@ -114,7 +114,7 @@ class OpenAccessResolver:
             logger.debug("Unpaywall resolution failed for DOI %s: %s", doi, exc)
         return None
 
-    async def resolve_doi_openalex(self, doi: str) -> Optional[OpenAccessPaper]:
+    async def resolve_doi_openalex(self, doi: str) -> OpenAccessPaper | None:
         """Query OpenAlex API for scholarly Open Access metadata."""
         clean_doi = urllib.parse.quote(f"https://doi.org/{doi}", safe="")
         url = f"https://api.openalex.org/works/{clean_doi}"
@@ -150,8 +150,8 @@ class OpenAccessResolver:
         return None
 
     async def resolve_blocked_url(
-        self, url: str, candidate_title: Optional[str] = None
-    ) -> Optional[OpenAccessPaper]:
+        self, url: str, candidate_title: str | None = None
+    ) -> OpenAccessPaper | None:
         """Attempt multi-provider Open Access resolution for a blocked URL."""
         doi = self.extract_doi_from_url_or_text(url)
         if not doi and candidate_title:

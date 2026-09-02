@@ -6,8 +6,9 @@ DOIs, publishers (Springer, Elsevier, Wiley, Nature, IEEE), and citation metrics
 
 import logging
 import urllib.parse
+
 import httpx
-from typing import List
+
 from scraper.discovery.providers.base import ProviderDescriptor, ProviderSearchRequest
 from scraper.search.candidates import SourceCandidate
 
@@ -28,7 +29,7 @@ class CrossRefProvider:
         cost_class="FREE",
     )
 
-    async def search(self, request: ProviderSearchRequest) -> List[SourceCandidate]:
+    async def search(self, request: ProviderSearchRequest) -> list[SourceCandidate]:
         query_encoded = urllib.parse.quote(request.query)
         select_fields = "DOI,title,abstract,author,published,container-title,is-referenced-by-count,link,type"
         url = f"https://api.crossref.org/works?query={query_encoded}&rows={request.max_results}&select={select_fields}"

@@ -1,18 +1,18 @@
 """HTTP Client for Axiom ADGO Remote Worker Protocol (DS-A06)."""
 
 import logging
-from typing import Optional
+
 import httpx
 
 from scraper.orchestration.protocol import (
-    WorkerSpec,
-    RemoteWorkItem,
-    WorkToken,
     ActivityResult,
-    RemoteFailure,
     CompleteHTTPRequest,
     FailHTTPRequest,
     HeartbeatHTTPRequest,
+    RemoteFailure,
+    RemoteWorkItem,
+    WorkerSpec,
+    WorkToken,
 )
 
 logger = logging.getLogger(__name__)
@@ -26,7 +26,7 @@ class AxiomClient:
     def __init__(
         self,
         base_url: str = "http://localhost:8081",
-        token: Optional[str] = "adgo-dev-token",
+        token: str | None = "adgo-dev-token",
         timeout: float = 10.0,
     ):
         self.base_url = base_url.rstrip("/")
@@ -48,7 +48,7 @@ class AxiomClient:
     async def close(self):
         await self._client.aclose()
 
-    async def poll(self, spec: WorkerSpec) -> Optional[RemoteWorkItem]:
+    async def poll(self, spec: WorkerSpec) -> RemoteWorkItem | None:
         """Poll coordinator for available work item."""
         try:
             resp = await self._client.post("/v1/poll", json=spec.model_dump())
@@ -65,7 +65,7 @@ class AxiomClient:
             logger.debug("Coordinator poll network exception: %s", exc)
             return None
 
-    async def heartbeat(self, token: WorkToken, details: Optional[dict] = None) -> bool:
+    async def heartbeat(self, token: WorkToken, details: dict | None = None) -> bool:
         """Send heartbeat to extend task lease."""
         req = HeartbeatHTTPRequest(token=token, details=details or {})
         try:

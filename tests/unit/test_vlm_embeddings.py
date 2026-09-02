@@ -1,8 +1,8 @@
 """Unit tests for Multimodal VLM Embeddings and PixelRAG Pipeline."""
 
+from scraper.visual.pixel_rag import PixelRAGPipeline
 from scraper.visual.tiling import VisualTile
 from scraper.visual.vlm_embeddings import VLMEmbeddingEngine
-from scraper.visual.pixel_rag import PixelRAGPipeline
 
 
 def test_vlm_embedding_engine_deterministic():
@@ -48,8 +48,9 @@ def test_pixel_rag_pipeline_search():
     pipeline = PixelRAGPipeline(vlm_engine=engine)
 
     # Fake 1000x1000 PNG image bytes
-    from PIL import Image
     import io
+
+    from PIL import Image
 
     img = Image.new("RGB", (1000, 1000), color="blue")
     buf = io.BytesIO()

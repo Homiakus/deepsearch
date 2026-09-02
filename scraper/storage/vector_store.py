@@ -1,7 +1,8 @@
 """Qdrant Vector Store Integration (§42, DS-A03, DS-A26)."""
 
 import logging
-from typing import List, Dict, Any, Optional
+from typing import Any
+
 from scraper.config import settings
 
 logger = logging.getLogger(__name__)
@@ -10,11 +11,11 @@ try:
     from qdrant_client import QdrantClient
     from qdrant_client.models import (
         Distance,
-        VectorParams,
-        PointStruct,
-        Filter,
         FieldCondition,
+        Filter,
         MatchValue,
+        PointStruct,
+        VectorParams,
     )
 
     QDRANT_AVAILABLE = True
@@ -27,12 +28,10 @@ class VectorStoreManager:
 
     DEFAULT_COLLECTION = "deepsearch_chunks"
 
-    def __init__(
-        self, url: Optional[str] = None, collection_name: Optional[str] = None
-    ):
+    def __init__(self, url: str | None = None, collection_name: str | None = None):
         self.url = url or settings.qdrant_url
         self.collection_name = collection_name or self.DEFAULT_COLLECTION
-        self.client: Optional[QdrantClient] = None
+        self.client: QdrantClient | None = None
         if QDRANT_AVAILABLE and self.url:
             try:
                 self.client = QdrantClient(url=self.url, timeout=3.0)
@@ -78,7 +77,7 @@ class VectorStoreManager:
             return False
 
     def upsert_text_embedding(
-        self, doc_id: str, vector: List[float], payload: Dict[str, Any]
+        self, doc_id: str, vector: list[float], payload: dict[str, Any]
     ) -> bool:
         if not self.client:
             return False
@@ -101,10 +100,10 @@ class VectorStoreManager:
 
     def search_text(
         self,
-        vector: List[float],
+        vector: list[float],
         top_k: int = 5,
-        filter_payload: Optional[Dict[str, Any]] = None,
-    ) -> List[Dict[str, Any]]:
+        filter_payload: dict[str, Any] | None = None,
+    ) -> list[dict[str, Any]]:
         if not self.client or not self.has_documents():
             return []
         try:
@@ -118,7 +117,7 @@ class VectorStoreManager:
                 if conditions:
                     query_filter = Filter(must=conditions)
 
-            search_kwargs: Dict[str, Any] = {
+            search_kwargs: dict[str, Any] = {
                 "collection_name": self.collection_name,
                 "query_vector": vector,
                 "limit": top_k,
@@ -139,7 +138,7 @@ class VectorStoreManager:
             logger.error("Failed to search vector store: %s", e)
             return []
 
-    def search_text_by_query(self, query: str, top_k: int = 5) -> List[Dict[str, Any]]:
+    def search_text_by_query(self, query: str, top_k: int = 5) -> list[dict[str, Any]]:
         """Search text by query using FastEmbed dense vector representation."""
         if not self.client or not self.has_documents():
             return []

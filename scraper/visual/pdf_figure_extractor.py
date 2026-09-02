@@ -9,7 +9,7 @@ import hashlib
 import logging
 import os
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -25,12 +25,12 @@ class PDFFigureExtractor:
         output_media_dir: str,
         doc_id: str,
         max_figures: int = 5,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Extracts up to max_figures meaningful figures from a PDF file."""
         if not os.path.exists(pdf_path):
             return []
 
-        extracted_media: List[Dict[str, Any]] = []
+        extracted_media: list[dict[str, Any]] = []
         out_dir = Path(output_media_dir)
         out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -101,7 +101,7 @@ class PDFFigureExtractor:
         output_media_dir: str,
         doc_id: str,
         max_figures: int = 5,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Non-blocking asynchronous thread execution for PDF figure extraction."""
         import asyncio
 

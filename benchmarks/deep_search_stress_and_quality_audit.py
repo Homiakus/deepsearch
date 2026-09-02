@@ -8,38 +8,38 @@ Executes rigorous multi-faceted verification:
 5. Architecture & Security Policies (SSRF Policy, Rate Limiting, Self-Healing, Robots.txt)
 """
 
-import sys
-import time
 import asyncio
 import statistics
+import sys
 import tempfile
+import time
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import Any
 
 # Ensure project root is in path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from scraper.search.search_engine import SearchEngine
-from scraper.search.chunking import StructureAwareChunker
-from scraper.research.query_normalizer import normalize_query
-from scraper.storage.cas import ContentAddressableStore
-from scraper.security.url_policy import URLSecurityPolicy
-from scraper.exceptions import SSRFBlockedError
-from scraper.control.rate_limiter import TokenBucket
 from benchmarks.search.metrics import (
-    compute_recall_at_k,
-    compute_precision_at_k,
     compute_mrr,
     compute_ndcg_at_k,
+    compute_precision_at_k,
+    compute_recall_at_k,
     compute_source_diversity,
 )
+from scraper.control.rate_limiter import TokenBucket
+from scraper.exceptions import SSRFBlockedError
+from scraper.research.query_normalizer import normalize_query
+from scraper.search.chunking import StructureAwareChunker
+from scraper.search.search_engine import SearchEngine
+from scraper.security.url_policy import URLSecurityPolicy
+from scraper.storage.cas import ContentAddressableStore
 
 
 class MockVectorStore:
     """Mock Vector Store simulating Qdrant with indexed scientific & engineering documents."""
 
     def __init__(self):
-        self.points: List[Dict[str, Any]] = []
+        self.points: list[dict[str, Any]] = []
         self._populate_corpus()
 
     def _populate_corpus(self):
@@ -109,8 +109,8 @@ class MockVectorStore:
         return len(self.points) > 0
 
     def search_text(
-        self, vector: List[float], top_k: int = 5, filter_payload: Any = None
-    ) -> List[Dict[str, Any]]:
+        self, vector: list[float], top_k: int = 5, filter_payload: Any = None
+    ) -> list[dict[str, Any]]:
         # Lexical/semantic simulation rank based on text overlap
         scored = []
         for p in self.points:

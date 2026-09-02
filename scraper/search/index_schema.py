@@ -1,6 +1,5 @@
 """Qdrant Collection Schema and Index Payload Definition (DS-SI37)."""
 
-from typing import List, Optional
 from pydantic import BaseModel, Field
 
 
@@ -12,13 +11,13 @@ class IndexedChunkPayload(BaseModel):
     canonical_url: str
     domain: str
     title: str
-    heading_path: List[str] = Field(default_factory=list)
+    heading_path: list[str] = Field(default_factory=list)
     text: str
     language: str = "en"
-    published_at: Optional[str] = None
+    published_at: str | None = None
     source_type: str = "UNKNOWN"
     authority_score: float = 0.5
-    goal_ids: List[str] = Field(default_factory=list)
+    goal_ids: list[str] = Field(default_factory=list)
     content_hash: str = ""
     near_dup_cluster: int = 0
     token_count: int = 0

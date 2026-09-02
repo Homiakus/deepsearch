@@ -1,12 +1,12 @@
 """Unit tests for Document Assessment, Content Filter, and Deduplication (DS-SI28 - DS-SI36)."""
 
-from scraper.research.intent import ResearchIntent, Entity
-from scraper.search.document_relevance import (
-    document_relevance_evaluator,
-    RelevanceTier,
-)
 from scraper.normalization.near_duplicate import NearDuplicateDetector
-from scraper.search.source_lineage import SourceLineage, LineageRelation
+from scraper.research.intent import Entity, ResearchIntent
+from scraper.search.document_relevance import (
+    RelevanceTier,
+    document_relevance_evaluator,
+)
+from scraper.search.source_lineage import LineageRelation, SourceLineage
 
 
 def test_content_filter_and_relevance_evaluation():

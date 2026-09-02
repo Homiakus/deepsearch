@@ -1,7 +1,7 @@
 """Maximal Marginal Relevance (MMR) & Domain Diversity Selector (DS-SI45, DS-SI46)."""
 
 import re
-from typing import Dict, List
+
 from scraper.search.rerank.base import RerankedPassage
 
 
@@ -13,13 +13,13 @@ class DiversitySelector:
         self.max_per_domain = max_per_domain
 
     def select_diverse(
-        self, candidates: List[RerankedPassage], top_k: int = 10
-    ) -> List[RerankedPassage]:
+        self, candidates: list[RerankedPassage], top_k: int = 10
+    ) -> list[RerankedPassage]:
         if len(candidates) <= top_k:
             return candidates
 
-        selected: List[RerankedPassage] = []
-        domain_counts: Dict[str, int] = {}
+        selected: list[RerankedPassage] = []
+        domain_counts: dict[str, int] = {}
         remaining = list(candidates)
 
         while remaining and len(selected) < top_k:
@@ -48,8 +48,7 @@ class DiversitySelector:
                     jaccard = len(cand_tokens.intersection(s_tokens)) / max(
                         len(cand_tokens.union(s_tokens)), 1
                     )
-                    if jaccard > max_sim_to_selected:
-                        max_sim_to_selected = jaccard
+                    max_sim_to_selected = max(max_sim_to_selected, jaccard)
 
                 # MMR score = lambda * Relevance - (1 - lambda) * MaxSim - DomainPenalty
                 mmr_score = (

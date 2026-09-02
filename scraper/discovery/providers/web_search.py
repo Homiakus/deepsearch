@@ -2,9 +2,10 @@
 
 import logging
 import urllib.parse
+
 import httpx
-from typing import List
 from selectolax.parser import HTMLParser
+
 from scraper.discovery.providers.base import ProviderDescriptor, ProviderSearchRequest
 from scraper.search.candidates import SourceCandidate
 
@@ -21,7 +22,7 @@ class WebSearchProvider:
         cost_class="FREE",
     )
 
-    async def search(self, request: ProviderSearchRequest) -> List[SourceCandidate]:
+    async def search(self, request: ProviderSearchRequest) -> list[SourceCandidate]:
         """Queries open web search endpoints (e.g. DuckDuckGo / SearXNG or HTML search fallback)."""
         url = f"https://html.duckduckgo.com/html/?q={urllib.parse.quote(request.query)}"
         headers = {

@@ -6,8 +6,9 @@ authors, institutions, concepts, and open access full-text URLs).
 
 import logging
 import urllib.parse
+
 import httpx
-from typing import List, Dict
+
 from scraper.discovery.providers.base import ProviderDescriptor, ProviderSearchRequest
 from scraper.search.candidates import SourceCandidate
 
@@ -25,7 +26,7 @@ class OpenAlexProvider:
     )
 
     @staticmethod
-    def _reconstruct_abstract(inverted_index: Dict[str, List[int]]) -> str:
+    def _reconstruct_abstract(inverted_index: dict[str, list[int]]) -> str:
         if not inverted_index:
             return ""
         word_positions = []
@@ -35,7 +36,7 @@ class OpenAlexProvider:
         word_positions.sort(key=lambda x: x[0])
         return " ".join(w for _, w in word_positions)
 
-    async def search(self, request: ProviderSearchRequest) -> List[SourceCandidate]:
+    async def search(self, request: ProviderSearchRequest) -> list[SourceCandidate]:
         query_encoded = urllib.parse.quote(request.query)
         select_fields = "id,doi,title,abstract_inverted_index,publication_year,cited_by_count,primary_location,open_access,type"
         url = f"https://api.openalex.org/works?search={query_encoded}&per_page={request.max_results}&select={select_fields}"

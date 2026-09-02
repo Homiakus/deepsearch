@@ -1,37 +1,38 @@
 """Hybrid Retrieval with Reciprocal Rank Fusion (RRF) (§10, DS-A28)."""
 
-from typing import Dict, List, Any, Optional
+from typing import Any
+
 from pydantic import BaseModel, Field
 
 
 class RankedHit(BaseModel):
     id: str
     score: float
-    metadata: Dict[str, Any] = Field(default_factory=dict)
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 class ScoredResult(BaseModel):
     id: str
     rrf_score: float
-    dense_rank: Optional[int] = None
-    lexical_rank: Optional[int] = None
-    metadata: Dict[str, Any] = Field(default_factory=dict)
+    dense_rank: int | None = None
+    lexical_rank: int | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 def reciprocal_rank_fusion(
-    dense_hits: List[RankedHit],
-    lexical_hits: List[RankedHit],
+    dense_hits: list[RankedHit],
+    lexical_hits: list[RankedHit],
     k: int = 60,
     top_n: int = 20,
-) -> List[ScoredResult]:
+) -> list[ScoredResult]:
     """Combines dense and lexical search results using Reciprocal Rank Fusion.
 
     RRF_score(d) = sum( 1 / (k + rank_i(d)) ) for each ranking i.
     """
-    scores: Dict[str, float] = {}
-    dense_ranks: Dict[str, int] = {}
-    lexical_ranks: Dict[str, int] = {}
-    metadata_map: Dict[str, Dict[str, Any]] = {}
+    scores: dict[str, float] = {}
+    dense_ranks: dict[str, int] = {}
+    lexical_ranks: dict[str, int] = {}
+    metadata_map: dict[str, dict[str, Any]] = {}
 
     for rank, hit in enumerate(dense_hits, start=1):
         dense_ranks[hit.id] = rank

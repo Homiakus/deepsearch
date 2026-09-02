@@ -4,10 +4,10 @@ Exports bibliography items, metadata, abstracts, and provenance ready for direct
 into Zotero and reference managers.
 """
 
-import os
 import json
+import os
 import time
-from typing import List, Dict, Any
+from typing import Any
 from urllib.parse import urlparse
 
 from scraper.extraction.engine import ExtractionResult
@@ -22,12 +22,12 @@ class ZoteroLibraryExporter:
 
     def export_csl_json(
         self,
-        extractions: List[ExtractionResult],
+        extractions: list[ExtractionResult],
         query: str = "",
         filename: str = "zotero_csl_data.json",
     ) -> str:
         """Generate CSL-JSON (Citation Style Language JSON) format for Zotero import."""
-        csl_items: List[Dict[str, Any]] = []
+        csl_items: list[dict[str, Any]] = []
         now_parts = time.gmtime()
 
         for idx, ext in enumerate(extractions, 1):
@@ -60,12 +60,12 @@ class ZoteroLibraryExporter:
 
     def export_ris(
         self,
-        extractions: List[ExtractionResult],
+        extractions: list[ExtractionResult],
         query: str = "",
         filename: str = "zotero_library.ris",
     ) -> str:
         """Generate RIS (Research Information Systems) format for Zotero, EndNote, Mendeley."""
-        ris_lines: List[str] = []
+        ris_lines: list[str] = []
         now_date_str = time.strftime("%Y/%m/%d", time.gmtime())
 
         for idx, ext in enumerate(extractions, 1):
@@ -98,8 +98,8 @@ class ZoteroLibraryExporter:
         return out_path
 
     def export_all(
-        self, extractions: List[ExtractionResult], query: str = ""
-    ) -> Dict[str, str]:
+        self, extractions: list[ExtractionResult], query: str = ""
+    ) -> dict[str, str]:
         """Export both CSL-JSON and RIS files."""
         csl_path = self.export_csl_json(extractions, query)
         ris_path = self.export_ris(extractions, query)

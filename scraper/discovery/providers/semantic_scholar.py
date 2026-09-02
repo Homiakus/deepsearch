@@ -6,8 +6,9 @@ influential citations, TLDRs, and direct open-access PDF links.
 
 import logging
 import urllib.parse
+
 import httpx
-from typing import List
+
 from scraper.discovery.providers.base import ProviderDescriptor, ProviderSearchRequest
 from scraper.search.candidates import SourceCandidate
 
@@ -24,7 +25,7 @@ class SemanticScholarProvider:
         cost_class="FREE",
     )
 
-    async def search(self, request: ProviderSearchRequest) -> List[SourceCandidate]:
+    async def search(self, request: ProviderSearchRequest) -> list[SourceCandidate]:
         query_encoded = urllib.parse.quote(request.query)
         fields = "title,abstract,authors,year,citationCount,influentialCitationCount,openAccessPdf,externalIds,venue,publicationTypes"
         url = f"https://api.semanticscholar.org/graph/v1/paper/search?query={query_encoded}&limit={request.max_results}&fields={fields}"

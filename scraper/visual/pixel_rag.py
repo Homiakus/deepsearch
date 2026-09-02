@@ -1,10 +1,10 @@
 """PixelRAG and Hybrid Retrieval Pipeline (§39, §41)."""
 
-from typing import List, Optional, Dict, Tuple
 from pydantic import BaseModel
+
+from scraper.visual.ocr_engine import OCRResult, PaddleOCREngine
 from scraper.visual.tiling import VisualTile, generate_screenshot_tiles
-from scraper.visual.ocr_engine import PaddleOCREngine, OCRResult
-from scraper.visual.vlm_embeddings import VLMEmbeddingEngine, VisualEmbedding
+from scraper.visual.vlm_embeddings import VisualEmbedding, VLMEmbeddingEngine
 
 
 class PixelRAGResult(BaseModel):
@@ -14,7 +14,7 @@ class PixelRAGResult(BaseModel):
     x: int
     y: int
     image_hash: str
-    ocr_text: Optional[str] = None
+    ocr_text: str | None = None
 
 
 class PixelRAGPipeline:
@@ -22,16 +22,16 @@ class PixelRAGPipeline:
 
     def __init__(
         self,
-        ocr_engine: Optional[PaddleOCREngine] = None,
-        vlm_engine: Optional[VLMEmbeddingEngine] = None,
+        ocr_engine: PaddleOCREngine | None = None,
+        vlm_engine: VLMEmbeddingEngine | None = None,
     ):
         self.ocr_engine = ocr_engine or PaddleOCREngine()
         self.vlm_engine = vlm_engine or VLMEmbeddingEngine()
-        self._indexed_tiles: Dict[str, Tuple[VisualTile, VisualEmbedding]] = {}
+        self._indexed_tiles: dict[str, tuple[VisualTile, VisualEmbedding]] = {}
 
     def process_page_screenshot(
         self, page_id: str, screenshot_bytes: bytes
-    ) -> List[VisualTile]:
+    ) -> list[VisualTile]:
         """Generate screenshot tiles and index them with VLM embeddings (§40)."""
         tiles = generate_screenshot_tiles(page_id, screenshot_bytes)
         for tile in tiles:
@@ -44,13 +44,13 @@ class PixelRAGPipeline:
         """Run PaddleOCR visual text & bounding box extraction (§37, §39)."""
         return await self.ocr_engine.extract_text_from_image(screenshot_bytes)
 
-    def search_visual(self, query: str, top_k: int = 5) -> List[PixelRAGResult]:
+    def search_visual(self, query: str, top_k: int = 5) -> list[PixelRAGResult]:
         """Execute visual multivector vector search against indexed tiles using VLM embeddings (§42)."""
         if not self._indexed_tiles:
             return []
 
         q_vec = self.vlm_engine.embed_query(query)
-        scored: List[PixelRAGResult] = []
+        scored: list[PixelRAGResult] = []
 
         for tile, emb in self._indexed_tiles.values():
             sim = self.vlm_engine.compute_similarity(q_vec, emb.vector)

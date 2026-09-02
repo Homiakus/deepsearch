@@ -5,9 +5,10 @@ and structured JSON execution summary, run contexts, provider outcomes, retries,
 stage durations, and skip reasons.
 """
 
-import time
 import threading
-from typing import Dict, Any, Optional
+import time
+from typing import Any
+
 from prometheus_client import Counter, Gauge, generate_latest
 
 # --- Unified Prometheus Metrics (§68, DS-23) ---
@@ -67,9 +68,9 @@ class TelemetryTracker:
         self.total_bytes = 0
         self.useful_bytes = 0
         self.retries_count = 0
-        self.provider_stats: Dict[str, Dict[str, int]] = {}
-        self.skip_stats: Dict[str, int] = {}
-        self.run_metrics: Dict[str, Dict[str, Any]] = {}
+        self.provider_stats: dict[str, dict[str, int]] = {}
+        self.skip_stats: dict[str, int] = {}
+        self.run_metrics: dict[str, dict[str, Any]] = {}
 
     def record_request(
         self,
@@ -77,7 +78,7 @@ class TelemetryTracker:
         bytes_downloaded: int,
         useful_text_bytes: int = 0,
         status: str = "success",
-        run_id: Optional[str] = None,
+        run_id: str | None = None,
         retries: int = 0,
     ):
         """Records an individual acquisition request event."""
@@ -126,7 +127,7 @@ class TelemetryTracker:
                     r["browser_escalations"] += 1
 
     def record_provider_outcome(
-        self, provider: str, outcome: str = "success", run_id: Optional[str] = None
+        self, provider: str, outcome: str = "success", run_id: str | None = None
     ):
         """Records outcome for a search/seed provider."""
         with self._lock:
@@ -142,7 +143,7 @@ class TelemetryTracker:
             else:
                 self.provider_stats[provider][outcome] = 1
 
-    def record_skip_reason(self, reason: str, run_id: Optional[str] = None):
+    def record_skip_reason(self, reason: str, run_id: str | None = None):
         """Records a skip reason (e.g. url_filter, duplicate, invalid_content_type)."""
         with self._lock:
             SKIP_REASONS.labels(reason=reason).inc()
@@ -180,7 +181,7 @@ class TelemetryTracker:
         with self._lock:
             return self._calculate_useful_data_ratio()
 
-    def get_summary(self) -> Dict[str, Any]:
+    def get_summary(self) -> dict[str, Any]:
         """Returns structured JSON telemetry summary matching Prometheus counters."""
         with self._lock:
             elapsed = max(0.1, time.time() - self.start_time)
@@ -200,7 +201,7 @@ class TelemetryTracker:
                 "runs_tracked_count": len(self.run_metrics),
             }
 
-    def get_run_metrics(self, run_id: str) -> Optional[Dict[str, Any]]:
+    def get_run_metrics(self, run_id: str) -> dict[str, Any] | None:
         with self._lock:
             return self.run_metrics.get(run_id)
 

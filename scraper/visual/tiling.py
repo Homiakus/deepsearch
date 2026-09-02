@@ -1,8 +1,8 @@
 """Screenshot Tiling Generator (§40)."""
 
-import io
 import hashlib
-from typing import List
+import io
+
 from pydantic import BaseModel
 
 try:
@@ -29,7 +29,7 @@ def generate_screenshot_tiles(
     screenshot_bytes: bytes,
     tile_width: int = 1280,
     tile_height: int = 1024,
-) -> List[VisualTile]:
+) -> list[VisualTile]:
     """Slices a full page screenshot into visual tiles (§40)."""
     if not PIL_AVAILABLE or not screenshot_bytes:
         return []
@@ -37,7 +37,7 @@ def generate_screenshot_tiles(
     image = Image.open(io.BytesIO(screenshot_bytes))
     img_w, img_h = image.size
 
-    tiles: List[VisualTile] = []
+    tiles: list[VisualTile] = []
     tile_id = 0
 
     for y in range(0, img_h, tile_height):

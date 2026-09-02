@@ -13,7 +13,7 @@ from scraper.extraction.engine import (
     ExtractionResult,
     FieldProvenance,
 )
-from scraper.extraction.table_extractor import extract_tables_from_html, TableData
+from scraper.extraction.table_extractor import TableData, extract_tables_from_html
 from scraper.storage.archive_exporter import ArchiveExporter, SearchRunMetadata
 
 

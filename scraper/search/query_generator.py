@@ -3,10 +3,9 @@
 Generates bounded, goal-directed query formulations without exponential query explosion.
 """
 
-from typing import List
+from scraper.research.goals import ResearchGoal, ResearchGoalGraph
 from scraper.research.intent import ResearchIntent
-from scraper.research.goals import ResearchGoalGraph, ResearchGoal
-from scraper.search.query_models import SearchQueryVariant, QueryType
+from scraper.search.query_models import QueryType, SearchQueryVariant
 
 
 class QueryGenerator:
@@ -20,8 +19,8 @@ class QueryGenerator:
 
     def generate_variants(
         self, intent: ResearchIntent, goal_graph: ResearchGoalGraph
-    ) -> List[SearchQueryVariant]:
-        variants: List[SearchQueryVariant] = []
+    ) -> list[SearchQueryVariant]:
+        variants: list[SearchQueryVariant] = []
         seen_queries = set()
 
         for goal in goal_graph.goals.values():
@@ -38,8 +37,8 @@ class QueryGenerator:
 
     def _generate_for_goal(
         self, goal: ResearchGoal, intent: ResearchIntent
-    ) -> List[SearchQueryVariant]:
-        results: List[SearchQueryVariant] = []
+    ) -> list[SearchQueryVariant]:
+        results: list[SearchQueryVariant] = []
         clean_q = intent.normalized_query
 
         # 1. Canonical / Semantic Query
@@ -184,10 +183,10 @@ class QueryGenerator:
 
     def generate_followup_variants(
         self,
-        seed_terms: List[str],
+        seed_terms: list[str],
         original_query: str,
         goal_id: str = "goal_followup",
-    ) -> List[SearchQueryVariant]:
+    ) -> list[SearchQueryVariant]:
         """Generates targeted query variants from newly discovered high-relevance terms during deep crawling."""
         if not seed_terms:
             return []

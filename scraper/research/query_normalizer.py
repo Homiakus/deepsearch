@@ -6,16 +6,16 @@ without destructive stemming.
 
 import re
 import unicodedata
-from typing import List, Set
+
 from pydantic import BaseModel, Field
 
 
 class NormalizedQuery(BaseModel):
     raw_query: str
     normalized_text: str
-    quoted_phrases: List[str] = Field(default_factory=list)
-    identifiers: List[str] = Field(default_factory=list)
-    detected_languages: List[str] = Field(default_factory=list)
+    quoted_phrases: list[str] = Field(default_factory=list)
+    identifiers: list[str] = Field(default_factory=list)
+    detected_languages: list[str] = Field(default_factory=list)
     has_cyrillic: bool = False
     has_latin: bool = False
 
@@ -47,7 +47,7 @@ def normalize_query(query: str) -> NormalizedQuery:
     quoted = [m.strip() for m in RE_QUOTED.findall(nfkc) if m.strip()]
 
     # 3. Extract technical identifiers
-    identifiers: Set[str] = set()
+    identifiers: set[str] = set()
     for match in RE_DOI.finditer(nfkc):
         identifiers.add(match.group(0))
     for match in RE_PMID.finditer(nfkc):

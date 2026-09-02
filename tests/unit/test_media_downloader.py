@@ -1,17 +1,19 @@
 """Unit tests for Media Finder and Downloader Modules (§DS-14)."""
 
-import os
 import io
-import pytest
+import os
+
 import httpx
+import pytest
+
+from scraper.acquisition.media_downloader import (
+    download_media_file,
+    sanitize_media_filename,
+)
 from scraper.discovery.media_finder import (
     extract_document_links,
-    extract_relevant_images,
     extract_image_candidates,
-)
-from scraper.acquisition.media_downloader import (
-    sanitize_media_filename,
-    download_media_file,
+    extract_relevant_images,
 )
 
 

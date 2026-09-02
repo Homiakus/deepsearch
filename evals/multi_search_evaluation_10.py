@@ -9,13 +9,13 @@ collecting rigorous metrics across:
 - Storage & Packaging (Archive size, compression efficiency)
 """
 
-import os
+import asyncio
 import json
+import os
 import time
 import zipfile
-import asyncio
 from pathlib import Path
-from typing import Dict, Any, List
+from typing import Any
 
 from scraper.config import ExecutionMode
 from scraper.pipeline.search_pipeline import (
@@ -118,12 +118,12 @@ TEST_SUITE_10 = [
 
 
 def extract_metrics_from_manifest(
-    manifest: Dict[str, Any],
-    tc: Dict[str, Any],
+    manifest: dict[str, Any],
+    tc: dict[str, Any],
     zip_path: str,
     elapsed: float,
     idx: int,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     summary = manifest.get("summary", {})
     quality_gate = manifest.get("quality_gate", {}) or manifest.get(
         "quality_report", {}
@@ -163,7 +163,7 @@ def extract_metrics_from_manifest(
     gate_passed = overall_quality_status == "PASSED"
 
     # Rejections breakdown
-    rejection_reasons: Dict[str, int] = {}
+    rejection_reasons: dict[str, int] = {}
     near_dup_count = 0
     for rej in rejections:
         code = (
@@ -178,7 +178,7 @@ def extract_metrics_from_manifest(
 
     # Provider distribution
     sources = quality_gate.get("sources", [])
-    providers: Dict[str, int] = {}
+    providers: dict[str, int] = {}
     for s in sources:
         p = s.get("provider", "unknown")
         providers[p] = providers.get(p, 0) + 1
@@ -237,7 +237,7 @@ async def run_evaluation_suite():
     output_dir.mkdir(parents=True, exist_ok=True)
 
     pipeline = DeepSearchPipeline()
-    suite_results: List[Dict[str, Any]] = []
+    suite_results: list[dict[str, Any]] = []
 
     print("=" * 90, flush=True)
     print("DEEPSEARCH 10-RUN MULTI-DOMAIN BENCHMARK & METRICS HARVESTER", flush=True)

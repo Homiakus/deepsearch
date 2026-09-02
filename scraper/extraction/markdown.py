@@ -1,7 +1,7 @@
 """Markdown Pipeline Engine (§35 Fit Markdown & Content Sanitization)."""
 
 import re
-from typing import Tuple
+
 import markdownify
 from selectolax.parser import HTMLParser
 
@@ -67,7 +67,7 @@ def _sanitize_markdown(text: str) -> str:
     return result
 
 
-def process_markdown_pipeline(raw_html: str) -> Tuple[str, str, str]:
+def process_markdown_pipeline(raw_html: str) -> tuple[str, str, str]:
     """Generates (raw_markdown, clean_markdown, fit_markdown) from HTML (§35)."""
     if not raw_html:
         return "", "", ""

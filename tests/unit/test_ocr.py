@@ -1,9 +1,11 @@
 """Unit tests for PP-OCRv5 / PaddleOCR-VL-1.6 engine and PixelRAG integration (§37, §38, §39)."""
 
-import pytest
 import io
+
+import pytest
+
 from scraper.contracts import OCREngineProtocol
-from scraper.visual.ocr_engine import PaddleOCREngine, OCRResult, OCRBoundingBox
+from scraper.visual.ocr_engine import OCRBoundingBox, OCRResult, PaddleOCREngine
 from scraper.visual.pixel_rag import PixelRAGPipeline
 
 try:

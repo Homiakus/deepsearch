@@ -1,6 +1,7 @@
 """Unit tests for Self-Healing Selectors (§60)."""
 
 from selectolax.parser import HTMLParser
+
 from scraper.extraction.self_healing import SelfHealingSelector
 
 

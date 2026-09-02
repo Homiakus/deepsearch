@@ -9,9 +9,12 @@ Verifies:
 """
 
 from unittest.mock import MagicMock, patch
+
 import pytest
 from typer.testing import CliRunner
 
+from scraper.application.models import FeatureAvailabilityState
+from scraper.cli.main import app as cli_app
 from scraper.config import settings
 from scraper.contracts.capabilities import (
     CapabilityStatus,
@@ -19,10 +22,8 @@ from scraper.contracts.capabilities import (
     get_capability_matrix,
     require_capability,
 )
-from scraper.application.models import FeatureAvailabilityState
 from scraper.search.search_engine import SearchEngine
 from scraper.storage.vector_store import VectorStoreManager
-from scraper.cli.main import app as cli_app
 
 runner = CliRunner()
 

@@ -1,6 +1,5 @@
 """Operational Source Reliability & Trust History (DS-SI50)."""
 
-from typing import Dict
 from pydantic import BaseModel
 
 
@@ -17,7 +16,7 @@ class SourceStatsTracker:
     """Tracks operational network reliability independently from epistemic authority."""
 
     def __init__(self):
-        self._stats: Dict[str, DomainStats] = {}
+        self._stats: dict[str, DomainStats] = {}
 
     def record_attempt(
         self,

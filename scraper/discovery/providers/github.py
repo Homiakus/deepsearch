@@ -2,8 +2,9 @@
 
 import logging
 import urllib.parse
+
 import httpx
-from typing import List
+
 from scraper.discovery.providers.base import ProviderDescriptor, ProviderSearchRequest
 from scraper.search.candidates import SourceCandidate
 
@@ -20,7 +21,7 @@ class GitHubProvider:
         cost_class="FREE",
     )
 
-    async def search(self, request: ProviderSearchRequest) -> List[SourceCandidate]:
+    async def search(self, request: ProviderSearchRequest) -> list[SourceCandidate]:
         url = f"https://api.github.com/search/repositories?q={urllib.parse.quote(request.query)}&sort=stars&order=desc&per_page={request.max_results}"
         headers = {"User-Agent": "DeepSearch-Research-Bot"}
         candidates = []

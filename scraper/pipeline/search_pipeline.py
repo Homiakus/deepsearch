@@ -4,80 +4,79 @@ Combines query intelligence, multi-provider discovery, ranked frontier crawl con
 adaptive page acquisition, content quality filtering, and dual-format archive generation.
 """
 
-import os
-import json
 import asyncio
-import tempfile
+import json
 import logging
+import os
+import tempfile
 import urllib.parse
 from pathlib import Path
-from typing import List, Optional, Tuple, Dict, Any, Set
+from typing import Any
+
 from pydantic import BaseModel, Field
 
-
-from scraper.config import ExecutionMode
-from scraper.application.run_context import RunContext, RunContextOptions
-from scraper.normalization.canonicalizer import canonicalize_url
 from scraper.acquisition.engine import AdaptiveAcquisitionEngine, CapturedArtifact
-from scraper.extraction.engine import ExtractionEngine, ExtractionResult
-from scraper.storage.archive_exporter import ArchiveExporter, SearchRunMetadata
-from scraper.discovery.links import extract_discovered_links
-from scraper.discovery.providers.registry import provider_registry
-from scraper.discovery.provider_policy import provider_policy
-from scraper.research.intent import ResearchIntent
-from scraper.research.query_normalizer import normalize_query
-from scraper.research.entities import extract_entities_from_query
-from scraper.research.decomposer import decompose_intent
-from scraper.search.query_generator import QueryGenerator
-from scraper.search.candidates import SourceCandidate
-from scraper.search.candidate_normalizer import candidate_normalizer
-from scraper.search.ranking.candidate_ranker import candidate_ranker
+from scraper.acquisition.media_downloader import download_media_file
+from scraper.acquisition.open_access_resolver import open_access_resolver
+from scraper.application.run_context import RunContext, RunContextOptions
+from scraper.config import ExecutionMode
 from scraper.control.ranked_frontier import (
-    RankedFrontier,
     CandidateState,
     FrontierItem,
+    RankedFrontier,
 )
-from scraper.search.document_relevance import document_relevance_evaluator
-from scraper.extraction.content_filter import content_filter
-from scraper.extraction.document_type import DocumentType, document_type_classifier
-from scraper.normalization.near_duplicate import near_duplicate_detector
-from scraper.normalization.content_hash import compute_content_hash
-from scraper.search.source_lineage import SourceLineage
-from scraper.search.url_policy import candidate_url_policy
-from scraper.search.source_policy import calculate_authority_prior
-from scraper.search.quality_report import source_quality_evaluator
-from scraper.search.trace import SearchTrace, TraceEventType
-
+from scraper.discovery.links import extract_discovered_links
 from scraper.discovery.media_finder import (
     extract_document_links,
     extract_image_candidates,
     fetch_wikimedia_topic_images,
     fetch_wikipedia_article_images,
-    score_and_rank_images,
     is_accepted_media_file,
+    score_and_rank_images,
 )
-from scraper.acquisition.media_downloader import download_media_file
-from scraper.visual.pdf_figure_extractor import pdf_figure_extractor
+from scraper.discovery.provider_policy import provider_policy
+from scraper.discovery.providers.registry import provider_registry
+from scraper.extraction.content_filter import content_filter
+from scraper.extraction.document_type import DocumentType, document_type_classifier
+from scraper.extraction.engine import ExtractionEngine, ExtractionResult
 from scraper.extraction.pdf_extractor import (
     async_extract_text_from_pdf_file,
 )
-from scraper.acquisition.open_access_resolver import open_access_resolver
+from scraper.normalization.canonicalizer import canonicalize_url
+from scraper.normalization.content_hash import compute_content_hash
+from scraper.normalization.near_duplicate import near_duplicate_detector
+from scraper.research.decomposer import decompose_intent
+from scraper.research.entities import extract_entities_from_query
+from scraper.research.intent import ResearchIntent
+from scraper.research.query_normalizer import normalize_query
+from scraper.search.candidate_normalizer import candidate_normalizer
+from scraper.search.candidates import SourceCandidate
+from scraper.search.document_relevance import document_relevance_evaluator
+from scraper.search.quality_report import source_quality_evaluator
+from scraper.search.query_generator import QueryGenerator
+from scraper.search.ranking.candidate_ranker import candidate_ranker
+from scraper.search.source_lineage import SourceLineage
+from scraper.search.source_policy import calculate_authority_prior
+from scraper.search.trace import SearchTrace, TraceEventType
+from scraper.search.url_policy import candidate_url_policy
+from scraper.storage.archive_exporter import ArchiveExporter, SearchRunMetadata
+from scraper.visual.pdf_figure_extractor import pdf_figure_extractor
 
 logger = logging.getLogger(__name__)
 
 
 class DeepSearchPipelineOptions(BaseModel):
     query: str
-    domain: Optional[str] = None
-    preferred_sources: List[str] = Field(default_factory=list)
+    domain: str | None = None
+    preferred_sources: list[str] = Field(default_factory=list)
     depth: int = 3
     max_pages: int = 50
     mode: ExecutionMode = ExecutionMode.BALANCED
     take_screenshot: bool = False
-    output_archive_path: Optional[str] = None
-    output_dir_path: Optional[str] = None
+    output_archive_path: str | None = None
+    output_dir_path: str | None = None
     auto_discover_sources: bool = True
-    category: Optional[str] = None  # science | news | engineering | None (auto-detect)
+    category: str | None = None  # science | news | engineering | None (auto-detect)
     enable_media_archiving: bool = True
     min_media_count: int = 5
     max_media_count: int = 25
@@ -91,18 +90,18 @@ class DeepSearchPipelineResult(BaseModel):
     query: str
     total_pages_processed: int
     total_rag_chunks: int
-    archive_path: Optional[str] = None
-    dir_path: Optional[str] = None
-    manifest: Dict[str, Any] = Field(default_factory=dict)
+    archive_path: str | None = None
+    dir_path: str | None = None
+    manifest: dict[str, Any] = Field(default_factory=dict)
     quality_gate_passed: bool = False
 
 
 class PipelineWorkspace:
     """Manages temporary and output directory lifecycles for pipeline runs (DS-12)."""
 
-    def __init__(self, output_dir_path: Optional[str] = None):
+    def __init__(self, output_dir_path: str | None = None):
         self._output_dir_path = output_dir_path
-        self._managed_temp_dirs: List[str] = []
+        self._managed_temp_dirs: list[str] = []
 
     def __enter__(self) -> "PipelineWorkspace":
         return self
@@ -137,9 +136,9 @@ class PipelineWorkspace:
 class DiscoveryStageOutput(BaseModel):
     intent: ResearchIntent
     goal_graph: Any
-    query_variants: List[Any]
-    ranked_pool: List[Any]
-    rejections: List[Dict[str, Any]]
+    query_variants: list[Any]
+    ranked_pool: list[Any]
+    rejections: list[dict[str, Any]]
 
 
 class ScheduleStageOutput(BaseModel):
@@ -148,22 +147,22 @@ class ScheduleStageOutput(BaseModel):
 
 
 class AcquisitionStageOutput(BaseModel):
-    acquired_results: List[Any]
-    downloaded_pdfs: List[Dict[str, Any]]
-    raw_image_candidates: List[Dict[str, Any]]
-    rejections: List[Dict[str, Any]]
+    acquired_results: list[Any]
+    downloaded_pdfs: list[dict[str, Any]]
+    raw_image_candidates: list[dict[str, Any]]
+    rejections: list[dict[str, Any]]
     source_lineage: Any
 
 
 class MediaCollectionStageOutput(BaseModel):
-    downloaded_media: List[Dict[str, Any]]
-    media_rejections: List[Dict[str, Any]]
+    downloaded_media: list[dict[str, Any]]
+    media_rejections: list[dict[str, Any]]
 
 
 class ExportStageOutput(BaseModel):
     dir_path: str
-    archive_path: Optional[str]
-    manifest: Dict[str, Any]
+    archive_path: str | None
+    manifest: dict[str, Any]
     quality_gate_passed: bool
     total_pages_processed: int
     total_rag_chunks: int
@@ -172,13 +171,13 @@ class ExportStageOutput(BaseModel):
 class DeepSearchPipeline:
     """Evidence-driven research & extraction pipeline powered by Ranked Frontier (DS-12)."""
 
-    def __init__(self, acquisition_engine: Optional[AdaptiveAcquisitionEngine] = None):
+    def __init__(self, acquisition_engine: AdaptiveAcquisitionEngine | None = None):
         self.acquisition_engine = acquisition_engine or AdaptiveAcquisitionEngine()
 
     async def stage_discover(
         self,
         opts: DeepSearchPipelineOptions,
-        trace: Optional[SearchTrace] = None,
+        trace: SearchTrace | None = None,
     ) -> DiscoveryStageOutput:
         tr = trace or SearchTrace()
         tr.record(TraceEventType.QUERY_ANALYZED, entity_id=opts.query, stage="init")
@@ -206,8 +205,8 @@ class DeepSearchPipeline:
                 metadata={"question": g.question},
             )
 
-        candidate_pool: List[SourceCandidate] = []
-        rejections: List[Dict[str, Any]] = []
+        candidate_pool: list[SourceCandidate] = []
+        rejections: list[dict[str, Any]] = []
 
         # Add preferred sources as top seeds
         if opts.preferred_sources:
@@ -250,7 +249,7 @@ class DeepSearchPipeline:
             )
 
         # Filter discovery URLs by policy
-        filtered_candidates: List[SourceCandidate] = []
+        filtered_candidates: list[SourceCandidate] = []
         for candidate in candidate_pool:
             policy_reason = candidate_url_policy.rejection_reason(candidate.url)
             if policy_reason:
@@ -297,7 +296,7 @@ class DeepSearchPipeline:
 
     async def stage_schedule(
         self,
-        ranked_pool: List[Any],
+        ranked_pool: list[Any],
         max_capacity: int = 10000,
         max_active_per_domain: int = 3,
     ) -> ScheduleStageOutput:
@@ -324,15 +323,15 @@ class DeepSearchPipeline:
         intent: ResearchIntent,
         run_context: RunContext,
         pdf_temp_dir: str,
-        rejections: List[Dict[str, Any]],
-        trace: Optional[SearchTrace] = None,
+        rejections: list[dict[str, Any]],
+        trace: SearchTrace | None = None,
     ) -> AcquisitionStageOutput:
         tr = trace or SearchTrace()
-        acquired_results: List[Tuple[CapturedArtifact, ExtractionResult]] = []
-        downloaded_pdfs: List[Dict[str, Any]] = []
-        accepted_pdf_hashes: Set[str] = set()
-        raw_image_candidates: List[Dict[str, Any]] = []
-        rej_list: List[Dict[str, Any]] = list(rejections)
+        acquired_results: list[tuple[CapturedArtifact, ExtractionResult]] = []
+        downloaded_pdfs: list[dict[str, Any]] = []
+        accepted_pdf_hashes: set[str] = set()
+        raw_image_candidates: list[dict[str, Any]] = []
+        rej_list: list[dict[str, Any]] = list(rejections)
         source_lineage = SourceLineage()
 
         concurrency_limit = max(1, min(getattr(opts, "concurrency", 4) or 4, 6))
@@ -395,7 +394,7 @@ class DeepSearchPipeline:
                 await run_context.rate_limiter.acquire(parsed_u.netloc)
 
             try:
-                local_pending_pdfs: List[Dict[str, Any]] = []
+                local_pending_pdfs: list[dict[str, Any]] = []
                 artifact = await self.acquisition_engine.acquire_page(
                     url=current_url,
                     canonical_url=c_url,
@@ -795,8 +794,8 @@ class DeepSearchPipeline:
         acq_output: AcquisitionStageOutput,
         media_temp_dir: str,
     ) -> MediaCollectionStageOutput:
-        downloaded_media: List[Dict[str, Any]] = []
-        media_rejections: List[Dict[str, Any]] = []
+        downloaded_media: list[dict[str, Any]] = []
+        media_rejections: list[dict[str, Any]] = []
         if not opts.enable_media_archiving:
             return MediaCollectionStageOutput(
                 downloaded_media=downloaded_media,
@@ -824,8 +823,8 @@ class DeepSearchPipeline:
             sem = asyncio.Semaphore(6)
 
             async def _download_candidate(
-                idx: int, img: Dict[str, Any]
-            ) -> Tuple[int, Dict[str, Any], Optional[Dict[str, Any]]]:
+                idx: int, img: dict[str, Any]
+            ) -> tuple[int, dict[str, Any], dict[str, Any] | None]:
                 async with sem:
                     m_res = await download_media_file(
                         url=img["url"],
@@ -908,7 +907,7 @@ class DeepSearchPipeline:
         acq_output: AcquisitionStageOutput,
         media_output: MediaCollectionStageOutput,
         output_dir: str,
-        trace: Optional[SearchTrace] = None,
+        trace: SearchTrace | None = None,
     ) -> ExportStageOutput:
         tr = trace or SearchTrace()
 
@@ -979,7 +978,7 @@ class DeepSearchPipeline:
     async def execute(
         self,
         opts: DeepSearchPipelineOptions,
-        run_context: Optional[RunContext] = None,
+        run_context: RunContext | None = None,
     ) -> DeepSearchPipelineResult:
         """Executes the research pipeline through modular, typed stages within a managed workspace."""
         logger.info(
@@ -1052,18 +1051,18 @@ class DeepSearchPipeline:
 
 
 class DiscoveryStage:
-    def __init__(self, pipeline: Optional[DeepSearchPipeline] = None):
+    def __init__(self, pipeline: DeepSearchPipeline | None = None):
         self.pipeline = pipeline or DeepSearchPipeline()
 
     async def execute(
         self,
         query: str,
-        domain: Optional[str] = None,
-        preferred_sources: Optional[List[str]] = None,
-        category: Optional[str] = None,
+        domain: str | None = None,
+        preferred_sources: list[str] | None = None,
+        category: str | None = None,
         auto_discover_sources: bool = True,
         max_pages: int = 50,
-        trace: Optional[SearchTrace] = None,
+        trace: SearchTrace | None = None,
     ) -> DiscoveryStageOutput:
         opts = DeepSearchPipelineOptions(
             query=query,
@@ -1077,12 +1076,12 @@ class DiscoveryStage:
 
 
 class ScheduleStage:
-    def __init__(self, pipeline: Optional[DeepSearchPipeline] = None):
+    def __init__(self, pipeline: DeepSearchPipeline | None = None):
         self.pipeline = pipeline or DeepSearchPipeline()
 
     async def execute(
         self,
-        ranked_pool: List[Any],
+        ranked_pool: list[Any],
         max_capacity: int = 10000,
         max_active_per_domain: int = 3,
     ) -> ScheduleStageOutput:
@@ -1094,7 +1093,7 @@ class ScheduleStage:
 
 
 class AcquisitionExtractionStage:
-    def __init__(self, acquisition_engine: Optional[AdaptiveAcquisitionEngine] = None):
+    def __init__(self, acquisition_engine: AdaptiveAcquisitionEngine | None = None):
         self.pipeline = DeepSearchPipeline(acquisition_engine=acquisition_engine)
 
     async def execute(
@@ -1108,11 +1107,11 @@ class AcquisitionExtractionStage:
         mode: ExecutionMode = ExecutionMode.BALANCED,
         take_screenshot: bool = False,
         auto_discover_sources: bool = True,
-        domain: Optional[str] = None,
+        domain: str | None = None,
         concurrency: int = 4,
         enable_media_archiving: bool = True,
-        rejections: Optional[List[Dict[str, Any]]] = None,
-        trace: Optional[SearchTrace] = None,
+        rejections: list[dict[str, Any]] | None = None,
+        trace: SearchTrace | None = None,
     ) -> AcquisitionStageOutput:
         opts = DeepSearchPipelineOptions(
             query=intent.original_query,
@@ -1137,7 +1136,7 @@ class AcquisitionExtractionStage:
 
 
 class MediaCollectionStage:
-    def __init__(self, pipeline: Optional[DeepSearchPipeline] = None):
+    def __init__(self, pipeline: DeepSearchPipeline | None = None):
         self.pipeline = pipeline or DeepSearchPipeline()
 
     async def execute(
@@ -1146,8 +1145,8 @@ class MediaCollectionStage:
         enable_media_archiving: bool,
         min_media_count: int,
         max_media_count: int,
-        raw_image_candidates: List[Dict[str, Any]],
-        downloaded_pdfs: List[Dict[str, Any]],
+        raw_image_candidates: list[dict[str, Any]],
+        downloaded_pdfs: list[dict[str, Any]],
         media_temp_dir: str,
     ) -> MediaCollectionStageOutput:
         opts = DeepSearchPipelineOptions(
@@ -1167,27 +1166,27 @@ class MediaCollectionStage:
 
 
 class ExportStage:
-    def __init__(self, pipeline: Optional[DeepSearchPipeline] = None):
+    def __init__(self, pipeline: DeepSearchPipeline | None = None):
         self.pipeline = pipeline or DeepSearchPipeline()
 
     async def execute(
         self,
         query: str,
-        domain: Optional[str],
-        preferred_sources: List[str],
+        domain: str | None,
+        preferred_sources: list[str],
         depth: int,
         max_pages: int,
         mode: ExecutionMode,
-        acquired_results: List[Tuple[CapturedArtifact, ExtractionResult]],
-        downloaded_pdfs: List[Dict[str, Any]],
-        downloaded_media: List[Dict[str, Any]],
-        rejections: List[Dict[str, Any]],
-        media_rejections: List[Dict[str, Any]],
+        acquired_results: list[tuple[CapturedArtifact, ExtractionResult]],
+        downloaded_pdfs: list[dict[str, Any]],
+        downloaded_media: list[dict[str, Any]],
+        rejections: list[dict[str, Any]],
+        media_rejections: list[dict[str, Any]],
         output_dir: str,
-        output_archive_path: Optional[str],
+        output_archive_path: str | None,
         min_media_count: int,
         max_media_count: int,
-        trace: Optional[SearchTrace] = None,
+        trace: SearchTrace | None = None,
     ) -> ExportStageOutput:
         opts = DeepSearchPipelineOptions(
             query=query,

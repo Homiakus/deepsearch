@@ -6,7 +6,6 @@ technically fetched successfully but cannot be used as research evidence.
 
 import re
 from enum import Enum
-from typing import List
 from urllib.parse import urlparse
 
 from pydantic import BaseModel, Field
@@ -26,7 +25,7 @@ class DocumentClassification(BaseModel):
     document_type: DocumentType
     accepted: bool
     reason_code: str
-    signals: List[str] = Field(default_factory=list)
+    signals: list[str] = Field(default_factory=list)
     useful_text_chars: int = 0
     link_density: float = 0.0
 
@@ -102,7 +101,7 @@ class DocumentTypeClassifier:
         parsed = urlparse(url or "")
         path = parsed.path.lower()
         useful_text = cls._useful_text(text)
-        signals: List[str] = []
+        signals: list[str] = []
 
         if status_code >= 500:
             return DocumentClassification(

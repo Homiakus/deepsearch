@@ -1,9 +1,10 @@
 """API Security, Authentication, and Workspace Isolation (§DS-08)."""
 
 from pathlib import Path
-from typing import Optional
-from fastapi import Security, HTTPException, status
-from fastapi.security import APIKeyHeader, HTTPBearer, HTTPAuthorizationCredentials
+
+from fastapi import HTTPException, Security, status
+from fastapi.security import APIKeyHeader, HTTPAuthorizationCredentials, HTTPBearer
+
 from scraper.config import settings
 
 api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
@@ -11,8 +12,8 @@ http_bearer = HTTPBearer(auto_error=False)
 
 
 async def verify_api_key(
-    header_key: Optional[str] = Security(api_key_header),
-    bearer_creds: Optional[HTTPAuthorizationCredentials] = Security(http_bearer),
+    header_key: str | None = Security(api_key_header),
+    bearer_creds: HTTPAuthorizationCredentials | None = Security(http_bearer),
 ) -> str:
     """Verifies that protected endpoints require a valid API key via X-API-Key or Bearer token (§DS-08)."""
     expected_key = settings.api_key
@@ -40,7 +41,7 @@ async def verify_api_key(
 
 
 def resolve_safe_workspace_dir(
-    base_dir: Path, target_subpath: Optional[str], default_name: str
+    base_dir: Path, target_subpath: str | None, default_name: str
 ) -> Path:
     """Resolves and validates an output export path strictly inside the allowed workspace directory (§DS-08)."""
     base = base_dir.resolve()

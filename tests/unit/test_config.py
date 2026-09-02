@@ -1,8 +1,10 @@
 """Unit tests for configuration contract and validation (§DS-06)."""
 
 from pathlib import Path
+
 import pytest
 from pydantic import ValidationError
+
 from scraper.config import Settings, get_default_version
 
 

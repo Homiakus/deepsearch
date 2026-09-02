@@ -1,15 +1,15 @@
 """Contract tests for Acquisition Data Models and Capabilities (DS-RB02, DS-RB03, DS-RB42)."""
 
 from scraper.acquisition.capabilities import (
-    CapabilityLevel,
     BrowserCapabilities,
+    CapabilityLevel,
 )
 from scraper.acquisition.models import (
     AcquisitionRequest,
     AcquisitionResult,
     ArtifactReference,
-    QualityReport,
     CostReport,
+    QualityReport,
 )
 
 

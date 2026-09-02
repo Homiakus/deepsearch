@@ -2,20 +2,21 @@
 
 import inspect
 import logging
-from typing import Any, Callable, Coroutine, Dict, Optional
+from collections.abc import Callable, Coroutine
+from typing import Any
 
 from scraper.orchestration.protocol import ActivityResult
 
 logger = logging.getLogger(__name__)
 
-ActivityHandler = Callable[[Dict[str, Any]], Coroutine[Any, Any, ActivityResult]]
+ActivityHandler = Callable[[dict[str, Any]], Coroutine[Any, Any, ActivityResult]]
 
 
 class ActivityRegistry:
     """Registry mapping ADGO activity names to async Python handler functions."""
 
     def __init__(self):
-        self._handlers: Dict[str, ActivityHandler] = {}
+        self._handlers: dict[str, ActivityHandler] = {}
 
     def register(self, name: str, handler: ActivityHandler) -> None:
         """Register an activity handler function."""
@@ -24,7 +25,7 @@ class ActivityRegistry:
         self._handlers[name] = handler
         logger.debug("Registered activity handler: %s", name)
 
-    def get(self, name: str) -> Optional[ActivityHandler]:
+    def get(self, name: str) -> ActivityHandler | None:
         """Retrieve registered handler by activity name."""
         return self._handlers.get(name)
 

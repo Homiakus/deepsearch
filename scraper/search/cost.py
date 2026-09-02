@@ -1,10 +1,8 @@
 """Expected Acquisition Cost Estimation (DS-SI20)."""
 
-from typing import Optional
-
 
 def estimate_acquisition_cost(
-    url: str, domain: str, provider: Optional[str] = None
+    url: str, domain: str, provider: str | None = None
 ) -> float:
     """Estimates expected network & rendering cost (normalized 0.1 to 2.0)."""
     cost = 1.0

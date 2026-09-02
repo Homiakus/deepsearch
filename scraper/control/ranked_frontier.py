@@ -8,8 +8,9 @@ import asyncio
 import time
 import uuid
 from enum import Enum
-from typing import Dict, List, Optional
+
 from pydantic import BaseModel, Field
+
 from scraper.search.candidates import SourceCandidate
 from scraper.search.features import CandidateFeatureVector
 
@@ -32,15 +33,15 @@ class FrontierItem(BaseModel):
     candidate: SourceCandidate
     priority: float = 0.5
     depth: int = 0
-    goal_id: Optional[str] = None
+    goal_id: str | None = None
     state: CandidateState = CandidateState.DISCOVERED
     attempt: int = 0
     max_attempts: int = 4
     created_at: float = Field(default_factory=time.time)
     updated_at: float = Field(default_factory=time.time)
-    lease_expires_at: Optional[float] = None
-    error_message: Optional[str] = None
-    features: Optional[CandidateFeatureVector] = None
+    lease_expires_at: float | None = None
+    error_message: str | None = None
+    features: CandidateFeatureVector | None = None
 
 
 class RankedFrontier:
@@ -56,10 +57,10 @@ class RankedFrontier:
         self.max_active_per_domain = max_active_per_domain
         self.same_domain_penalty = same_domain_penalty
 
-        self._queue: List[FrontierItem] = []
-        self._items_by_url: Dict[str, FrontierItem] = {}
-        self._items_by_id: Dict[str, FrontierItem] = {}
-        self._active_per_domain: Dict[str, int] = {}
+        self._queue: list[FrontierItem] = []
+        self._items_by_url: dict[str, FrontierItem] = {}
+        self._items_by_id: dict[str, FrontierItem] = {}
+        self._active_per_domain: dict[str, int] = {}
         self._lock = asyncio.Lock()
         self._condition = asyncio.Condition(self._lock)
 
@@ -68,8 +69,8 @@ class RankedFrontier:
         candidate: SourceCandidate,
         priority: float = 0.5,
         depth: int = 0,
-        goal_id: Optional[str] = None,
-        features: Optional[CandidateFeatureVector] = None,
+        goal_id: str | None = None,
+        features: CandidateFeatureVector | None = None,
     ) -> bool:
         """Adds or updates candidate in frontier preserving state and provenance."""
         async with self._condition:
@@ -105,9 +106,7 @@ class RankedFrontier:
             self._condition.notify_all()
             return True
 
-    async def lease_next(
-        self, lease_duration_sec: float = 30.0
-    ) -> Optional[FrontierItem]:
+    async def lease_next(self, lease_duration_sec: float = 30.0) -> FrontierItem | None:
         """Leases the highest priority candidate respecting domain concurrency limits (DS-SI26)."""
         async with self._condition:
             now = time.time()
@@ -159,7 +158,7 @@ class RankedFrontier:
         self,
         item_id: str,
         state: CandidateState,
-        error: Optional[str] = None,
+        error: str | None = None,
         is_transient_error: bool = False,
     ):
         """Updates candidate state and handles retry semantics without permanent visited loss (DS-SI25)."""
@@ -192,8 +191,8 @@ class RankedFrontier:
     def size(self) -> int:
         return len(self._queue)
 
-    def stats(self) -> Dict[str, int]:
-        counts: Dict[str, int] = {}
+    def stats(self) -> dict[str, int]:
+        counts: dict[str, int] = {}
         for item in self._items_by_id.values():
             counts[item.state.value] = counts.get(item.state.value, 0) + 1
         return counts

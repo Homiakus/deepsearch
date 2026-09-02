@@ -2,7 +2,9 @@
 
 import asyncio
 import time
+
 import pytest
+
 from scraper.application.run_context import RunContext, RunContextOptions
 from scraper.control.budget import JobBudget
 from scraper.exceptions import BudgetExceededError

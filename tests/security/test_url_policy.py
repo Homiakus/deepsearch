@@ -1,10 +1,12 @@
 """Security tests for unified SSRF validation and URL policy (DS-A20, DS-A42, §DS-07)."""
 
 from unittest.mock import patch
+
 import pytest
-from scraper.security.url_policy import URLSecurityPolicy
-from scraper.exceptions import SSRFBlockedError
+
 from scraper.acquisition.media_downloader import download_media_file
+from scraper.exceptions import SSRFBlockedError
+from scraper.security.url_policy import URLSecurityPolicy
 
 
 def test_block_direct_private_ips():

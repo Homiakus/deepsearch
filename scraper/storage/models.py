@@ -1,13 +1,13 @@
 """SQLAlchemy Database Models for SQLite and PostgreSQL (§43, DS-A36)."""
 
-from datetime import datetime, timezone
-from typing import Optional
-from sqlalchemy import String, Integer, Float, Text, DateTime, JSON, ForeignKey
+from datetime import UTC, datetime
+
+from sqlalchemy import JSON, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
 def utc_now() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class Base(DeclarativeBase):
@@ -19,7 +19,7 @@ class ProjectModel(Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
-    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utc_now
     )
@@ -29,7 +29,7 @@ class JobModel(Base):
     __tablename__ = "jobs"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    project_id: Mapped[Optional[str]] = mapped_column(
+    project_id: Mapped[str | None] = mapped_column(
         ForeignKey("projects.id"), nullable=True
     )
     status: Mapped[str] = mapped_column(String(50), default="RUNNING")
@@ -63,7 +63,7 @@ class RecordModel(Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     page_id: Mapped[str] = mapped_column(ForeignKey("pages.id"))
-    schema_name: Mapped[Optional[str]] = mapped_column(String(100))
+    schema_name: Mapped[str | None] = mapped_column(String(100))
     data: Mapped[dict] = mapped_column(JSON)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utc_now

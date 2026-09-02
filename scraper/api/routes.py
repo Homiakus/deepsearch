@@ -1,42 +1,41 @@
 """FastAPI Route Handlers (§55 REST API, §57 Inspect Mode, DS-A02, DS-A03, DS-A07, §DS-04, §DS-08)."""
 
-from typing import List, Optional
 from pathlib import Path
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from scraper.config import settings
-from scraper.monitoring.telemetry import telemetry
-from scraper.search.search_engine import SearchResultItem, SearchResponse
+from scraper.api.security import resolve_safe_workspace_dir, verify_api_key
+from scraper.api.sse import sse_broker
+from scraper.application.job_service import (
+    JobHandle,
+    JobRequest,
+    JobResult,
+    JobStatus,
+)
 from scraper.application.models import (
-    ResearchRequest,
-    ResearchHandle,
-    ResearchStatus,
-    ResearchResult,
     FeatureAvailabilityState,
+    ResearchHandle,
+    ResearchRequest,
+    ResearchResult,
+    ResearchStatus,
 )
 from scraper.application.service import (
     DeepSearchService,
     InspectResponse,
     get_deepsearch_service,
 )
-from scraper.api.sse import sse_broker
-from scraper.api.security import verify_api_key, resolve_safe_workspace_dir
-from scraper.storage.exporters.obsidian import ObsidianVaultExporter
-from scraper.storage.exporters.zotero import ZoteroLibraryExporter
+from scraper.config import settings
 from scraper.contracts.capabilities import (
     CapabilityUnavailableError,
     get_capability_matrix,
     require_capability,
 )
-
-from scraper.application.job_service import (
-    JobRequest,
-    JobHandle,
-    JobStatus,
-    JobResult,
-)
+from scraper.monitoring.telemetry import telemetry
+from scraper.search.search_engine import SearchResponse, SearchResultItem
+from scraper.storage.exporters.obsidian import ObsidianVaultExporter
+from scraper.storage.exporters.zotero import ZoteroLibraryExporter
 
 router = APIRouter(prefix="/api/v1")
 
@@ -138,7 +137,7 @@ async def cancel_crawl(
         raise HTTPException(status_code=404, detail=f"Crawl job '{job_id}' not found")
 
 
-@router.post("/search/text", response_model=List[SearchResultItem])
+@router.post("/search/text", response_model=list[SearchResultItem])
 async def search_text(
     req: SearchQueryRequest,
     _auth: str = Depends(verify_api_key),
@@ -160,7 +159,7 @@ async def search_text(
     return service.search_engine.search_text(req.query, limit=req.limit)
 
 
-@router.post("/search/visual", response_model=List[SearchResultItem])
+@router.post("/search/visual", response_model=list[SearchResultItem])
 async def search_visual(
     req: SearchQueryRequest,
     _auth: str = Depends(verify_api_key),
@@ -182,7 +181,7 @@ async def search_visual(
     return service.search_engine.search_visual(req.query, limit=req.limit)
 
 
-@router.post("/search/hybrid", response_model=List[SearchResultItem])
+@router.post("/search/hybrid", response_model=list[SearchResultItem])
 async def search_hybrid(
     req: SearchQueryRequest,
     _auth: str = Depends(verify_api_key),
@@ -319,7 +318,7 @@ async def stream_research_events(run_id: str):
 @router.post("/research/{run_id}/export/obsidian")
 async def export_research_obsidian(
     run_id: str,
-    output_dir: Optional[str] = None,
+    output_dir: str | None = None,
     _auth: str = Depends(verify_api_key),
     service: DeepSearchService = Depends(get_deepsearch_service),
 ):
@@ -359,7 +358,7 @@ async def export_research_obsidian(
 @router.post("/research/{run_id}/export/zotero")
 async def export_research_zotero(
     run_id: str,
-    output_dir: Optional[str] = None,
+    output_dir: str | None = None,
     _auth: str = Depends(verify_api_key),
     service: DeepSearchService = Depends(get_deepsearch_service),
 ):

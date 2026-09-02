@@ -1,7 +1,7 @@
 """Source Lineage and Provenance Relationships (DS-SI36)."""
 
 from enum import Enum
-from typing import Dict, List, Optional
+
 from pydantic import BaseModel, Field
 
 
@@ -19,7 +19,7 @@ class SourceNode(BaseModel):
     source_id: str
     url: str
     domain: str
-    publisher: Optional[str] = None
+    publisher: str | None = None
     relation_to_root: LineageRelation = LineageRelation.UNKNOWN
     is_primary: bool = False
     content_hash: str = ""
@@ -29,8 +29,8 @@ class SourceNode(BaseModel):
 class SourceLineage(BaseModel):
     """Tracks publisher relationships and distinguishes copies from independent corroboration."""
 
-    sources: Dict[str, SourceNode] = Field(default_factory=dict)
-    primary_source_ids: List[str] = Field(default_factory=list)
+    sources: dict[str, SourceNode] = Field(default_factory=dict)
+    primary_source_ids: list[str] = Field(default_factory=list)
 
     def register_source(
         self,

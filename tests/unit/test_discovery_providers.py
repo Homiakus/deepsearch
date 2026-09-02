@@ -1,12 +1,13 @@
 """Unit tests for Discovery Providers and Provider Registry (DS-SI08 - DS-SI11)."""
 
 import pytest
-from scraper.discovery.providers.registry import ProviderRegistry, provider_registry
-from scraper.discovery.providers.base import ProviderSearchRequest, ProviderDescriptor
-from scraper.search.candidates import SourceCandidate
+
 from scraper.discovery.provider_policy import ProviderPolicy
-from scraper.research.intent import ResearchIntent
+from scraper.discovery.providers.base import ProviderDescriptor, ProviderSearchRequest
+from scraper.discovery.providers.registry import ProviderRegistry, provider_registry
 from scraper.research.goals import ResearchGoal
+from scraper.research.intent import ResearchIntent
+from scraper.search.candidates import SourceCandidate
 from scraper.search.query_models import SearchQueryVariant
 
 
@@ -85,6 +86,7 @@ def test_provider_policy_planning():
 @pytest.mark.asyncio
 async def test_provider_concurrency_deterministic_merge_and_fault_isolation():
     import asyncio
+
     from scraper.discovery.providers.base import ProviderStatus
 
     class VariableLatencyProvider:

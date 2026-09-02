@@ -1,6 +1,7 @@
 """Unit tests for SSRF pre-flight protection."""
 
 import pytest
+
 from scraper.acquisition.http_fetcher import HTTPFetcher
 from scraper.exceptions import SSRFError
 

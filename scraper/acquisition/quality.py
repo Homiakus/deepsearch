@@ -5,7 +5,7 @@ and suggesting optimal backend escalation paths.
 """
 
 import re
-from typing import Dict, List, Optional
+
 from scraper.acquisition.models import QualityReport
 
 
@@ -13,41 +13,41 @@ class AcquisitionQualityEvaluator:
     """Computes comprehensive quality score and escalation hints."""
 
     BLOCK_PATTERNS = [
-        re.compile(r"cloudflare", re.I),
-        re.compile(r"attention required", re.I),
-        re.compile(r"access denied", re.I),
-        re.compile(r"captcha", re.I),
-        re.compile(r"datadome", re.I),
-        re.compile(r"perimeterx", re.I),
-        re.compile(r"security check", re.I),
-        re.compile(r"please verify you are a human", re.I),
-        re.compile(r"bot detection", re.I),
-        re.compile(r"checking your browser before accessing", re.I),
+        re.compile(r"cloudflare", re.IGNORECASE),
+        re.compile(r"attention required", re.IGNORECASE),
+        re.compile(r"access denied", re.IGNORECASE),
+        re.compile(r"captcha", re.IGNORECASE),
+        re.compile(r"datadome", re.IGNORECASE),
+        re.compile(r"perimeterx", re.IGNORECASE),
+        re.compile(r"security check", re.IGNORECASE),
+        re.compile(r"please verify you are a human", re.IGNORECASE),
+        re.compile(r"bot detection", re.IGNORECASE),
+        re.compile(r"checking your browser before accessing", re.IGNORECASE),
     ]
 
     UNRENDERED_SPA_PATTERNS = [
-        re.compile(r"<div\s+id=[\"']root[\"']\s*>\s*</div>", re.I),
-        re.compile(r"<div\s+id=[\"']app[\"']\s*>\s*</div>", re.I),
-        re.compile(r"<div\s+id=[\"']__next[\"']\s*>\s*</div>", re.I),
-        re.compile(r"you need to enable javascript to run this app", re.I),
-        re.compile(r"please enable javascript", re.I),
+        re.compile(r"<div\s+id=[\"']root[\"']\s*>\s*</div>", re.IGNORECASE),
+        re.compile(r"<div\s+id=[\"']app[\"']\s*>\s*</div>", re.IGNORECASE),
+        re.compile(r"<div\s+id=[\"']__next[\"']\s*>\s*</div>", re.IGNORECASE),
+        re.compile(r"you need to enable javascript to run this app", re.IGNORECASE),
+        re.compile(r"please enable javascript", re.IGNORECASE),
     ]
 
     def evaluate(
         self,
         url: str,
         status_code: int,
-        headers: Dict[str, str],
+        headers: dict[str, str],
         html_or_text: str,
         expected_min_text_chars: int = 100,
-        expected_selectors: Optional[List[str]] = None,
+        expected_selectors: list[str] | None = None,
     ) -> QualityReport:
-        reasons: List[str] = []
+        reasons: list[str] = []
         score = 1.0
         completeness = 1.0
         blocked = False
         likely_unrendered = False
-        suggested_escalation: Optional[str] = None
+        suggested_escalation: str | None = None
 
         # 1. HTTP Status sanity
         if status_code >= 400:

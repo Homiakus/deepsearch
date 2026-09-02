@@ -6,14 +6,14 @@ Measures:
 3. HTTP client reuse and single-batch API discovery calls.
 """
 
-import time
 import asyncio
+import time
 import tracemalloc
-import pytest
-from typing import List
 
-from scraper.extraction.engine import ExtractionEngine
+import pytest
+
 from scraper.discovery.media_finder import fetch_wikimedia_topic_images
+from scraper.extraction.engine import ExtractionEngine
 
 
 @pytest.mark.performance
@@ -38,11 +38,16 @@ def test_local_corpus_parsing_throughput_and_memory_budget():
     </html>"""
 
     num_iterations = 50
-    latencies: List[float] = []
+    latencies: list[float] = []
 
-    tracemalloc.start()
+    # Warmup
+    for _ in range(5):
+        ExtractionEngine.extract_from_html(
+            url="https://example.com/bench", raw_html=sample_html
+        )
+
+    # 1. Throughput and latency timing pass (without tracemalloc overhead)
     start_time = time.perf_counter()
-
     for _ in range(num_iterations):
         t0 = time.perf_counter()
         res = ExtractionEngine.extract_from_html(
@@ -53,12 +58,18 @@ def test_local_corpus_parsing_throughput_and_memory_budget():
         assert len(res.clean_markdown) > 50
 
     total_duration = time.perf_counter() - start_time
-    current_mem, peak_mem = tracemalloc.get_traced_memory()
-    tracemalloc.stop()
-
     throughput = num_iterations / total_duration
     latencies.sort()
     p95_latency = latencies[int(num_iterations * 0.95)]
+
+    # 2. Peak memory allocation pass
+    tracemalloc.start()
+    for _ in range(10):
+        ExtractionEngine.extract_from_html(
+            url="https://example.com/bench", raw_html=sample_html
+        )
+    current_mem, peak_mem = tracemalloc.get_traced_memory()
+    tracemalloc.stop()
 
     # Performance Budgets:
     # 1. Throughput must exceed 50 pages/second on local deterministic corpus
@@ -89,8 +100,9 @@ async def test_bounded_concurrency_and_cancellation_cleanup():
         async with semaphore:
             async with lock:
                 active_concurrent += 1
-                if active_concurrent > max_observed_concurrent:
-                    max_observed_concurrent = active_concurrent
+                max_observed_concurrent = max(
+                    max_observed_concurrent, active_concurrent
+                )
             try:
                 await asyncio.sleep(0.05)
             finally:

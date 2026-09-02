@@ -1,9 +1,8 @@
 """URL Canonicalization Engine (§16)."""
 
 import urllib.parse
-from typing import Set
 
-TRACKING_PARAMS: Set[str] = {
+TRACKING_PARAMS: set[str] = {
     "utm_source",
     "utm_medium",
     "utm_campaign",
@@ -18,7 +17,7 @@ TRACKING_PARAMS: Set[str] = {
     "source",
 }
 
-HTTPS_UPGRADE_DOMAINS: Set[str] = {
+HTTPS_UPGRADE_DOMAINS: set[str] = {
     "arxiv.org",
     "export.arxiv.org",
     "europepmc.org",

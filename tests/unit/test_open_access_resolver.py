@@ -1,7 +1,9 @@
 """Unit tests for OpenAccessResolver and DOI bypass engine (DS-OA01)."""
 
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-from unittest.mock import AsyncMock, patch, MagicMock
+
 from scraper.acquisition.open_access_resolver import (
     OpenAccessResolver,
     open_access_resolver,

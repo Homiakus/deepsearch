@@ -6,8 +6,9 @@ CIS/Russia (CyberLeninka/eLibrary), Latin America & Iberia (SciELO), and Asia (J
 
 import logging
 import urllib.parse
+
 import httpx
-from typing import List
+
 from scraper.discovery.providers.base import ProviderDescriptor, ProviderSearchRequest
 from scraper.search.candidates import SourceCandidate
 
@@ -30,7 +31,7 @@ class RegionalAcademicProvider:
         cost_class="FREE",
     )
 
-    async def search(self, request: ProviderSearchRequest) -> List[SourceCandidate]:
+    async def search(self, request: ProviderSearchRequest) -> list[SourceCandidate]:
         candidates = []
         # 1. HAL (Hyper Articles en Ligne - French / European National Scientific Repository)
         try:

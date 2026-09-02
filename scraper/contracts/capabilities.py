@@ -7,7 +7,7 @@ Defines the single source of truth for platform capabilities, their readiness ti
 from __future__ import annotations
 
 from enum import Enum
-from typing import Dict, List, Optional
+
 from pydantic import BaseModel, Field
 
 
@@ -25,8 +25,8 @@ class CapabilityInfo(BaseModel):
     name: str
     status: CapabilityStatus
     description: str
-    interface_bindings: List[str] = Field(default_factory=list)
-    reason_disabled: Optional[str] = None
+    interface_bindings: list[str] = Field(default_factory=list)
+    reason_disabled: str | None = None
 
 
 class CapabilityUnavailableError(RuntimeError):
@@ -41,7 +41,7 @@ class CapabilityUnavailableError(RuntimeError):
         self.message = message
 
 
-CAPABILITY_REGISTRY: Dict[str, CapabilityInfo] = {
+CAPABILITY_REGISTRY: dict[str, CapabilityInfo] = {
     "research_pipeline": CapabilityInfo(
         name="research_pipeline",
         status=CapabilityStatus.STABLE,
@@ -128,7 +128,7 @@ CAPABILITY_REGISTRY: Dict[str, CapabilityInfo] = {
 }
 
 
-def get_capability_matrix() -> Dict[str, CapabilityInfo]:
+def get_capability_matrix() -> dict[str, CapabilityInfo]:
     """Return the canonical capability registry mapping with dynamic status reflecting runtime configuration."""
     from scraper.config import settings
 

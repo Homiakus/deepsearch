@@ -4,11 +4,12 @@ Selects and configures optimal discovery providers based on intent, goals,
 evidence preferences, and domain requirements without rigid hardcoded routing.
 """
 
-from typing import List, Tuple, Optional, Dict, Any
+from typing import Any
+
 from scraper.discovery.providers.base import DiscoveryProvider, ProviderSearchRequest
 from scraper.discovery.providers.registry import ProviderRegistry, provider_registry
-from scraper.research.intent import ResearchIntent
 from scraper.research.goals import ResearchGoal
+from scraper.research.intent import ResearchIntent
 from scraper.search.query_models import SearchQueryVariant
 
 
@@ -16,7 +17,7 @@ class ProviderYieldTracker:
     """Tracks historical success, latency, and candidate yield of discovery providers (DS-SI10)."""
 
     def __init__(self):
-        self._stats: Dict[str, Dict[str, Any]] = {}
+        self._stats: dict[str, dict[str, Any]] = {}
 
     def record_call(
         self, provider_name: str, candidate_count: int, error: bool = False
@@ -63,12 +64,12 @@ class ProviderPolicy:
         self,
         intent: ResearchIntent,
         goal: ResearchGoal,
-        query_variants: List[SearchQueryVariant],
+        query_variants: list[SearchQueryVariant],
         max_requests_per_goal: int = 8,
         target_pool_size: int = 25,
-        max_results_per_provider: Optional[int] = None,
-    ) -> List[Tuple[DiscoveryProvider, ProviderSearchRequest]]:
-        requests: List[Tuple[DiscoveryProvider, ProviderSearchRequest]] = []
+        max_results_per_provider: int | None = None,
+    ) -> list[tuple[DiscoveryProvider, ProviderSearchRequest]]:
+        requests: list[tuple[DiscoveryProvider, ProviderSearchRequest]] = []
 
         q_lower = (intent.normalized_query or intent.original_query or "").lower()
         medical_keywords = {

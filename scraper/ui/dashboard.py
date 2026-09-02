@@ -284,7 +284,7 @@ def render_dashboard_html() -> str:
         function switchTab(tabId) {
             document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
-            
+
             if (event && event.target) {
                 event.target.classList.add('active');
             }

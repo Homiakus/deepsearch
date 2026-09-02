@@ -5,11 +5,11 @@ anti-detection stealth parameters, and automated file download handling for prot
 (e.g., Anna's Archive, Z-Library, Sci-Hub, IEEE, ScienceDirect).
 """
 
-import os
 import logging
-from typing import Optional
+import os
 
 from pydantic import BaseModel
+
 from scraper.config import settings
 
 logger = logging.getLogger(__name__)
@@ -25,16 +25,16 @@ except ImportError:
 class DownloadResult(BaseModel):
     success: bool
     url: str
-    saved_path: Optional[str] = None
-    filename: Optional[str] = None
+    saved_path: str | None = None
+    filename: str | None = None
     file_size_bytes: int = 0
-    error_message: Optional[str] = None
+    error_message: str | None = None
 
 
 class AuthorizedBrowserManager:
     """Manages persistent Playwright browser sessions and download events."""
 
-    def __init__(self, user_data_dir: Optional[str] = None):
+    def __init__(self, user_data_dir: str | None = None):
         self.user_data_dir = os.path.abspath(
             user_data_dir
             or getattr(settings, "browser_user_data_dir", ".browser_profile")
@@ -105,7 +105,7 @@ class AuthorizedBrowserManager:
         self,
         url: str,
         output_dir: str = "laser_research_dataset/pdfs",
-        click_selector: Optional[str] = None,
+        click_selector: str | None = None,
         headless: bool = True,
     ) -> DownloadResult:
         """Downloads a file using persistent browser context and Playwright download handler."""

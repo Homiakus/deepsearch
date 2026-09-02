@@ -1,18 +1,18 @@
 """Contract tests for Axiom ADGO Remote Worker Protocol (DS-A06, DS-A34, DS-A35)."""
 
-from scraper.orchestration.protocol import (
-    WorkToken,
-    ActivityResult,
-    ResourceUsage,
-    CompleteHTTPRequest,
-)
 from scraper.orchestration.errors import (
-    map_exception_to_failure,
-    TransientFailure,
-    RateLimitFailure,
     QualityFailure,
+    RateLimitFailure,
+    TransientFailure,
+    map_exception_to_failure,
 )
 from scraper.orchestration.idempotency import generate_activity_idempotency_key
+from scraper.orchestration.protocol import (
+    ActivityResult,
+    CompleteHTTPRequest,
+    ResourceUsage,
+    WorkToken,
+)
 
 
 def test_work_token_serialization():

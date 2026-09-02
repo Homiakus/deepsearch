@@ -1,16 +1,17 @@
 """Acquisition activity implementation (§4, DS-A09, DS-A15, DS-A16)."""
 
-from typing import Any, Dict, List
+from typing import Any
+
+from scraper.acquisition.engine import AdaptiveAcquisitionEngine
 from scraper.config import ExecutionMode
 from scraper.normalization.canonicalizer import canonicalize_url
-from scraper.acquisition.engine import AdaptiveAcquisitionEngine
 from scraper.orchestration.protocol import ActivityResult, ResourceUsage
 
 
-async def run_acquisition_activity(input_data: Dict[str, Any]) -> ActivityResult:
+async def run_acquisition_activity(input_data: dict[str, Any]) -> ActivityResult:
     """Acquires a batch of URLs using adaptive acquisition strategies."""
     engine = AdaptiveAcquisitionEngine()
-    seeds: List[str] = input_data.get("ranked_seeds", []) or input_data.get(
+    seeds: list[str] = input_data.get("ranked_seeds", []) or input_data.get(
         "discovered_seeds", []
     )
     mode_str = input_data.get("mode", "balanced")

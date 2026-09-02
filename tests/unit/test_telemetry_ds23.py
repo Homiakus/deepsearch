@@ -1,11 +1,12 @@
 """Unit tests for Unified Observability & Telemetry (§DS-23)."""
 
-import pytest
 import concurrent.futures
-from httpx import AsyncClient, ASGITransport
 
-from scraper.monitoring.telemetry import telemetry
+import pytest
+from httpx import ASGITransport, AsyncClient
+
 from scraper.api.app import app as fastapi_app
+from scraper.monitoring.telemetry import telemetry
 
 
 def test_telemetry_concurrent_increments():

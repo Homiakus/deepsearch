@@ -1,7 +1,8 @@
 """Acquisition Domain Models and DTOs (§2, §4, DS-RB02)."""
 
 import time
-from typing import Dict, Any, List, Optional
+from typing import Any
+
 from pydantic import BaseModel, Field
 
 from scraper.acquisition.capabilities import BrowserCapabilities
@@ -14,7 +15,7 @@ class ArtifactReference(BaseModel):
     uri: str
     media_type: str = "text/html"
     size_bytes: int = 0
-    metadata_hash: Optional[str] = None
+    metadata_hash: str | None = None
 
 
 class QualityReport(BaseModel):
@@ -24,8 +25,8 @@ class QualityReport(BaseModel):
     completeness: float = 1.0
     blocked: bool = False
     likely_unrendered: bool = False
-    reasons: List[str] = Field(default_factory=list)
-    suggested_escalation: Optional[str] = None
+    reasons: list[str] = Field(default_factory=list)
+    suggested_escalation: str | None = None
 
 
 class CostReport(BaseModel):
@@ -44,7 +45,7 @@ class FailureRecord(BaseModel):
     failure_class: str  # transient, rate_limit, permanent, security, quality
     message: str
     retryable: bool = False
-    retry_after_seconds: Optional[float] = None
+    retry_after_seconds: float | None = None
     timestamp: float = Field(default_factory=time.time)
 
 
@@ -52,18 +53,18 @@ class AcquisitionRequest(BaseModel):
     """Normalized request for page acquisition across any backend."""
 
     url: str
-    canonical_url: Optional[str] = None
+    canonical_url: str | None = None
     required_capabilities: BrowserCapabilities = Field(
         default_factory=BrowserCapabilities.create_minimal
     )
-    optional_capabilities: Optional[BrowserCapabilities] = None
+    optional_capabilities: BrowserCapabilities | None = None
     mode: str = "balanced"  # fast, balanced, research, complete
     budget_max_ms: float = 30000.0
-    security_context: Dict[str, Any] = Field(default_factory=dict)
-    session_ref: Optional[str] = None
-    wait_condition: Optional[str] = None
-    artifact_policy: Dict[str, Any] = Field(default_factory=dict)
-    trace_context: Dict[str, str] = Field(default_factory=dict)
+    security_context: dict[str, Any] = Field(default_factory=dict)
+    session_ref: str | None = None
+    wait_condition: str | None = None
+    artifact_policy: dict[str, Any] = Field(default_factory=dict)
+    trace_context: dict[str, str] = Field(default_factory=dict)
 
 
 class AcquisitionResult(BaseModel):
@@ -74,15 +75,15 @@ class AcquisitionResult(BaseModel):
     backend: str
     backend_version: str = "1.0.0"
     status_code: int = 200
-    headers: Dict[str, str] = Field(default_factory=dict)
+    headers: dict[str, str] = Field(default_factory=dict)
     content_type: str = "text/html"
-    raw_content: Optional[bytes] = None
+    raw_content: bytes | None = None
     text_preview: str = ""
-    artifact_refs: List[ArtifactReference] = Field(default_factory=list)
-    screenshot_bytes: Optional[bytes] = None
-    network_summary: Dict[str, Any] = Field(default_factory=dict)
+    artifact_refs: list[ArtifactReference] = Field(default_factory=list)
+    screenshot_bytes: bytes | None = None
+    network_summary: dict[str, Any] = Field(default_factory=dict)
     quality: QualityReport = Field(default_factory=QualityReport)
     cost: CostReport = Field(default_factory=CostReport)
-    failure: Optional[FailureRecord] = None
+    failure: FailureRecord | None = None
     elapsed_sec: float = 0.0
-    capabilities_used: List[str] = Field(default_factory=list)
+    capabilities_used: list[str] = Field(default_factory=list)

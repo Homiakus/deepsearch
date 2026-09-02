@@ -2,18 +2,19 @@
 
 import asyncio
 from unittest.mock import AsyncMock
+
 import pytest
 from fastapi.testclient import TestClient
 
-from scraper.application.job_service import (
-    JobService,
-    JobRequest,
-    JobLifecycleState,
-)
 from scraper.acquisition.engine import CapturedArtifact, PageIntelligence
-from scraper.exceptions import BudgetExceededError
 from scraper.api.app import create_app
+from scraper.application.job_service import (
+    JobLifecycleState,
+    JobRequest,
+    JobService,
+)
 from scraper.config import settings
+from scraper.exceptions import BudgetExceededError
 
 
 @pytest.fixture

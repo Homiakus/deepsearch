@@ -3,7 +3,6 @@
 from scraper.extraction.markdown import process_markdown_pipeline
 from scraper.extraction.table_extractor import extract_tables_from_html
 
-
 SAMPLE_HTML = """
 <!DOCTYPE html>
 <html>

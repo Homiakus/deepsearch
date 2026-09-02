@@ -2,11 +2,11 @@
 
 import asyncio
 import time
-from typing import Optional, Dict, Any
+from typing import Any
+
 from pydantic import BaseModel, Field
+
 from scraper.config import settings
-
-
 from scraper.exceptions import BudgetExceededError
 
 
@@ -19,13 +19,13 @@ class JobBudget(BaseModel):
     )
     max_llm_tokens: int = Field(default_factory=lambda: settings.budget.llm_tokens)
     max_visual_pages: int = Field(default_factory=lambda: settings.budget.visual_pages)
-    deadline_timestamp: Optional[float] = None
+    deadline_timestamp: float | None = None
 
 
 class BudgetTracker:
     """Tracks resource consumption against configured job budgets."""
 
-    def __init__(self, budget: Optional[JobBudget] = None):
+    def __init__(self, budget: JobBudget | None = None):
         self.budget = budget or JobBudget()
         self.pages_processed = 0
         self.bytes_downloaded = 0
@@ -94,7 +94,7 @@ class BudgetTracker:
             self.visual_pages_processed = new_visual_pages
             self.llm_tokens_used = new_llm_tokens
 
-    async def get_summary(self) -> Dict[str, Any]:
+    async def get_summary(self) -> dict[str, Any]:
         async with self._lock:
             return {
                 "pages_processed": self.pages_processed,

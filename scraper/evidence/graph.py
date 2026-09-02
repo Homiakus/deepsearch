@@ -1,13 +1,13 @@
 """Evidence Graph Representation (DS-SI51)."""
 
-from typing import Dict
 from pydantic import BaseModel, Field
+
 from scraper.evidence.models import Claim, EvidenceItem, EvidenceRelation
 
 
 class EvidenceGraph(BaseModel):
-    claims: Dict[str, Claim] = Field(default_factory=dict)
-    evidence: Dict[str, EvidenceItem] = Field(default_factory=dict)
+    claims: dict[str, Claim] = Field(default_factory=dict)
+    evidence: dict[str, EvidenceItem] = Field(default_factory=dict)
 
     def add_claim(self, claim: Claim) -> Claim:
         self.claims[claim.id] = claim

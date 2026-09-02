@@ -2,8 +2,8 @@
 
 from scraper.discovery.media_finder import (
     extract_image_candidates,
-    score_and_rank_images,
     is_accepted_media_file,
+    score_and_rank_images,
 )
 
 

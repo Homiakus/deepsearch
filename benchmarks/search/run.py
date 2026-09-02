@@ -2,18 +2,18 @@
 
 import json
 from pathlib import Path
-from typing import Dict, Any, List
+from typing import Any
 
 from benchmarks.search.metrics import (
-    compute_recall_at_k,
-    compute_precision_at_k,
     compute_mrr,
     compute_ndcg_at_k,
+    compute_precision_at_k,
+    compute_recall_at_k,
     compute_source_diversity,
 )
 
 
-def load_jsonl(path: Path) -> List[Dict[str, Any]]:
+def load_jsonl(path: Path) -> list[dict[str, Any]]:
     if not path.exists():
         return []
     records = []

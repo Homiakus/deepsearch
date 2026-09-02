@@ -3,7 +3,7 @@
 import asyncio
 import random
 import time
-from typing import Dict
+
 from scraper.config import settings
 
 
@@ -85,7 +85,7 @@ class HostRateLimiter:
     """Host-aware adaptive rate limiting manager."""
 
     def __init__(self):
-        self._hosts: Dict[str, HostStats] = {}
+        self._hosts: dict[str, HostStats] = {}
         self._lock = asyncio.Lock()
 
     async def _get_host_stats(self, host: str) -> HostStats:

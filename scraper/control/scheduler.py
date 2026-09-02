@@ -4,7 +4,7 @@ import asyncio
 import time
 import uuid
 from enum import Enum
-from typing import Dict, List, Optional, Set
+
 from pydantic import BaseModel, Field
 
 
@@ -31,7 +31,7 @@ class CrawlRequest(BaseModel):
     priority: float = (
         50.0  # Formula: relevance + depth + sitemap_priority - cost_estimate (§18)
     )
-    parent_id: Optional[str] = None
+    parent_id: str | None = None
     method: str = "GET"
     attempt: int = 1
     max_attempts: int = 5
@@ -39,8 +39,8 @@ class CrawlRequest(BaseModel):
     state: RequestState = RequestState.DISCOVERED
     created_at: float = Field(default_factory=time.time)
     updated_at: float = Field(default_factory=time.time)
-    lease_expires_at: Optional[float] = None
-    error_message: Optional[str] = None
+    lease_expires_at: float | None = None
+    error_message: str | None = None
 
 
 class RequestFrontier:
@@ -48,9 +48,9 @@ class RequestFrontier:
 
     def __init__(self, max_capacity: int = 100000):
         self.max_capacity = max_capacity
-        self._queue: List[CrawlRequest] = []
-        self._discovered_urls: Set[str] = set()
-        self._requests_by_id: Dict[str, CrawlRequest] = {}
+        self._queue: list[CrawlRequest] = []
+        self._discovered_urls: set[str] = set()
+        self._requests_by_id: dict[str, CrawlRequest] = {}
         self._lock = asyncio.Lock()
         self._condition = asyncio.Condition(self._lock)
 
@@ -76,7 +76,7 @@ class RequestFrontier:
 
     async def lease_request(
         self, lease_duration_sec: float = 60.0
-    ) -> Optional[CrawlRequest]:
+    ) -> CrawlRequest | None:
         """Lease the highest priority available request (§15 at-least-once)."""
         async with self._condition:
             now = time.time()
@@ -96,7 +96,7 @@ class RequestFrontier:
             while not self._queue:
                 try:
                     await asyncio.wait_for(self._condition.wait(), timeout=1.0)
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     return None
 
             req = self._queue.pop(0)
@@ -106,7 +106,7 @@ class RequestFrontier:
             return req
 
     async def update_state(
-        self, req_id: str, state: RequestState, error: Optional[str] = None
+        self, req_id: str, state: RequestState, error: str | None = None
     ):
         """Update request lifecycle state."""
         async with self._lock:
@@ -144,10 +144,10 @@ class RequestFrontier:
                         self._queue.sort(key=lambda r: r.priority, reverse=True)
                     self._condition.notify_all()
 
-    async def stats(self) -> Dict[str, int]:
+    async def stats(self) -> dict[str, int]:
         """Return count of requests by state."""
         async with self._lock:
-            counts: Dict[str, int] = {}
+            counts: dict[str, int] = {}
             for req in self._requests_by_id.values():
                 counts[req.state.value] = counts.get(req.state.value, 0) + 1
             return counts

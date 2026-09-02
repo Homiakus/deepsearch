@@ -1,9 +1,10 @@
 """Unit tests for Honest Minimal UI Dashboard (§DS-22)."""
 
 import pytest
-from httpx import AsyncClient, ASGITransport
-from scraper.ui.dashboard import render_dashboard_html
+from httpx import ASGITransport, AsyncClient
+
 from scraper.api.app import app as fastapi_app
+from scraper.ui.dashboard import render_dashboard_html
 
 
 def test_dashboard_html_offline_and_no_fake_metrics():

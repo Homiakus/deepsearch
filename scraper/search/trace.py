@@ -6,7 +6,8 @@ Records why every URL or chunk was discovered, ranked, accepted, or rejected.
 import time
 import uuid
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
+
 from pydantic import BaseModel, Field
 
 
@@ -33,30 +34,30 @@ class TraceEvent(BaseModel):
     id: str = Field(default_factory=lambda: f"evt_{uuid.uuid4().hex[:8]}")
     timestamp: float = Field(default_factory=time.time)
     event_type: TraceEventType
-    entity_id: Optional[str] = None  # URL, goal_id, candidate_id, chunk_id, etc.
+    entity_id: str | None = None  # URL, goal_id, candidate_id, chunk_id, etc.
     stage: str = "search"
-    decision: Optional[str] = None  # ACCEPTED, REJECTED, DEMOTED, STOPPED, etc.
-    reason: Optional[str] = None
-    metrics: Dict[str, float] = Field(default_factory=dict)
-    metadata: Dict[str, Any] = Field(default_factory=dict)
+    decision: str | None = None  # ACCEPTED, REJECTED, DEMOTED, STOPPED, etc.
+    reason: str | None = None
+    metrics: dict[str, float] = Field(default_factory=dict)
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 class SearchTrace:
     """Collects and aggregates decision traces for an entire research session."""
 
-    def __init__(self, run_id: Optional[str] = None):
+    def __init__(self, run_id: str | None = None):
         self.run_id = run_id or f"trace_{uuid.uuid4().hex[:12]}"
-        self.events: List[TraceEvent] = []
+        self.events: list[TraceEvent] = []
 
     def record(
         self,
         event_type: TraceEventType,
-        entity_id: Optional[str] = None,
+        entity_id: str | None = None,
         stage: str = "search",
-        decision: Optional[str] = None,
-        reason: Optional[str] = None,
-        metrics: Optional[Dict[str, float]] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        decision: str | None = None,
+        reason: str | None = None,
+        metrics: dict[str, float] | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> TraceEvent:
         event = TraceEvent(
             event_type=event_type,
@@ -70,13 +71,13 @@ class SearchTrace:
         self.events.append(event)
         return event
 
-    def filter_by_entity(self, entity_id: str) -> List[TraceEvent]:
+    def filter_by_entity(self, entity_id: str) -> list[TraceEvent]:
         return [e for e in self.events if e.entity_id == entity_id]
 
-    def filter_by_type(self, event_type: TraceEventType) -> List[TraceEvent]:
+    def filter_by_type(self, event_type: TraceEventType) -> list[TraceEvent]:
         return [e for e in self.events if e.event_type == event_type]
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "run_id": self.run_id,
             "total_events": len(self.events),

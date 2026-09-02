@@ -1,10 +1,10 @@
 """Browser Acquisition Benchmark Report Generator (DS-RB00)."""
 
-from typing import List, Dict, Any
 import statistics
+from typing import Any
 
 
-def generate_benchmark_report(results: List[Dict[str, Any]]) -> str:
+def generate_benchmark_report(results: list[dict[str, Any]]) -> str:
     if not results:
         return "No benchmark results available."
 

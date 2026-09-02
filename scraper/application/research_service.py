@@ -1,17 +1,18 @@
 """Single Application Boundary for DeepSearch Research Workflows (§0, §1, DS-A02)."""
 
 from __future__ import annotations
+
 import asyncio
-import uuid
 import logging
-from datetime import datetime, timezone
-from typing import Dict, Optional, Protocol
+import uuid
+from datetime import UTC, datetime
+from typing import Protocol
 
 from scraper.application.models import (
-    ResearchRequest,
     ResearchHandle,
-    ResearchStatus,
+    ResearchRequest,
     ResearchResult,
+    ResearchStatus,
     RunLifecycleState,
 )
 
@@ -29,7 +30,7 @@ class ResearchApplicationService(Protocol):
         """Get the current progress, state and node status of a run."""
         ...
 
-    async def result(self, run_id: str) -> Optional[ResearchResult]:
+    async def result(self, run_id: str) -> ResearchResult | None:
         """Fetch the final research outcome if completed."""
         ...
 
@@ -46,10 +47,10 @@ class DefaultResearchApplicationService:
     """
 
     def __init__(self):
-        self._runs: Dict[str, ResearchStatus] = {}
-        self._results: Dict[str, ResearchResult] = {}
-        self._idempotency_map: Dict[str, str] = {}
-        self._tasks: Dict[str, asyncio.Task] = {}
+        self._runs: dict[str, ResearchStatus] = {}
+        self._results: dict[str, ResearchResult] = {}
+        self._idempotency_map: dict[str, str] = {}
+        self._tasks: dict[str, asyncio.Task] = {}
 
     async def start(self, request: ResearchRequest) -> ResearchHandle:
         # Check idempotency
@@ -70,7 +71,7 @@ class DefaultResearchApplicationService:
                 )
 
         run_id = f"ds_run_{uuid.uuid4().hex[:12]}"
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         status = ResearchStatus(
             run_id=run_id,
@@ -100,7 +101,7 @@ class DefaultResearchApplicationService:
         try:
             status.current_node = "PlanResearch"
             status.progress = 0.15
-            status.updated_at = datetime.now(timezone.utc)
+            status.updated_at = datetime.now(UTC)
 
             from scraper.pipeline.search_pipeline import (
                 DeepSearchPipeline,
@@ -128,7 +129,7 @@ class DefaultResearchApplicationService:
 
             status.current_node = "DiscoverSources"
             status.progress = 0.30
-            status.updated_at = datetime.now(timezone.utc)
+            status.updated_at = datetime.now(UTC)
 
             pipeline = DeepSearchPipeline()
             pipeline_res = await pipeline.execute(opts)
@@ -142,7 +143,7 @@ class DefaultResearchApplicationService:
             status.current_node = "CompleteResearch"
             status.pages_processed = pipeline_res.total_pages_processed
             status.rag_chunks_created = pipeline_res.total_rag_chunks
-            status.updated_at = datetime.now(timezone.utc)
+            status.updated_at = datetime.now(UTC)
 
             res = ResearchResult(
                 run_id=run_id,
@@ -153,19 +154,19 @@ class DefaultResearchApplicationService:
                 archive_path=pipeline_res.archive_path,
                 dir_path=pipeline_res.dir_path,
                 manifest=pipeline_res.manifest,
-                completed_at=datetime.now(timezone.utc),
+                completed_at=datetime.now(UTC),
             )
             self._results[run_id] = res
 
         except asyncio.CancelledError:
             status.status = RunLifecycleState.CANCELLED
             status.error_message = "Research job was cancelled."
-            status.updated_at = datetime.now(timezone.utc)
+            status.updated_at = datetime.now(UTC)
             logger.info("Run %s cancelled.", run_id)
         except Exception as exc:
             status.status = RunLifecycleState.FAILED
             status.error_message = str(exc)
-            status.updated_at = datetime.now(timezone.utc)
+            status.updated_at = datetime.now(UTC)
             logger.exception("Run %s failed with error: %s", run_id, exc)
 
     async def status(self, run_id: str) -> ResearchStatus:
@@ -173,7 +174,7 @@ class DefaultResearchApplicationService:
             raise KeyError(f"Research run '{run_id}' not found")
         return self._runs[run_id]
 
-    async def result(self, run_id: str) -> Optional[ResearchResult]:
+    async def result(self, run_id: str) -> ResearchResult | None:
         if run_id not in self._runs:
             raise KeyError(f"Research run '{run_id}' not found")
         return self._results.get(run_id)
@@ -184,7 +185,7 @@ class DefaultResearchApplicationService:
         status = self._runs[run_id]
         if status.status in (RunLifecycleState.PENDING, RunLifecycleState.RUNNING):
             status.status = RunLifecycleState.CANCELLED
-            status.updated_at = datetime.now(timezone.utc)
+            status.updated_at = datetime.now(UTC)
             task = self._tasks.get(run_id)
             if task and not task.done():
                 task.cancel()

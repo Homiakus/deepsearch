@@ -2,7 +2,8 @@
 
 import math
 from collections import Counter
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from collections.abc import Sequence
+from typing import Any
 from urllib.parse import urlparse
 
 from pydantic import BaseModel
@@ -25,12 +26,12 @@ class SourceQualityEvaluator:
 
     def evaluate(
         self,
-        results: Sequence[Tuple[CapturedArtifact, ExtractionResult]],
-        rejections: Optional[Sequence[Dict[str, Any]]] = None,
-        requirements: Optional[SourceQualityRequirements] = None,
-    ) -> Dict[str, Any]:
+        results: Sequence[tuple[CapturedArtifact, ExtractionResult]],
+        rejections: Sequence[dict[str, Any]] | None = None,
+        requirements: SourceQualityRequirements | None = None,
+    ) -> dict[str, Any]:
         req = requirements or SourceQualityRequirements()
-        sources: List[Dict[str, Any]] = []
+        sources: list[dict[str, Any]] = []
         chunk_counts: Counter[str] = Counter()
 
         for artifact, extraction in results:
@@ -98,8 +99,8 @@ class SourceQualityEvaluator:
         source_class_counts = dict(Counter(s["source_class"] for s in sources))
         direct_evidence_rate = direct_evidence_count / max(accepted_count, 1)
 
-        missing_requirements: List[str] = []
-        warnings: List[str] = []
+        missing_requirements: list[str] = []
+        warnings: list[str] = []
 
         if independent_domains < req.min_independent_domains:
             missing_requirements.append("MIN_INDEPENDENT_DOMAINS")

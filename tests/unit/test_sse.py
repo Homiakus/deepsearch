@@ -1,6 +1,7 @@
 """Unit tests for Server-Sent Events (SSE) Broker."""
 
 import pytest
+
 from scraper.api.sse import SSEEventBroker
 
 

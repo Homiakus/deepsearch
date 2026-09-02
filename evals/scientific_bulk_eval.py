@@ -5,12 +5,12 @@ and genetics, recording detailed precision, recall, PDF acquisition, deduplicati
 and RAG chunking metrics.
 """
 
-import os
-import json
-import time
 import asyncio
+import json
+import os
+import time
 from pathlib import Path
-from typing import Dict, Any, List
+from typing import Any
 
 from scraper.config import ExecutionMode
 from scraper.pipeline.search_pipeline import (
@@ -67,7 +67,7 @@ async def run_scientific_evaluation():
     output_dir.mkdir(parents=True, exist_ok=True)
 
     pipeline = DeepSearchPipeline()
-    suite_results: List[Dict[str, Any]] = []
+    suite_results: list[dict[str, Any]] = []
 
     print("=" * 80, flush=True)
     print(

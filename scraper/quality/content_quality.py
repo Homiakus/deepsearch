@@ -1,7 +1,7 @@
 """Multi-signal content quality evaluator (§52, DS-A19)."""
 
 import re
-from typing import Optional
+
 from scraper.quality.models import ContentQualityReport, QualityDecision
 
 
@@ -20,7 +20,7 @@ class ContentQualityEvaluator:
     ]
 
     def evaluate_text(
-        self, text: str, raw_html: Optional[str] = None
+        self, text: str, raw_html: str | None = None
     ) -> ContentQualityReport:
         if not text or len(text.strip()) == 0:
             return ContentQualityReport(

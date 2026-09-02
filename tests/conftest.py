@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import shutil
 from pathlib import Path
+
 import pytest
 
 WORKSPACE_ROOT = Path(__file__).resolve().parent.parent

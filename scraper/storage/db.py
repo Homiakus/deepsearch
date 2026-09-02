@@ -2,15 +2,16 @@
 
 import os
 from pathlib import Path
-from typing import Optional
+
 from alembic import command
 from alembic.config import Config
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+
 from scraper.config import settings
 
 
 def get_alembic_config(
-    config_path: Optional[str] = None, database_url: Optional[str] = None
+    config_path: str | None = None, database_url: str | None = None
 ) -> Config:
     """Build Alembic Config object pointing to the canonical migrations directory."""
     if config_path is None:
@@ -31,8 +32,8 @@ def get_alembic_config(
 
 def run_migrations(
     target_revision: str = "head",
-    config_path: Optional[str] = None,
-    database_url: Optional[str] = None,
+    config_path: str | None = None,
+    database_url: str | None = None,
 ) -> None:
     """Apply Alembic migrations up to target_revision."""
     cfg = get_alembic_config(config_path, database_url)
@@ -41,8 +42,8 @@ def run_migrations(
 
 def downgrade_migrations(
     target_revision: str = "-1",
-    config_path: Optional[str] = None,
-    database_url: Optional[str] = None,
+    config_path: str | None = None,
+    database_url: str | None = None,
 ) -> None:
     """Rollback Alembic migrations down to target_revision."""
     cfg = get_alembic_config(config_path, database_url)
@@ -55,7 +56,7 @@ AsyncSessionLocal = async_sessionmaker(
 )
 
 
-async def init_db(database_url: Optional[str] = None) -> None:
+async def init_db(database_url: str | None = None) -> None:
     """Initialize database by applying canonical Alembic migrations."""
     url = database_url or settings.database_url
     if "sqlite" in url and ":///" in url:

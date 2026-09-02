@@ -1,9 +1,10 @@
 """PP-OCRv5 & PaddleOCR-VL-1.6 Visual OCR Engine (§37, §38, §39)."""
 
 import io
-import time
 import logging
-from typing import List, Optional, Any
+import time
+from typing import Any
+
 from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
@@ -28,7 +29,7 @@ class OCRBoundingBox(BaseModel):
 
     text: str
     confidence: float = Field(default=1.0, ge=0.0, le=1.0)
-    box: List[List[float]] = Field(
+    box: list[list[float]] = Field(
         default_factory=list,
         description="4 points defining polygon bounding box [[x1,y1],[x2,y2],[x3,y3],[x4,y4]]",
     )
@@ -38,7 +39,7 @@ class OCRResult(BaseModel):
     """Complete OCR extraction result containing full text and structured bounding boxes."""
 
     full_text: str
-    blocks: List[OCRBoundingBox] = Field(default_factory=list)
+    blocks: list[OCRBoundingBox] = Field(default_factory=list)
     mean_confidence: float = 1.0
     model_name: str = "PP-OCRv5"
     elapsed_sec: float = 0.0
@@ -58,7 +59,7 @@ class PaddleOCREngine:
         self.ocr_version = ocr_version
         self.use_angle_cls = use_angle_cls
         self.show_log = show_log
-        self._ocr_instance: Optional[Any] = None
+        self._ocr_instance: Any | None = None
 
     def _get_ocr_instance(self):
         if not PADDLE_AVAILABLE:
@@ -104,8 +105,8 @@ class PaddleOCREngine:
                 img_np = np.array(image) if image else image_bytes
 
                 results = ocr_instance.ocr(img_np, cls=self.use_angle_cls)
-                blocks: List[OCRBoundingBox] = []
-                extracted_texts: List[str] = []
+                blocks: list[OCRBoundingBox] = []
+                extracted_texts: list[str] = []
                 total_conf = 0.0
 
                 if results and results[0]:

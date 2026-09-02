@@ -1,8 +1,8 @@
 """Unit tests for Pre-ranking and Candidate Ranking (DS-SI14 - DS-SI22)."""
 
-from scraper.research.intent import ResearchIntent, Entity
-from scraper.search.candidates import SourceCandidate
+from scraper.research.intent import Entity, ResearchIntent
 from scraper.search.candidate_normalizer import candidate_normalizer
+from scraper.search.candidates import SourceCandidate
 from scraper.search.ranking.candidate_ranker import candidate_ranker
 
 

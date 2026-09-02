@@ -2,7 +2,6 @@
 
 import hashlib
 import logging
-from typing import List
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +37,7 @@ class FastEmbedEngine:
             self._initialized = True
         return self._model
 
-    def embed_text_dense(self, text: str) -> List[float]:
+    def embed_text_dense(self, text: str) -> list[float]:
         """Embeds single text string into a float vector."""
         model = self._get_model()
         if model is not None:

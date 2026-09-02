@@ -1,7 +1,8 @@
 """Unit tests for Dynamic Cookie & Auth Session Persistence Vault."""
 
 import time
-from scraper.security.vault_session import SessionVault, AuthSession
+
+from scraper.security.vault_session import AuthSession, SessionVault
 
 
 def test_session_vault_encryption_and_crud(tmp_path):

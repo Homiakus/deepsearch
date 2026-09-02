@@ -1,8 +1,8 @@
 """Configuration and Settings for Adaptive Web Scraping & Retrieval Platform (§DS-06)."""
 
 from enum import Enum
-from typing import List, Optional
 from importlib.metadata import version as get_pkg_version
+
 from pydantic import BaseModel, Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -103,7 +103,7 @@ class SecurityConfig(BaseModel):
     block_private_ips: bool = Field(
         default=True, description="Block private IP addresses (SSRF protection)"
     )
-    allowed_protocols: List[str] = Field(default_factory=lambda: ["http", "https"])
+    allowed_protocols: list[str] = Field(default_factory=lambda: ["http", "https"])
 
 
 class BudgetConfig(BaseModel):
@@ -170,13 +170,13 @@ class Settings(BaseSettings):
     browser_enabled: bool = True
     browser_max_concurrency: int = Field(default=2, ge=1, le=64)
     browser_timeout_seconds: float = Field(default=45.0, ge=1.0, le=300.0)
-    chrome_path: Optional[str] = None
+    chrome_path: str | None = None
 
     # Academic & Discovery Providers
-    openalex_email: Optional[str] = None
-    unpaywall_email: Optional[str] = None
-    crossref_email: Optional[str] = None
-    semantic_scholar_api_key: Optional[str] = None
+    openalex_email: str | None = None
+    unpaywall_email: str | None = None
+    crossref_email: str | None = None
+    semantic_scholar_api_key: str | None = None
     enable_arxiv: bool = True
 
     # Rate Limiting

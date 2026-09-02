@@ -3,32 +3,37 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, List, Optional
+from typing import Any
+
 from pydantic import BaseModel, Field
 
-from scraper.config import ExecutionMode, settings
-from scraper.normalization.canonicalizer import canonicalize_url
 from scraper.acquisition.engine import AdaptiveAcquisitionEngine
-from scraper.extraction.engine import ExtractionEngine, ExtractionResult
-from scraper.search.search_engine import SearchEngine, SearchResultItem
-from scraper.application.models import (
-    ResearchRequest,
-    ResearchHandle,
-    ResearchStatus,
-    ResearchResult,
+from scraper.application.job_service import (
+    JobHandle,
+    JobRequest,
+    JobResult,
+    JobService,
+    JobStatus,
 )
 from scraper.application.job_service import (
-    JobService,
-    JobRequest,
-    JobHandle,
-    JobStatus,
-    JobResult,
     job_service as default_job_service,
+)
+from scraper.application.models import (
+    ResearchHandle,
+    ResearchRequest,
+    ResearchResult,
+    ResearchStatus,
 )
 from scraper.application.research_service import (
     ResearchApplicationService,
+)
+from scraper.application.research_service import (
     research_service as default_research_service,
 )
+from scraper.config import ExecutionMode, settings
+from scraper.extraction.engine import ExtractionEngine, ExtractionResult
+from scraper.normalization.canonicalizer import canonicalize_url
+from scraper.search.search_engine import SearchEngine, SearchResultItem
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +61,7 @@ class ExtractedContentResult(BaseModel):
     canonical_url: str
     clean_markdown: str
     fit_markdown: str
-    tables: List[Any] = Field(default_factory=list)
+    tables: list[Any] = Field(default_factory=list)
     document_type: str = "general"
     word_count: int = 0
 
@@ -66,10 +71,10 @@ class DeepSearchService:
 
     def __init__(
         self,
-        acquisition_engine: Optional[AdaptiveAcquisitionEngine] = None,
-        search_engine: Optional[SearchEngine] = None,
-        research_service: Optional[ResearchApplicationService] = None,
-        job_service: Optional[JobService] = None,
+        acquisition_engine: AdaptiveAcquisitionEngine | None = None,
+        search_engine: SearchEngine | None = None,
+        research_service: ResearchApplicationService | None = None,
+        job_service: JobService | None = None,
     ):
         self.acquisition_engine = acquisition_engine or AdaptiveAcquisitionEngine()
         self.search_engine = search_engine or SearchEngine()
@@ -90,7 +95,7 @@ class DeepSearchService:
         """Get the status of a crawl job (§DS-11)."""
         return await self.job_service.get_status(job_id)
 
-    async def get_crawl_result(self, job_id: str) -> Optional[JobResult]:
+    async def get_crawl_result(self, job_id: str) -> JobResult | None:
         """Get the final result of a crawl job (§DS-11)."""
         return await self.job_service.get_result(job_id)
 
@@ -149,7 +154,7 @@ class DeepSearchService:
 
     def search(
         self, query: str, limit: int = 10, explain: bool = False
-    ) -> List[SearchResultItem]:
+    ) -> list[SearchResultItem]:
         """Execute hybrid search query."""
         if explain:
             return self.search_engine.search_evidence(query, limit=limit)
@@ -163,7 +168,7 @@ class DeepSearchService:
         """Get status of running research workflow."""
         return await self.research_service.status(run_id)
 
-    async def research_result(self, run_id: str) -> Optional[ResearchResult]:
+    async def research_result(self, run_id: str) -> ResearchResult | None:
         """Fetch final result of completed research workflow."""
         return await self.research_service.result(run_id)
 
@@ -199,7 +204,7 @@ class DeepSearchService:
             logger.warning("Error closing job service: %s", exc)
 
 
-_default_service: Optional[DeepSearchService] = None
+_default_service: DeepSearchService | None = None
 
 
 def get_deepsearch_service() -> DeepSearchService:

@@ -1,11 +1,12 @@
 """Discovery activity implementation (§4, DS-A09, DS-A22, DS-A23)."""
 
-from typing import Any, Dict
+from typing import Any
+
 from scraper.discovery.seed_finder import discover_diverse_seeds
 from scraper.orchestration.protocol import ActivityResult, ResourceUsage
 
 
-async def run_discovery_activity(input_data: Dict[str, Any]) -> ActivityResult:
+async def run_discovery_activity(input_data: dict[str, Any]) -> ActivityResult:
     """Discovers seed URLs from multiple academic, knowledge and web sources."""
     query = input_data.get("query", "")
     domain = input_data.get("domain")

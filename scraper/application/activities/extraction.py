@@ -1,13 +1,14 @@
 """Extraction activity implementation (§4, DS-A09, DS-A24)."""
 
-from typing import Any, Dict, List
+from typing import Any
+
 from scraper.extraction.engine import ExtractionEngine
 from scraper.orchestration.protocol import ActivityResult, ResourceUsage
 
 
-async def run_extraction_activity(input_data: Dict[str, Any]) -> ActivityResult:
+async def run_extraction_activity(input_data: dict[str, Any]) -> ActivityResult:
     """Extracts clean Markdown, fit summary, and structured tables from acquired artifacts."""
-    artifacts: List[Dict[str, Any]] = input_data.get("acquired_artifacts", [])
+    artifacts: list[dict[str, Any]] = input_data.get("acquired_artifacts", [])
     extracted_docs = []
 
     for art in artifacts:

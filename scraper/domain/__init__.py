@@ -2,16 +2,16 @@
 
 from scraper.domain.document import (
     Document,
-    DocumentSection,
-    DocumentTable,
     DocumentFigure,
     DocumentProvenance,
+    DocumentSection,
+    DocumentTable,
 )
 
 __all__ = [
     "Document",
-    "DocumentSection",
-    "DocumentTable",
     "DocumentFigure",
     "DocumentProvenance",
+    "DocumentSection",
+    "DocumentTable",
 ]

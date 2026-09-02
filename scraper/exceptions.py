@@ -1,7 +1,7 @@
 """Core Exception Taxonomy and Error Codes for DeepSearch Platform (§DS-05)."""
 
 from enum import Enum
-from typing import Optional, Dict, Any
+from typing import Any
 
 
 class ErrorCode(str, Enum):
@@ -17,7 +17,7 @@ class ErrorCode(str, Enum):
 
 
 # Deterministic mapping to HTTP response status codes
-ERROR_CODE_HTTP_STATUS: Dict[ErrorCode, int] = {
+ERROR_CODE_HTTP_STATUS: dict[ErrorCode, int] = {
     ErrorCode.INVALID_INPUT: 400,
     ErrorCode.BLOCKED_TARGET: 403,
     ErrorCode.TIMEOUT: 504,
@@ -28,7 +28,7 @@ ERROR_CODE_HTTP_STATUS: Dict[ErrorCode, int] = {
 }
 
 # Deterministic mapping to CLI exit codes
-ERROR_CODE_CLI_EXIT: Dict[ErrorCode, int] = {
+ERROR_CODE_CLI_EXIT: dict[ErrorCode, int] = {
     ErrorCode.INVALID_INPUT: 2,
     ErrorCode.BLOCKED_TARGET: 3,
     ErrorCode.TIMEOUT: 4,
@@ -48,8 +48,8 @@ class DeepSearchError(Exception):
         self,
         message: str,
         *,
-        code: Optional[ErrorCode] = None,
-        details: Optional[Dict[str, Any]] = None,
+        code: ErrorCode | None = None,
+        details: dict[str, Any] | None = None,
     ):
         super().__init__(message)
         self.message = message
@@ -64,7 +64,7 @@ class DeepSearchError(Exception):
     def cli_exit_code(self) -> int:
         return ERROR_CODE_CLI_EXIT.get(self.code, 1)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "error": self.code.value,
             "message": self.message,

@@ -88,6 +88,7 @@ from mcp.client.stdio import stdio_client
 # Path to deepsearch workspace root
 WORKSPACE_ROOT = Path("D:/Programms/202-Programming-Projects/deepsearch").resolve()
 
+
 async def run_deepsearch_mcp_client():
     # Configure stdio server process parameters
     server_params = StdioServerParameters(
@@ -98,9 +99,9 @@ async def run_deepsearch_mcp_client():
             "run",
             "python",
             "-m",
-            "scraper.mcp.server"
+            "scraper.mcp.server",
         ],
-        env={**os.environ, "PYTHONPATH": str(WORKSPACE_ROOT)}
+        env={**os.environ, "PYTHONPATH": str(WORKSPACE_ROOT)},
     )
 
     print("[Python Client] Launching DeepSearch MCP Server...")
@@ -122,8 +123,8 @@ async def run_deepsearch_mcp_client():
                 "deepsearch_discover",
                 arguments={
                     "query": "quantum computing algorithms",
-                    "category": "science"
-                }
+                    "category": "science",
+                },
             )
             seeds_data = json.loads(discover_res.content[0].text)
             print("Found Seed URLs:", seeds_data.get("seeds", [])[:3])
@@ -136,14 +137,15 @@ async def run_deepsearch_mcp_client():
                     "query": "quantum computing algorithms",
                     "max_pages": 3,
                     "mode": "balanced",
-                    "output_archive": "deepsearch_quantum_results.zip"
-                }
+                    "output_archive": "deepsearch_quantum_results.zip",
+                },
             )
             result_data = json.loads(research_res.content[0].text)
             print("Research Status:", result_data.get("status"))
             print("Total Pages Processed:", result_data.get("total_pages_processed"))
             print("Archive Location:", result_data.get("archive_path"))
             print("Manifest Summary:", result_data.get("manifest", {}).get("summary"))
+
 
 if __name__ == "__main__":
     asyncio.run(run_deepsearch_mcp_client())

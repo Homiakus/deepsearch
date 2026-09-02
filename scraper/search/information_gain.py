@@ -1,6 +1,5 @@
 """Information Gain and Redundancy Scoring Engine (DS-SI57, DS-SI58)."""
 
-from typing import Set
 from scraper.research.goals import ResearchGoalGraph
 from scraper.search.candidates import SourceCandidate
 
@@ -12,7 +11,7 @@ class InformationGainScorer:
     def compute_expected_gain(
         candidate: SourceCandidate,
         goal_graph: ResearchGoalGraph,
-        covered_domains: Set[str],
+        covered_domains: set[str],
     ) -> float:
         gain = 0.5
 

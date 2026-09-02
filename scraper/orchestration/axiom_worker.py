@@ -4,16 +4,15 @@ import asyncio
 import logging
 import time
 import uuid
-from typing import Optional
 
 from scraper.config import settings
 from scraper.orchestration.axiom_client import AxiomClient
 from scraper.orchestration.errors import map_exception_to_failure
 from scraper.orchestration.protocol import (
-    WorkerSpec,
-    RemoteWorkItem,
     ActivityResult,
     RemoteFailure,
+    RemoteWorkItem,
+    WorkerSpec,
 )
 from scraper.orchestration.registry import ActivityRegistry, activity_registry
 
@@ -25,10 +24,10 @@ class AxiomRemoteWorker:
 
     def __init__(
         self,
-        worker_id: Optional[str] = None,
-        coordinator_url: Optional[str] = None,
-        worker_token: Optional[str] = None,
-        registry: Optional[ActivityRegistry] = None,
+        worker_id: str | None = None,
+        coordinator_url: str | None = None,
+        worker_token: str | None = None,
+        registry: ActivityRegistry | None = None,
         concurrency: int = 4,
         heartbeat_interval: float = 5.0,
     ):

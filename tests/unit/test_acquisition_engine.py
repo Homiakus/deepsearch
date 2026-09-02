@@ -1,10 +1,12 @@
 """Table-driven unit tests for AdaptiveAcquisitionEngine (§DS-09)."""
 
 from unittest.mock import AsyncMock
+
 import pytest
+
+from scraper.acquisition.browser_pool import BrowserResponse
 from scraper.acquisition.engine import AdaptiveAcquisitionEngine
 from scraper.acquisition.http_fetcher import HTTPResponse
-from scraper.acquisition.browser_pool import BrowserResponse
 from scraper.config import ExecutionMode
 from scraper.control.planner import StrategyEscalation
 from scraper.exceptions import AcquisitionError

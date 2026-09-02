@@ -6,7 +6,7 @@ and required entities to reject off-topic/spam content before RAG indexing.
 
 import re
 from enum import Enum
-from typing import Tuple
+
 from scraper.research.intent import ResearchIntent
 from scraper.search.document_quality import DocumentQuality
 
@@ -62,7 +62,7 @@ class DocumentRelevanceEvaluator:
         title: str,
         intent: ResearchIntent,
         min_relevance_threshold: float = 0.15,
-    ) -> Tuple[RelevanceTier, DocumentQuality]:
+    ) -> tuple[RelevanceTier, DocumentQuality]:
         if not text_content or len(text_content.strip()) < 50:
             quality = DocumentQuality(
                 topical_relevance=0.0,

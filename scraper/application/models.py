@@ -1,8 +1,9 @@
 """Domain models and DTOs for the Research Application Service (§55, §56, §100)."""
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
+
 from pydantic import BaseModel, Field
 
 from scraper.config import ExecutionMode
@@ -29,10 +30,10 @@ class ResearchRequest(BaseModel):
     query: str = Field(
         ..., min_length=1, description="Primary research query or statement"
     )
-    domain: Optional[str] = Field(
+    domain: str | None = Field(
         None, description="Domain / topic filter (e.g. biomed, engineering)"
     )
-    preferred_sources: List[str] = Field(
+    preferred_sources: list[str] = Field(
         default_factory=list, description="Target initial URLs or domains"
     )
     depth: int = Field(default=3, ge=0, le=10, description="Max search and crawl depth")
@@ -49,16 +50,16 @@ class ResearchRequest(BaseModel):
     enable_media_archiving: bool = Field(
         default=True, description="Download & archive relevant media files"
     )
-    output_archive_path: Optional[str] = Field(
+    output_archive_path: str | None = Field(
         default=None, description="Custom zip archive path"
     )
-    idempotency_key: Optional[str] = Field(
+    idempotency_key: str | None = Field(
         default=None, description="Client-provided idempotency key"
     )
     auto_discover: bool = Field(
         default=True, description="Enable automatic multi-provider seed discovery"
     )
-    category: Optional[str] = Field(
+    category: str | None = Field(
         default=None,
         description="Domain category hint (science, news, engineering, medical)",
     )
@@ -66,22 +67,22 @@ class ResearchRequest(BaseModel):
 
 class ResearchHandle(BaseModel):
     run_id: str
-    idempotency_key: Optional[str] = None
+    idempotency_key: str | None = None
     status: RunLifecycleState = RunLifecycleState.PENDING
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class ResearchStatus(BaseModel):
     run_id: str
     status: RunLifecycleState
     progress: float = Field(default=0.0, ge=0.0, le=1.0)
-    current_node: Optional[str] = None
+    current_node: str | None = None
     pages_processed: int = 0
     rag_chunks_created: int = 0
     evidence_count: int = 0
-    error_message: Optional[str] = None
+    error_message: str | None = None
     created_at: datetime
-    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class ProviderStatus(BaseModel):
@@ -90,7 +91,7 @@ class ProviderStatus(BaseModel):
     provider: str
     status: str = "ok"  # ok, degraded, timeout, failed, disabled
     items_count: int = 0
-    error: Optional[str] = None
+    error: str | None = None
     duration_sec: float = 0.0
 
 
@@ -102,17 +103,15 @@ class RunResult(BaseModel):
     status: RunLifecycleState = RunLifecycleState.COMPLETED
     total_pages_processed: int = 0
     total_rag_chunks: int = 0
-    archive_path: Optional[str] = None
-    dir_path: Optional[str] = None
-    warnings: List[str] = Field(default_factory=list)
-    errors: List[str] = Field(default_factory=list)
-    provider_statuses: Dict[str, ProviderStatus] = Field(default_factory=dict)
-    manifest: Dict[str, Any] = Field(default_factory=dict)
-    evidence_summary: Optional[Dict[str, Any]] = None
-    completed_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    archive_path: str | None = None
+    dir_path: str | None = None
+    warnings: list[str] = Field(default_factory=list)
+    errors: list[str] = Field(default_factory=list)
+    provider_statuses: dict[str, ProviderStatus] = Field(default_factory=dict)
+    manifest: dict[str, Any] = Field(default_factory=dict)
+    evidence_summary: dict[str, Any] | None = None
+    completed_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class ResearchResult(RunResult):
     """Compatibility alias and typed result model for research runs."""
-
-    pass

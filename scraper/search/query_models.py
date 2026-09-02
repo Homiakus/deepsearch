@@ -1,7 +1,7 @@
 """Search Query Variant Models (DS-SI07)."""
 
 from enum import Enum
-from typing import Optional
+
 from pydantic import BaseModel
 
 
@@ -19,9 +19,9 @@ class QueryType(str, Enum):
 class SearchQueryVariant(BaseModel):
     query: str
     language: str = "en"
-    provider_hint: Optional[str] = None  # arxiv, pubmed, wikipedia, etc.
+    provider_hint: str | None = None  # arxiv, pubmed, wikipedia, etc.
     goal_id: str
     query_type: QueryType = QueryType.SEMANTIC
     freshness: str = "NONE"
-    required_source_type: Optional[str] = None
+    required_source_type: str | None = None
     priority: float = 1.0

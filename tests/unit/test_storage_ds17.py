@@ -1,28 +1,29 @@
 """Unit tests for Storage & Migrations single source of truth (§DS-17)."""
 
 import inspect as py_inspect
+
 import pytest
 import sqlalchemy as sa
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
-from sqlalchemy import inspect
 from alembic.autogenerate import compare_metadata
 from alembic.migration import MigrationContext
+from sqlalchemy import inspect
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 import scraper.storage.db as storage_db
 from scraper.config import settings
+from scraper.storage.db import (
+    downgrade_migrations,
+    get_alembic_config,
+    init_db,
+    run_migrations,
+)
 from scraper.storage.models import (
     Base,
-    ProjectModel,
+    ErrorModel,
     JobModel,
     PageModel,
+    ProjectModel,
     RecordModel,
-    ErrorModel,
-)
-from scraper.storage.db import (
-    get_alembic_config,
-    run_migrations,
-    downgrade_migrations,
-    init_db,
 )
 
 

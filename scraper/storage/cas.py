@@ -1,8 +1,8 @@
 """Content-Addressable Storage (CAS) Engine with Zstandard Compression (§44, §45)."""
 
-import os
 import hashlib
-from typing import Tuple, Optional
+import os
+
 from scraper.config import settings
 
 try:
@@ -16,7 +16,7 @@ except ImportError:
 class ContentAddressableStore:
     """Content-addressable object store maintaining reference counts and Zstandard compression (§44, §45)."""
 
-    def __init__(self, base_dir: Optional[str] = None):
+    def __init__(self, base_dir: str | None = None):
         self.base_dir = base_dir or settings.storage_path
         os.makedirs(self.base_dir, exist_ok=True)
         if ZSTD_AVAILABLE:
@@ -30,7 +30,7 @@ class ContentAddressableStore:
         os.makedirs(dir_path, exist_ok=True)
         return os.path.join(dir_path, f"{content_hash}.zst")
 
-    def store(self, content: bytes) -> Tuple[str, int]:
+    def store(self, content: bytes) -> tuple[str, int]:
         """Store content by hash. Returns (content_hash, byte_size)."""
         content_hash = hashlib.sha256(content).hexdigest()
         file_path = self._get_path(content_hash)
@@ -42,7 +42,7 @@ class ContentAddressableStore:
 
         return content_hash, len(content)
 
-    def retrieve(self, content_hash: str) -> Optional[bytes]:
+    def retrieve(self, content_hash: str) -> bytes | None:
         """Retrieve decompressed content by hash."""
         file_path = self._get_path(content_hash)
         if not os.path.exists(file_path):
@@ -56,7 +56,7 @@ class ContentAddressableStore:
         return compressed
 
 
-def get_cas_store(backend: Optional[str] = None) -> ContentAddressableStore:
+def get_cas_store(backend: str | None = None) -> ContentAddressableStore:
     """Factory to retrieve configured CAS store (local or S3)."""
     selected = backend or settings.cas_backend
     if selected.lower() == "s3":

@@ -4,7 +4,6 @@ Separates technical acquisition health (DOM rendered, no block page)
 from epistemic document quality (evidence density, spam likelihood, relevance).
 """
 
-from typing import Optional
 from pydantic import BaseModel
 
 
@@ -18,5 +17,5 @@ class DocumentQuality(BaseModel):
     freshness_score: float = 0.5
     extractability_score: float = 0.9
     is_accepted: bool = True
-    reject_reason: Optional[str] = None
+    reject_reason: str | None = None
     composite_quality_score: float = 0.75

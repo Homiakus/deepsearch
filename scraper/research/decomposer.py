@@ -4,8 +4,9 @@ Breaks down complex queries into cohesive research goals with targeted evidence 
 """
 
 import re
-from scraper.research.intent import ResearchIntent
+
 from scraper.research.goals import ResearchGoal, ResearchGoalGraph
+from scraper.research.intent import ResearchIntent
 
 
 def decompose_intent(intent: ResearchIntent) -> ResearchGoalGraph:

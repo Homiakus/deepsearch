@@ -1,7 +1,8 @@
 """Unit tests for MCP Server Lifecycle, Configuration, and Protocol Health Check (§DS-21)."""
 
 import json
-from scripts.mcp_manager import health_check, generate_configs, WORKSPACE_ROOT
+
+from scripts.mcp_manager import WORKSPACE_ROOT, generate_configs, health_check
 
 
 def test_mcp_config_json_is_minimal_and_valid():

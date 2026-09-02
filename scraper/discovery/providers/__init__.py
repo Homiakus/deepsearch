@@ -10,7 +10,7 @@ from scraper.discovery.providers.registry import ProviderRegistry, provider_regi
 __all__ = [
     "DiscoveryProvider",
     "ProviderDescriptor",
-    "ProviderSearchRequest",
     "ProviderRegistry",
+    "ProviderSearchRequest",
     "provider_registry",
 ]

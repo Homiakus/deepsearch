@@ -1,7 +1,9 @@
 """Cost-Aware Planner and Extraction Quality Evaluator (§51, §52)."""
 
-from typing import Dict, Any, Optional
+from typing import Any
+
 from pydantic import BaseModel
+
 from scraper.config import settings
 
 
@@ -76,9 +78,9 @@ class CostPlanner:
 
 
 def evaluate_quality(
-    extracted_data: Optional[Dict[str, Any]],
+    extracted_data: dict[str, Any] | None,
     raw_html: str,
-    required_fields: Optional[list] = None,
+    required_fields: list | None = None,
 ) -> ExtractionQuality:
     """Evaluates quality metrics for extracted page content (§52)."""
     if not raw_html:

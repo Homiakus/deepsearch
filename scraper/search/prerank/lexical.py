@@ -5,7 +5,7 @@ and exact identifiers with high precision and zero latency.
 """
 
 import re
-from typing import List
+
 from scraper.research.intent import ResearchIntent
 from scraper.search.candidates import SourceCandidate
 
@@ -71,8 +71,8 @@ class LexicalPreRanker:
 
     @classmethod
     def rank_candidates(
-        cls, candidates: List[SourceCandidate], intent: ResearchIntent
-    ) -> List[SourceCandidate]:
+        cls, candidates: list[SourceCandidate], intent: ResearchIntent
+    ) -> list[SourceCandidate]:
         for c in candidates:
             cls.score_candidate(c, intent)
         return sorted(candidates, key=lambda c: c.lexical_score, reverse=True)

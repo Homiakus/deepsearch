@@ -2,16 +2,17 @@
 
 import json
 import os
-from scraper.search.chunking import StructureAwareChunker
-from scraper.storage.archive_exporter import ArchiveExporter, SearchRunMetadata
+
 from scraper.acquisition.engine import CapturedArtifact, PageIntelligence
-from scraper.extraction.engine import ExtractionResult
 from scraper.extraction.content_filter import ContentFilter
+from scraper.extraction.engine import ExtractionResult
+from scraper.research.intent import Entity, ResearchIntent
+from scraper.search.chunking import StructureAwareChunker
 from scraper.search.document_relevance import (
     DocumentRelevanceEvaluator,
     RelevanceTier,
 )
-from scraper.research.intent import ResearchIntent, Entity
+from scraper.storage.archive_exporter import ArchiveExporter, SearchRunMetadata
 
 
 def test_structure_aware_chunking_oversized_paragraph_splitting():

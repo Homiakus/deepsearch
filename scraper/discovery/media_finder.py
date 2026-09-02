@@ -4,10 +4,11 @@ Extracts downloadable documents (PDF, DOCX, XLSX, PPTX, CSV) and topic-relevant 
 plus topic-focused open media sources (Wikimedia Commons). Scores and ranks images from 5 to 25 per topic.
 """
 
+import logging
 import re
 import urllib.parse
-import logging
-from typing import List, Dict, Any, Set, Optional
+from typing import Any
+
 import httpx
 from selectolax.parser import HTMLParser
 
@@ -80,7 +81,7 @@ AUTHORITY_DOMAINS = {
 }
 
 
-def _pick_best_srcset_url(srcset_str: str, base_url: str) -> Optional[str]:
+def _pick_best_srcset_url(srcset_str: str, base_url: str) -> str | None:
     """Picks the highest resolution image URL from a srcset attribute."""
     if not srcset_str:
         return None
@@ -112,13 +113,13 @@ def _pick_best_srcset_url(srcset_str: str, base_url: str) -> Optional[str]:
     return None
 
 
-def extract_document_links(raw_html: str, base_url: str) -> List[str]:
+def extract_document_links(raw_html: str, base_url: str) -> list[str]:
     """Extracts downloadable document URLs (PDF, Word, Excel, etc.) from HTML."""
     if not raw_html:
         return []
 
     parser = HTMLParser(raw_html)
-    discovered_docs: Set[str] = set()
+    discovered_docs: set[str] = set()
 
     for node in parser.css("a[href]"):
         href = node.attributes.get("href")
@@ -161,14 +162,14 @@ def extract_document_links(raw_html: str, base_url: str) -> List[str]:
     return list(discovered_docs)
 
 
-def extract_image_candidates(raw_html: str, base_url: str) -> List[Dict[str, Any]]:
+def extract_image_candidates(raw_html: str, base_url: str) -> list[dict[str, Any]]:
     """Extracts candidate image nodes from HTML with rich context (alt, title, figcaption, dimensions, og:image)."""
     if not raw_html:
         return []
 
     parser = HTMLParser(raw_html)
-    candidates: List[Dict[str, Any]] = []
-    seen_urls: Set[str] = set()
+    candidates: list[dict[str, Any]] = []
+    seen_urls: set[str] = set()
 
     # 1. Check OpenGraph / Twitter meta images (editorial primary visual)
     for meta_sel in [
@@ -307,7 +308,7 @@ def extract_image_candidates(raw_html: str, base_url: str) -> List[Dict[str, Any
 
 async def fetch_wikimedia_topic_images(
     query: str, max_results: int = 10
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """Queries Wikimedia Commons API for open topic-relevant images using list=search."""
     if not query:
         return []
@@ -320,7 +321,7 @@ async def fetch_wikimedia_topic_images(
         f"&iiprop=url|size|extmetadata&format=json"
     )
 
-    candidates: List[Dict[str, Any]] = []
+    candidates: list[dict[str, Any]] = []
     headers = {
         "User-Agent": "DeepSearchBot/1.0 (https://deepsearch.org; contact@deepsearch.org) Python/3.13"
     }
@@ -390,7 +391,7 @@ async def fetch_wikimedia_topic_images(
 
 async def fetch_wikipedia_article_images(
     query: str, max_results: int = 10
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """Queries Wikipedia API for topic article thumbnails and images."""
     if not query:
         return []
@@ -403,7 +404,7 @@ async def fetch_wikipedia_article_images(
         f"&pithumbsize=1000&format=json"
     )
 
-    candidates: List[Dict[str, Any]] = []
+    candidates: list[dict[str, Any]] = []
     headers = {
         "User-Agent": "DeepSearchBot/1.0 (https://deepsearch.org; contact@deepsearch.org) Python/3.13"
     }
@@ -441,11 +442,11 @@ async def fetch_wikipedia_article_images(
 
 
 def score_and_rank_images(
-    candidates: List[Dict[str, Any]],
+    candidates: list[dict[str, Any]],
     query: str,
     min_count: int = 5,
     max_count: int = 25,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """Scores candidate images by relevance to the query topic and ranks top min_count..max_count items."""
     if min_count > max_count:
         raise ValueError(
@@ -460,8 +461,8 @@ def score_and_rank_images(
     ]
     query_terms = raw_query_terms
 
-    scored_images: List[Dict[str, Any]] = []
-    seen_urls: Set[str] = set()
+    scored_images: list[dict[str, Any]] = []
+    seen_urls: set[str] = set()
 
     for item in candidates:
         url = item.get("url", "")
@@ -548,7 +549,7 @@ def score_and_rank_images(
 
 
 def is_accepted_media_file(
-    media_info: Dict[str, Any], candidate: Optional[Dict[str, Any]] = None
+    media_info: dict[str, Any], candidate: dict[str, Any] | None = None
 ) -> bool:
     """Validates downloaded media, including dimensions and topic score."""
     candidate = candidate or {}
@@ -571,7 +572,7 @@ def is_accepted_media_file(
 
 def extract_relevant_images(
     raw_html: str, base_url: str, max_images: int = 5
-) -> List[Dict[str, str]]:
+) -> list[dict[str, str]]:
     """Legacy helper for backwards compatibility. Returns top images extracted from HTML."""
     candidates = extract_image_candidates(raw_html, base_url)
     if not candidates:

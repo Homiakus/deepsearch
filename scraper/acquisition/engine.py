@@ -5,18 +5,19 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
-from typing import Optional, Dict, Any, List
+from typing import Any
+
 from pydantic import BaseModel, Field
 
-from scraper.config import settings, ExecutionMode
-from scraper.exceptions import AcquisitionError
-from scraper.contracts import FetcherProtocol, BrowserPoolProtocol, AcquisitionBackend
-from scraper.acquisition.http_fetcher import HTTPFetcher, HTTPResponse
 from scraper.acquisition.browser_pool import BrowserPoolManager, BrowserResponse
-from scraper.acquisition.page_classifier import classify_page, PageIntelligence
-from scraper.control.planner import StrategyEscalation
 from scraper.acquisition.capabilities import BrowserCapabilities, CapabilityLevel
+from scraper.acquisition.http_fetcher import HTTPFetcher, HTTPResponse
 from scraper.acquisition.models import AcquisitionRequest, AcquisitionResult
+from scraper.acquisition.page_classifier import PageIntelligence, classify_page
+from scraper.config import ExecutionMode, settings
+from scraper.contracts import AcquisitionBackend, BrowserPoolProtocol, FetcherProtocol
+from scraper.control.planner import StrategyEscalation
+from scraper.exceptions import AcquisitionError
 
 logger = logging.getLogger(__name__)
 
@@ -29,9 +30,9 @@ class CapturedArtifact(BaseModel):
     content_type: str
     raw_content: bytes
     text_content: str
-    screenshot_bytes: Optional[bytes] = None
+    screenshot_bytes: bytes | None = None
     page_intelligence: PageIntelligence
-    network_logs: List[Dict[str, Any]] = Field(default_factory=list)
+    network_logs: list[dict[str, Any]] = Field(default_factory=list)
     elapsed_sec: float = 0.0
 
 
@@ -40,18 +41,18 @@ class AdaptiveAcquisitionEngine:
 
     def __init__(
         self,
-        http_fetcher: Optional[FetcherProtocol] = None,
-        browser_pool: Optional[BrowserPoolProtocol] = None,
-        acquisition_backend: Optional[AcquisitionBackend] = None,
+        http_fetcher: FetcherProtocol | None = None,
+        browser_pool: BrowserPoolProtocol | None = None,
+        acquisition_backend: AcquisitionBackend | None = None,
     ):
         self.http_fetcher: FetcherProtocol = http_fetcher or HTTPFetcher()
         self.browser_pool: BrowserPoolProtocol = browser_pool or BrowserPoolManager()
-        self.acquisition_backend: Optional[AcquisitionBackend] = acquisition_backend
+        self.acquisition_backend: AcquisitionBackend | None = acquisition_backend
 
     def should_escalate_to_browser(
         self,
         mode: ExecutionMode,
-        pi: Optional[PageIntelligence],
+        pi: PageIntelligence | None,
         take_screenshot: bool,
         http_failed: bool,
     ) -> bool:
@@ -90,8 +91,8 @@ class AdaptiveAcquisitionEngine:
             )
 
         # 1. Primary HTTP Acquisition Tier
-        http_res: Optional[HTTPResponse] = None
-        http_pi: Optional[PageIntelligence] = None
+        http_res: HTTPResponse | None = None
+        http_pi: PageIntelligence | None = None
         http_failed = False
 
         try:

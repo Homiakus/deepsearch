@@ -2,8 +2,9 @@
 
 import logging
 import urllib.parse
+
 import httpx
-from typing import List
+
 from scraper.discovery.providers.base import ProviderDescriptor, ProviderSearchRequest
 from scraper.search.candidates import SourceCandidate
 
@@ -20,7 +21,7 @@ class EuropePMCProvider:
         cost_class="FREE",
     )
 
-    async def search(self, request: ProviderSearchRequest) -> List[SourceCandidate]:
+    async def search(self, request: ProviderSearchRequest) -> list[SourceCandidate]:
         url = f"https://www.ebi.ac.uk/europepmc/webservices/rest/search?query={urllib.parse.quote(request.query)}&format=json&pageSize={request.max_results}"
         candidates = []
         try:

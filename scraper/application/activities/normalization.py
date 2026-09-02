@@ -1,13 +1,14 @@
 """Normalization and deduplication activity (§4, DS-A09, DS-A14)."""
 
-from typing import Any, Dict, List
+from typing import Any
+
 from scraper.normalization.deduplicator import Deduplicator
 from scraper.orchestration.protocol import ActivityResult, ResourceUsage
 
 
-async def run_normalization_activity(input_data: Dict[str, Any]) -> ActivityResult:
+async def run_normalization_activity(input_data: dict[str, Any]) -> ActivityResult:
     """Deduplicates and normalizes extracted documents based on content hashes."""
-    docs: List[Dict[str, Any]] = input_data.get("extracted_docs", [])
+    docs: list[dict[str, Any]] = input_data.get("extracted_docs", [])
     dedup = Deduplicator()
 
     normalized_docs = []

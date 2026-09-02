@@ -1,7 +1,7 @@
 """Candidate Normalizer and Multi-Provider Provenance Merger (DS-SI14, DS-SI15)."""
 
 import urllib.parse
-from typing import Dict, List
+
 from scraper.normalization.canonicalizer import canonicalize_url
 from scraper.search.candidates import SourceCandidate
 
@@ -11,9 +11,9 @@ class CandidateNormalizer:
 
     @staticmethod
     def normalize_candidates(
-        candidates: List[SourceCandidate],
-    ) -> List[SourceCandidate]:
-        merged: Dict[str, SourceCandidate] = {}
+        candidates: list[SourceCandidate],
+    ) -> list[SourceCandidate]:
+        merged: dict[str, SourceCandidate] = {}
 
         for c in candidates:
             c_url = canonicalize_url(c.url)

@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from typing import Protocol, Optional, Dict, Any, List, runtime_checkable
-from scraper.acquisition.http_fetcher import HTTPResponse
+from typing import Any, Protocol, runtime_checkable
+
 from scraper.acquisition.browser_pool import BrowserResponse
+from scraper.acquisition.http_fetcher import HTTPResponse
 from scraper.acquisition.models import AcquisitionRequest, AcquisitionResult
 
 
@@ -15,8 +16,8 @@ class FetcherProtocol(Protocol):
     async def fetch(
         self,
         url: str,
-        headers: Optional[Dict[str, str]] = None,
-        proxy: Optional[str] = None,
+        headers: dict[str, str] | None = None,
+        proxy: str | None = None,
     ) -> HTTPResponse: ...
 
     async def close(self) -> None: ...
@@ -30,7 +31,7 @@ class BrowserPoolProtocol(Protocol):
         self,
         url: str,
         visual_mode: bool = False,
-        wait_for_selector: Optional[str] = None,
+        wait_for_selector: str | None = None,
         take_screenshot: bool = False,
     ) -> BrowserResponse: ...
 
@@ -41,11 +42,9 @@ class BrowserPoolProtocol(Protocol):
 class StorageProtocol(Protocol):
     """Abstract protocol for Content Addressable and Persistent Storage engines."""
 
-    async def put(
-        self, data: bytes, metadata: Optional[Dict[str, Any]] = None
-    ) -> str: ...
+    async def put(self, data: bytes, metadata: dict[str, Any] | None = None) -> str: ...
 
-    async def get(self, key: str) -> Optional[bytes]: ...
+    async def get(self, key: str) -> bytes | None: ...
 
     async def exists(self, key: str) -> bool: ...
 
@@ -79,4 +78,4 @@ class DiscoveryProviderProtocol(Protocol):
         query: str,
         limit: int = 10,
         **kwargs: Any,
-    ) -> List[str]: ...
+    ) -> list[str]: ...

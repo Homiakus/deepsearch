@@ -1,6 +1,7 @@
 """Unit tests for Host-Aware Rate Limiter (§12, §23)."""
 
 import pytest
+
 from scraper.control.rate_limiter import HostRateLimiter, TokenBucket
 
 

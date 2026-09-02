@@ -1,11 +1,12 @@
 """Export activity implementation (§4, DS-A09, DS-A48)."""
 
-from typing import Any, Dict
-from scraper.pipeline.search_pipeline import ArchiveExporter
+from typing import Any
+
 from scraper.orchestration.protocol import ActivityResult, ResourceUsage
+from scraper.pipeline.search_pipeline import ArchiveExporter
 
 
-async def run_export_activity(input_data: Dict[str, Any]) -> ActivityResult:
+async def run_export_activity(input_data: dict[str, Any]) -> ActivityResult:
     """Exports structured research artifacts and markdown corpus to ZIP archive."""
     query = input_data.get("query", "research")
     output_zip = (

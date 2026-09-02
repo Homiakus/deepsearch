@@ -1,10 +1,12 @@
 """Unit tests for FastAPI REST API endpoints, Auth, CORS, and Path Traversal Prevention (§55, §57, §DS-08)."""
 
 from unittest.mock import AsyncMock, patch
+
 from fastapi.testclient import TestClient
-from scraper.api.app import create_app
+
 from scraper.acquisition.engine import CapturedArtifact
 from scraper.acquisition.page_classifier import PageIntelligence
+from scraper.api.app import create_app
 from scraper.config import settings
 
 client = TestClient(create_app())

@@ -140,6 +140,11 @@
       "plan_fingerprint": "d51d020be2a5ca81",
       "priority": "P0",
       "title": "Превратить начальный counterexample corpus в постоянные regression tests"
+    },
+    "DS-29": {
+      "plan_fingerprint": "491b960ca73bdb1f",
+      "priority": "P1",
+      "title": "Добавить property, metamorphic и differential проверки чистых алгоритмов"
     }
   },
   "version": 1

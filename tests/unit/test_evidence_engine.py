@@ -2,9 +2,9 @@
 
 from scraper.evidence.models import EvidenceRelation
 from scraper.evidence.store import EvidenceStore
-from scraper.research.goals import ResearchGoal, ResearchGoalGraph
 from scraper.research.coverage import goal_coverage_analyzer
 from scraper.research.gaps import gap_analyzer
+from scraper.research.goals import ResearchGoal, ResearchGoalGraph
 from scraper.search.followup import followup_query_generator
 
 

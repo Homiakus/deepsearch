@@ -1,10 +1,11 @@
 """Unit tests for Link Discovery (§19) and Robots.txt Policy Engine (§22)."""
 
 import pytest
+
 from scraper.discovery.links import (
+    extract_canonical_link,
     extract_links_from_html,
     extract_sitemap_urls,
-    extract_canonical_link,
 )
 from scraper.discovery.robots import RobotsPolicyManager
 
@@ -59,6 +60,7 @@ def test_robots_policy():
 @pytest.mark.asyncio
 async def test_fetch_annas_archive_seeds():
     from unittest.mock import AsyncMock, patch
+
     from scraper.discovery.seed_finder import fetch_annas_archive_seeds
 
     sample_html = """

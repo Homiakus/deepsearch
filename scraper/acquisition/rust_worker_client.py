@@ -1,7 +1,8 @@
 """Client for Rust Browser Acquisition Worker Local REST API (§4, DS-RB38)."""
 
 import logging
-from typing import Optional, Dict, Any, List
+from typing import Any
+
 import httpx
 
 from scraper.acquisition.capabilities import BackendDescriptor
@@ -16,7 +17,7 @@ class RustWorkerClient:
     def __init__(self, base_url: str = "http://127.0.0.1:8081", timeout: float = 35.0):
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
-        self._client: Optional[httpx.AsyncClient] = None
+        self._client: httpx.AsyncClient | None = None
 
     async def _get_client(self) -> httpx.AsyncClient:
         if self._client is None or self._client.is_closed:
@@ -25,13 +26,13 @@ class RustWorkerClient:
             )
         return self._client
 
-    async def health(self) -> Dict[str, Any]:
+    async def health(self) -> dict[str, Any]:
         client = await self._get_client()
         resp = await client.get("/v1/health")
         resp.raise_for_status()
         return resp.json()
 
-    async def list_backends(self) -> List[BackendDescriptor]:
+    async def list_backends(self) -> list[BackendDescriptor]:
         client = await self._get_client()
         resp = await client.get("/v1/backends")
         resp.raise_for_status()

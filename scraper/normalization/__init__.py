@@ -2,4 +2,4 @@
 
 from scraper.normalization.text import recursive_sanitize, sanitize_unicode_string
 
-__all__ = ["sanitize_unicode_string", "recursive_sanitize"]
+__all__ = ["recursive_sanitize", "sanitize_unicode_string"]

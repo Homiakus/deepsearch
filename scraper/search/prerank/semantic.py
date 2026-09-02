@@ -3,13 +3,12 @@
 Computes bi-encoder cosine similarity between research intent and candidate title/snippet.
 """
 
-from typing import List
 from scraper.research.intent import ResearchIntent
-from scraper.search.candidates import SourceCandidate
 from scraper.retrieval.embeddings import embedding_engine
+from scraper.search.candidates import SourceCandidate
 
 
-def cosine_similarity(v1: List[float], v2: List[float]) -> float:
+def cosine_similarity(v1: list[float], v2: list[float]) -> float:
     if not v1 or not v2 or len(v1) != len(v2):
         return 0.0
     dot = sum(a * b for a, b in zip(v1, v2))
@@ -38,8 +37,8 @@ class SemanticPreRanker:
 
     @classmethod
     def rank_candidates(
-        cls, candidates: List[SourceCandidate], intent: ResearchIntent
-    ) -> List[SourceCandidate]:
+        cls, candidates: list[SourceCandidate], intent: ResearchIntent
+    ) -> list[SourceCandidate]:
         for c in candidates:
             cls.score_candidate(c, intent)
         return sorted(candidates, key=lambda c: c.semantic_score, reverse=True)

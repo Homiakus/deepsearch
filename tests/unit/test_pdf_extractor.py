@@ -1,10 +1,12 @@
 import io
+
 import pytest
 from pypdf import PdfWriter
+
 from scraper.extraction.pdf_extractor import (
-    validate_pdf_stream,
-    extract_text_from_pdf_file,
     async_extract_text_from_pdf_file,
+    extract_text_from_pdf_file,
+    validate_pdf_stream,
 )
 
 

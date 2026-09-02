@@ -1,13 +1,14 @@
 """FastAPI Application Entrypoint (§105, DS-A21, §DS-04)."""
 
 from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 
-from scraper.config import settings
-from scraper.application.service import get_deepsearch_service
 from scraper.api.routes import router as api_router
+from scraper.application.service import get_deepsearch_service
+from scraper.config import settings
 
 
 @asynccontextmanager
@@ -57,6 +58,7 @@ def create_app() -> FastAPI:
     @app.get("/metrics")
     async def get_prometheus_metrics():
         from fastapi import Response
+
         from scraper.monitoring.telemetry import telemetry
 
         return Response(

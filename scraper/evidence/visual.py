@@ -1,28 +1,28 @@
 """Visual capture and VLM evidence extractor (§11, DS-A30)."""
 
-from typing import List, Optional
 from pydantic import BaseModel, Field
+
 from scraper.config import settings
 
 
 class VisualEvidenceItem(BaseModel):
     id: str
-    chart_type: Optional[str] = None
+    chart_type: str | None = None
     caption: str
-    bounding_box: List[float] = Field(default_factory=list)
+    bounding_box: list[float] = Field(default_factory=list)
     confidence: float = 1.0
-    extracted_text: Optional[str] = None
+    extracted_text: str | None = None
 
 
 class VisualEvidenceExtractor:
     """Extracts charts and diagrams into visual evidence items when visual_retrieval feature flag is enabled."""
 
-    def __init__(self, enabled: Optional[bool] = None):
+    def __init__(self, enabled: bool | None = None):
         self.enabled = enabled if enabled is not None else settings.visual_retrieval
 
     async def extract_visual_evidence(
         self, image_bytes: bytes, page_url: str
-    ) -> List[VisualEvidenceItem]:
+    ) -> list[VisualEvidenceItem]:
         if not self.enabled:
             # Zero-cost early exit in default profile
             return []

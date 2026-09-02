@@ -1,9 +1,9 @@
 """Goal Coverage & Evidence Sufficiency Analyzer (DS-SI55, DS-SI56)."""
 
-from typing import List
 from pydantic import BaseModel, Field
-from scraper.research.goals import ResearchGoalGraph, GoalStatus
+
 from scraper.evidence.store import EvidenceStore
+from scraper.research.goals import GoalStatus, ResearchGoalGraph
 
 
 class GoalCoverageReport(BaseModel):
@@ -13,14 +13,14 @@ class GoalCoverageReport(BaseModel):
     status: GoalStatus
     claims_count: int
     independent_sources_count: int
-    missing_evidence_types: List[str] = Field(default_factory=list)
+    missing_evidence_types: list[str] = Field(default_factory=list)
     is_sufficient: bool = False
 
 
 class OverallCoverageAssessment(BaseModel):
     overall_progress: float
     is_sufficient: bool
-    goal_reports: List[GoalCoverageReport] = Field(default_factory=list)
+    goal_reports: list[GoalCoverageReport] = Field(default_factory=list)
     unresolved_contradictions_count: int = 0
 
 
@@ -31,7 +31,7 @@ class GoalCoverageAnalyzer:
     def analyze(
         goal_graph: ResearchGoalGraph, store: EvidenceStore
     ) -> OverallCoverageAssessment:
-        reports: List[GoalCoverageReport] = []
+        reports: list[GoalCoverageReport] = []
         contradictions = store.get_contradictions()
 
         for goal in goal_graph.goals.values():

@@ -1,7 +1,8 @@
 """Unit tests for RequestFrontier and Scheduler (§14, §15)."""
 
 import pytest
-from scraper.control.scheduler import RequestFrontier, CrawlRequest, RequestState
+
+from scraper.control.scheduler import CrawlRequest, RequestFrontier, RequestState
 
 
 @pytest.mark.asyncio

@@ -1,7 +1,8 @@
 """Unit tests for Budget Manager (§50) and Extraction Engine (§31, §35, §36)."""
 
 import pytest
-from scraper.control.budget import BudgetTracker, JobBudget, BudgetExceededError
+
+from scraper.control.budget import BudgetExceededError, BudgetTracker, JobBudget
 from scraper.extraction.markdown import process_markdown_pipeline
 from scraper.extraction.table_extractor import extract_tables_from_html
 

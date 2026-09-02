@@ -2,9 +2,10 @@
 
 import logging
 import urllib.parse
+
 import httpx
-from typing import List
 from selectolax.parser import HTMLParser
+
 from scraper.config import settings
 from scraper.discovery.providers.base import ProviderDescriptor, ProviderSearchRequest
 from scraper.search.candidates import SourceCandidate
@@ -23,7 +24,7 @@ class AnnasArchiveProvider:
         opt_in_only=True,
     )
 
-    async def search(self, request: ProviderSearchRequest) -> List[SourceCandidate]:
+    async def search(self, request: ProviderSearchRequest) -> list[SourceCandidate]:
         base_url = getattr(
             settings, "annas_archive_url", "https://annas-archive.cc"
         ).rstrip("/")

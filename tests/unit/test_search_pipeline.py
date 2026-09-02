@@ -3,22 +3,23 @@
 import asyncio
 import os
 import tempfile
-import pytest
 from unittest.mock import AsyncMock, patch
 
-from scraper.config import ExecutionMode
-from scraper.acquisition.engine import CapturedArtifact, AdaptiveAcquisitionEngine
+import pytest
+
+from scraper.acquisition.engine import AdaptiveAcquisitionEngine, CapturedArtifact
 from scraper.acquisition.page_classifier import PageIntelligence
 from scraper.application.run_context import RunContext, RunContextOptions
+from scraper.config import ExecutionMode
 from scraper.pipeline.search_pipeline import (
+    AcquisitionExtractionStage,
     DeepSearchPipeline,
     DeepSearchPipelineOptions,
-    PipelineWorkspace,
     DiscoveryStage,
-    ScheduleStage,
-    AcquisitionExtractionStage,
-    MediaCollectionStage,
     ExportStage,
+    MediaCollectionStage,
+    PipelineWorkspace,
+    ScheduleStage,
 )
 from scraper.storage.archive_exporter import ArchiveExporter, SearchRunMetadata
 

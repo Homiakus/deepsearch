@@ -1,10 +1,11 @@
 """Unit tests for SearchEngine V2 & Structure-aware Chunking (DS-SI65 - DS-SI69)."""
 
 from unittest.mock import MagicMock
-from scraper.search.search_engine import SearchEngine
-from scraper.search.chunking import structure_chunker
-from scraper.storage.vector_store import VectorStoreManager
+
 from scraper.application.models import FeatureAvailabilityState
+from scraper.search.chunking import structure_chunker
+from scraper.search.search_engine import SearchEngine
+from scraper.storage.vector_store import VectorStoreManager
 
 
 def test_structure_aware_chunking():

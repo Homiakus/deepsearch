@@ -1,10 +1,11 @@
 """Unit tests for Obsidian and Zotero Exporter Plugins."""
 
-import os
 import json
+import os
+
+from scraper.extraction.engine import ExtractionResult
 from scraper.storage.exporters.obsidian import ObsidianVaultExporter
 from scraper.storage.exporters.zotero import ZoteroLibraryExporter
-from scraper.extraction.engine import ExtractionResult
 
 
 def test_obsidian_vault_exporter(tmp_path):

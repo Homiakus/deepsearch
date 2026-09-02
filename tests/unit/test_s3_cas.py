@@ -2,8 +2,9 @@
 
 import os
 from unittest.mock import MagicMock
+
+from scraper.storage.cas import ContentAddressableStore, get_cas_store
 from scraper.storage.s3_cas import S3ContentAddressableStore
-from scraper.storage.cas import get_cas_store, ContentAddressableStore
 
 
 def test_s3_cas_store_and_retrieve_with_mock_client(tmp_path):

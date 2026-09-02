@@ -5,7 +5,6 @@ Provides batch dense embeddings with in-memory hashing cache and FastEmbed suppo
 
 import hashlib
 import logging
-from typing import Dict, List
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +17,7 @@ class DenseEmbeddingEngine:
         self.dimension = dimension
         self._model = None
         self._initialized = False
-        self._cache: Dict[str, List[float]] = {}
+        self._cache: dict[str, list[float]] = {}
 
     def _get_model(self):
         if not self._initialized:
@@ -40,10 +39,10 @@ class DenseEmbeddingEngine:
             self._initialized = True
         return self._model
 
-    def embed_query(self, query: str) -> List[float]:
+    def embed_query(self, query: str) -> list[float]:
         return self.embed_text(query)
 
-    def embed_text(self, text: str) -> List[float]:
+    def embed_text(self, text: str) -> list[float]:
         h = hashlib.sha256(text.encode("utf-8")).hexdigest()
         if h in self._cache:
             return self._cache[h]
@@ -74,7 +73,7 @@ class DenseEmbeddingEngine:
         self._cache[h] = vec
         return vec
 
-    def embed_batch(self, texts: List[str]) -> List[List[float]]:
+    def embed_batch(self, texts: list[str]) -> list[list[float]]:
         return [self.embed_text(t) for t in texts]
 
 

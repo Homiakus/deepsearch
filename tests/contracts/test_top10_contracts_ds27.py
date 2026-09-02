@@ -14,18 +14,18 @@ Verifies invariants, error semantics, and idempotency for:
 """
 
 import pytest
-from scraper.security.url_policy import URLSecurityPolicy
-from scraper.exceptions import SSRFBlockedError
+
+from scraper.acquisition.page_classifier import PageIntelligence, classify_page
+from scraper.control.budget import BudgetTracker, JobBudget
+from scraper.control.scheduler import CrawlRequest, RequestFrontier, RequestState
+from scraper.exceptions import BudgetExceededError, SSRFBlockedError
+from scraper.extraction.engine import ExtractionEngine
 from scraper.normalization.canonicalizer import canonicalize_url
 from scraper.normalization.content_hash import compute_content_hash
 from scraper.normalization.deduplicator import Deduplicator
-from scraper.acquisition.page_classifier import classify_page, PageIntelligence
-from scraper.control.scheduler import RequestFrontier, CrawlRequest, RequestState
-from scraper.control.budget import BudgetTracker, JobBudget
-from scraper.exceptions import BudgetExceededError
-from scraper.research.intent import ResearchIntent
 from scraper.research.decomposer import decompose_intent
-from scraper.extraction.engine import ExtractionEngine
+from scraper.research.intent import ResearchIntent
+from scraper.security.url_policy import URLSecurityPolicy
 from scraper.storage.cas import ContentAddressableStore
 
 

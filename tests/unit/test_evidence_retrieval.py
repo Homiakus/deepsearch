@@ -1,9 +1,10 @@
 """Unit tests for RRF hybrid fusion and EvidenceStore (DS-A28, DS-A29, DS-A30)."""
 
 import pytest
-from scraper.retrieval.hybrid import RankedHit, reciprocal_rank_fusion
-from scraper.evidence.store import EvidenceStore, EvidenceRelation
+
+from scraper.evidence.store import EvidenceRelation, EvidenceStore
 from scraper.evidence.visual import VisualEvidenceExtractor
+from scraper.retrieval.hybrid import RankedHit, reciprocal_rank_fusion
 
 
 def test_reciprocal_rank_fusion_order():

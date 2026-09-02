@@ -11,16 +11,18 @@ Asynchronously downloads binary files (PDFs, Word documents, images) with:
 - License, author, and source attribution tracking with explicit UNKNOWN_LICENSE fallback.
 """
 
+import hashlib
 import os
 import re
-import hashlib
 import tempfile
 import urllib.parse
+from typing import Any
+
 import httpx
-from typing import Optional, Dict, Any
+
 from scraper.config import settings
-from scraper.security.url_policy import url_security_policy
 from scraper.extraction.pdf_extractor import validate_pdf_stream
+from scraper.security.url_policy import url_security_policy
 
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".gif", ".svg"}
 UNKNOWN_LICENSE = "UNKNOWN_LICENSE"
@@ -87,10 +89,10 @@ async def download_media_file(
     max_bytes: int = 50 * 1024 * 1024,
     timeout_sec: float = 20.0,
     caption: str = "",
-    license: Optional[str] = None,
-    author: Optional[str] = None,
-    source_domain: Optional[str] = None,
-) -> Optional[Dict[str, Any]]:
+    license: str | None = None,
+    author: str | None = None,
+    source_domain: str | None = None,
+) -> dict[str, Any] | None:
     """Downloads binary file asynchronously using streaming, SSRF checks, atomic writes, and metadata tracking (§DS-14)."""
     try:
         await url_security_policy.async_validate_url(url)
@@ -117,99 +119,97 @@ async def download_media_file(
     temp_file_path = None
     try:
         transport = httpx.AsyncHTTPTransport(retries=1)
-        async with httpx.AsyncClient(
-            transport=transport,
-            timeout=timeout_sec,
-            follow_redirects=True,
-            trust_env=False,
-            event_hooks={"response": [_validate_redirect_hook]},
-        ) as client:
-            async with client.stream("GET", url, headers=headers) as res:
-                if res.status_code != 200:
-                    return None
+        async with (
+            httpx.AsyncClient(
+                transport=transport,
+                timeout=timeout_sec,
+                follow_redirects=True,
+                trust_env=False,
+                event_hooks={"response": [_validate_redirect_hook]},
+            ) as client,
+            client.stream("GET", url, headers=headers) as res,
+        ):
+            if res.status_code != 200:
+                return None
 
-                # Content-Length pre-check
-                content_length_hdr = res.headers.get("content-length")
-                if content_length_hdr:
-                    try:
-                        content_len = int(content_length_hdr)
-                        if content_len > max_bytes or content_len <= 0:
-                            return None
-                    except ValueError:
-                        pass
+            # Content-Length pre-check
+            content_length_hdr = res.headers.get("content-length")
+            if content_length_hdr:
+                try:
+                    content_len = int(content_length_hdr)
+                    if content_len > max_bytes or content_len <= 0:
+                        return None
+                except ValueError:
+                    pass
 
-                content_type = res.headers.get("content-type", "")
+            content_type = res.headers.get("content-type", "")
 
-                # Atomic write to temporary file in the target directory
-                with tempfile.NamedTemporaryFile(
-                    dir=output_dir, delete=False, prefix=".ds_dl_"
-                ) as tmp_f:
-                    temp_file_path = tmp_f.name
-                    hasher = hashlib.sha256()
-                    bytes_read = 0
-                    header_bytes = bytearray()
+            # Atomic write to temporary file in the target directory
+            with tempfile.NamedTemporaryFile(
+                dir=output_dir, delete=False, prefix=".ds_dl_"
+            ) as tmp_f:
+                temp_file_path = tmp_f.name
+                hasher = hashlib.sha256()
+                bytes_read = 0
+                header_bytes = bytearray()
 
-                    async for chunk in res.aiter_bytes(chunk_size=65536):
-                        if not chunk:
-                            continue
-                        bytes_read += len(chunk)
-                        if bytes_read > max_bytes:
-                            # Exceeded allowed decompressed bytes / bomb protection
-                            return None
+                async for chunk in res.aiter_bytes(chunk_size=65536):
+                    if not chunk:
+                        continue
+                    bytes_read += len(chunk)
+                    if bytes_read > max_bytes:
+                        # Exceeded allowed decompressed bytes / bomb protection
+                        return None
 
-                        if len(header_bytes) < 1024:
-                            needed = 1024 - len(header_bytes)
-                            header_bytes.extend(chunk[:needed])
+                    if len(header_bytes) < 1024:
+                        needed = 1024 - len(header_bytes)
+                        header_bytes.extend(chunk[:needed])
 
-                        hasher.update(chunk)
-                        tmp_f.write(chunk)
+                    hasher.update(chunk)
+                    tmp_f.write(chunk)
 
-                if bytes_read == 0:
-                    return None
+            if bytes_read == 0:
+                return None
 
-                # Verify magic bytes / reject fake MIME
-                if not _is_valid_binary_header(
-                    bytes(header_bytes), filename, content_type
-                ):
-                    return None
+            # Verify magic bytes / reject fake MIME
+            if not _is_valid_binary_header(bytes(header_bytes), filename, content_type):
+                return None
 
-                # Atomically replace target path
-                os.replace(temp_file_path, target_path)
-                temp_file_path = None
+            # Atomically replace target path
+            os.replace(temp_file_path, target_path)
+            temp_file_path = None
 
-                sha256 = hasher.hexdigest()
+            sha256 = hasher.hexdigest()
 
-                # Extract dimensions if image
-                width, height = None, None
-                if content_type.startswith("image/") or any(
-                    target_path.lower().endswith(ext) for ext in IMAGE_EXTENSIONS
-                ):
-                    try:
-                        from PIL import Image
+            # Extract dimensions if image
+            width, height = None, None
+            if content_type.startswith("image/") or any(
+                target_path.lower().endswith(ext) for ext in IMAGE_EXTENSIONS
+            ):
+                try:
+                    from PIL import Image
 
-                        with Image.open(target_path) as img:
-                            width, height = img.size
-                    except Exception:
-                        pass
+                    with Image.open(target_path) as img:
+                        width, height = img.size
+                except Exception:
+                    pass
 
-                resolved_domain = (
-                    source_domain or urllib.parse.urlparse(url).netloc or ""
-                )
+            resolved_domain = source_domain or urllib.parse.urlparse(url).netloc or ""
 
-                return {
-                    "url": url,
-                    "filename": filename,
-                    "file_path": target_path,
-                    "size_bytes": bytes_read,
-                    "sha256": sha256,
-                    "content_type": content_type,
-                    "width": width,
-                    "height": height,
-                    "caption": caption,
-                    "license": license or UNKNOWN_LICENSE,
-                    "author": author or UNKNOWN_AUTHOR,
-                    "source_domain": resolved_domain,
-                }
+            return {
+                "url": url,
+                "filename": filename,
+                "file_path": target_path,
+                "size_bytes": bytes_read,
+                "sha256": sha256,
+                "content_type": content_type,
+                "width": width,
+                "height": height,
+                "caption": caption,
+                "license": license or UNKNOWN_LICENSE,
+                "author": author or UNKNOWN_AUTHOR,
+                "source_domain": resolved_domain,
+            }
 
     except Exception:
         return None

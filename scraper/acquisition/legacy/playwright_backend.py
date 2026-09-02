@@ -5,8 +5,10 @@ with bounded concurrency, isolated contexts, SSRF enforcement, and health monito
 """
 
 import asyncio
+import importlib.util
 import time
 
+from scraper.acquisition.browser_pool import BrowserPoolManager, BrowserResponse
 from scraper.acquisition.capabilities import (
     BackendDescriptor,
     BrowserCapabilities,
@@ -19,9 +21,6 @@ from scraper.acquisition.models import (
     FailureRecord,
 )
 from scraper.acquisition.quality import AcquisitionQualityEvaluator
-from scraper.acquisition.browser_pool import BrowserPoolManager, BrowserResponse
-
-import importlib.util
 
 PLAYWRIGHT_AVAILABLE = importlib.util.find_spec("playwright") is not None
 

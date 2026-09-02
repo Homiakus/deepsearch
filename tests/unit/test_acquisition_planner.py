@@ -1,6 +1,7 @@
 """Unit tests for BackendPlanner and DomainTelemetry (DS-RB06, DS-RB07, DS-RB41)."""
 
 import pytest
+
 from scraper.acquisition.capabilities import (
     BackendDescriptor,
     BrowserCapabilities,

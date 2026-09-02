@@ -1,14 +1,15 @@
 """Indexing activity implementation (§4, DS-A09, DS-A25, DS-A26)."""
 
-from typing import Any, Dict, List
 import uuid
-from scraper.storage.vector_store import VectorStoreManager
+from typing import Any
+
 from scraper.orchestration.protocol import ActivityResult, ResourceUsage
+from scraper.storage.vector_store import VectorStoreManager
 
 
-async def run_indexing_activity(input_data: Dict[str, Any]) -> ActivityResult:
+async def run_indexing_activity(input_data: dict[str, Any]) -> ActivityResult:
     """Chunks documents and indexes them in vector store."""
-    docs: List[Dict[str, Any]] = input_data.get("normalized_docs", [])
+    docs: list[dict[str, Any]] = input_data.get("normalized_docs", [])
     vector_store = VectorStoreManager()
 
     indexed_chunks = []

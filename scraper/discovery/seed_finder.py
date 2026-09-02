@@ -1,28 +1,27 @@
 """Multi-Source Seed Discovery Engine with Provider Registry Integration (DS-SI08, DS-SI82)."""
 
 import logging
-from typing import List, Optional
 
-from scraper.discovery.providers.registry import provider_registry, is_matching_domain
+from scraper.discovery.provider_policy import provider_policy
 from scraper.discovery.providers.base import ProviderSearchRequest
+from scraper.discovery.providers.registry import is_matching_domain, provider_registry
+from scraper.research.decomposer import decompose_intent
+from scraper.research.entities import extract_entities_from_query
 from scraper.research.intent import ResearchIntent
 from scraper.research.query_normalizer import normalize_query
-from scraper.research.entities import extract_entities_from_query
-from scraper.research.decomposer import decompose_intent
 from scraper.search.query_generator import QueryGenerator
-from scraper.discovery.provider_policy import provider_policy
 
 logger = logging.getLogger(__name__)
 
 
 async def discover_diverse_seeds(
     query: str,
-    domain: Optional[str] = None,
-    preferred_sources: Optional[List[str]] = None,
-    category: Optional[str] = None,
-) -> List[str]:
+    domain: str | None = None,
+    preferred_sources: list[str] | None = None,
+    category: str | None = None,
+) -> list[str]:
     """Discovers diverse seed URLs using ProviderRegistry and QueryIntelligence (DS-13)."""
-    discovered: List[str] = []
+    discovered: list[str] = []
 
     # 1. Add user preferred sources first (filter by domain if specified)
     if preferred_sources:
@@ -84,7 +83,7 @@ async def discover_diverse_seeds(
 
 
 # Backward compatibility helper functions
-async def fetch_arxiv_seeds(query: str, max_results: int = 5) -> List[str]:
+async def fetch_arxiv_seeds(query: str, max_results: int = 5) -> list[str]:
     p = provider_registry.get("arxiv")
     if p:
         candidates = await p.search(
@@ -96,7 +95,7 @@ async def fetch_arxiv_seeds(query: str, max_results: int = 5) -> List[str]:
 
 async def fetch_wikipedia_search_seeds(
     query: str, lang: str = "en", max_results: int = 5
-) -> List[str]:
+) -> list[str]:
     p = provider_registry.get("wikipedia")
     if p:
         candidates = await p.search(
@@ -106,7 +105,7 @@ async def fetch_wikipedia_search_seeds(
     return []
 
 
-async def fetch_europe_pmc_seeds(query: str, max_results: int = 5) -> List[str]:
+async def fetch_europe_pmc_seeds(query: str, max_results: int = 5) -> list[str]:
     p = provider_registry.get("europe_pmc")
     if p:
         candidates = await p.search(
@@ -116,7 +115,7 @@ async def fetch_europe_pmc_seeds(query: str, max_results: int = 5) -> List[str]:
     return []
 
 
-async def fetch_pubmed_seeds(query: str, max_results: int = 5) -> List[str]:
+async def fetch_pubmed_seeds(query: str, max_results: int = 5) -> list[str]:
     p = provider_registry.get("pubmed")
     if p:
         candidates = await p.search(
@@ -126,7 +125,7 @@ async def fetch_pubmed_seeds(query: str, max_results: int = 5) -> List[str]:
     return []
 
 
-async def fetch_annas_archive_seeds(query: str, max_results: int = 5) -> List[str]:
+async def fetch_annas_archive_seeds(query: str, max_results: int = 5) -> list[str]:
     p = provider_registry.get("annas_archive")
     if p:
         candidates = await p.search(

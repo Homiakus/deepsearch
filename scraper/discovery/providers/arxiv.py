@@ -3,8 +3,9 @@
 import logging
 import urllib.parse
 import xml.etree.ElementTree as ET
+
 import httpx
-from typing import List
+
 from scraper.discovery.providers.base import ProviderDescriptor, ProviderSearchRequest
 from scraper.search.candidates import SourceCandidate
 
@@ -21,7 +22,7 @@ class ArxivProvider:
         cost_class="FREE",
     )
 
-    async def search(self, request: ProviderSearchRequest) -> List[SourceCandidate]:
+    async def search(self, request: ProviderSearchRequest) -> list[SourceCandidate]:
         url = f"https://export.arxiv.org/api/query?search_query=all:{urllib.parse.quote(request.query)}&start=0&max_results={request.max_results}"
         candidates = []
         try:

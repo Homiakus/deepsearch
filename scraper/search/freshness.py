@@ -1,12 +1,12 @@
 """Freshness Scoring Engine (DS-SI19)."""
 
 import time
-from typing import Optional
+
 from scraper.research.intent import FreshnessRequirement
 
 
 def calculate_freshness_score(
-    published_at: Optional[str],
+    published_at: str | None,
     requirement: FreshnessRequirement = FreshnessRequirement.NONE,
 ) -> float:
     """Calculates freshness score according to research intent requirement."""

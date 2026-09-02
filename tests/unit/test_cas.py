@@ -2,6 +2,7 @@
 
 import shutil
 import tempfile
+
 from scraper.storage.cas import ContentAddressableStore
 
 

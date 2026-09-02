@@ -1,4 +1,5 @@
 from pathlib import Path
+
 from scraper.api.app import create_app
 
 

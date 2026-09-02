@@ -2,7 +2,9 @@
 
 import json
 from pathlib import Path
+
 import pytest
+
 from scraper.application.models import ResearchRequest
 from scraper.application.service import DeepSearchService
 from scraper.config import ExecutionMode

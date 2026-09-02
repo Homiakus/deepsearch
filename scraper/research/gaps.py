@@ -3,10 +3,10 @@
 Identifies under-covered goals, weakly supported claims, and unresolved contradictions.
 """
 
-from typing import List
 from pydantic import BaseModel
-from scraper.research.goals import ResearchGoalGraph
+
 from scraper.evidence.store import EvidenceStore
+from scraper.research.goals import ResearchGoalGraph
 
 
 class ResearchGap(BaseModel):
@@ -23,8 +23,8 @@ class GapAnalyzer:
     @staticmethod
     def identify_gaps(
         goal_graph: ResearchGoalGraph, store: EvidenceStore
-    ) -> List[ResearchGap]:
-        gaps: List[ResearchGap] = []
+    ) -> list[ResearchGap]:
+        gaps: list[ResearchGap] = []
 
         # 1. Uncovered Subgoals
         for goal in goal_graph.goals.values():

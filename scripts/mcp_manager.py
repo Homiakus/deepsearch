@@ -5,12 +5,12 @@ and generate client configurations for Claude Desktop, Cursor, and VS Code.
 All operational and diagnostic logs are routed strictly to stderr.
 """
 
-import sys
-import os
-import json
-import time
-import subprocess
 import argparse
+import json
+import os
+import subprocess
+import sys
+import time
 from pathlib import Path
 
 WORKSPACE_ROOT = Path(__file__).resolve().parent.parent

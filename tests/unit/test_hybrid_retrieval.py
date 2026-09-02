@@ -2,11 +2,11 @@
 
 from scraper.search.embeddings.dense import dense_embedder
 from scraper.search.embeddings.sparse import sparse_embedder
+from scraper.search.rerank.cross_encoder import cross_encoder_reranker
 from scraper.search.retrieval.hybrid import (
     RetrievalHit,
     weighted_reciprocal_rank_fusion,
 )
-from scraper.search.rerank.cross_encoder import cross_encoder_reranker
 from scraper.search.selection.diversity import diversity_selector
 
 

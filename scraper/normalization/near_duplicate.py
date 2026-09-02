@@ -6,7 +6,6 @@ Uses 64-bit SimHash over tokens/shingles to detect syndicated and mirror copies.
 import hashlib
 import re
 from collections import namedtuple
-from typing import Dict, List
 
 NearDupCheckResult = namedtuple(
     "NearDupCheckResult", ["is_near_duplicate", "duplicate_of_id", "cluster_id"]
@@ -18,8 +17,8 @@ class NearDuplicateDetector:
 
     def __init__(self, hamming_threshold: int = 12):
         self.hamming_threshold = hamming_threshold
-        self._fingerprints: Dict[str, int] = {}  # doc_id -> simhash_int
-        self._clusters: Dict[int, List[str]] = {}  # cluster_id -> [doc_ids]
+        self._fingerprints: dict[str, int] = {}  # doc_id -> simhash_int
+        self._clusters: dict[int, list[str]] = {}  # cluster_id -> [doc_ids]
         self._next_cluster_id = 1
 
     @staticmethod

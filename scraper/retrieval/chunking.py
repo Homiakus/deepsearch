@@ -2,7 +2,7 @@
 
 import hashlib
 import uuid
-from typing import List, Optional
+
 from pydantic import BaseModel, Field
 
 from scraper.domain.document import Document
@@ -12,15 +12,15 @@ class TextChunk(BaseModel):
     chunk_id: str
     document_id: str
     source_url: str
-    heading: Optional[str] = None
-    section_path: List[str] = Field(default_factory=list)
+    heading: str | None = None
+    section_path: list[str] = Field(default_factory=list)
     ordinal: int = 0
     text: str
     word_count: int = 0
     token_estimate: int = 0
     content_hash: str
-    previous_chunk_id: Optional[str] = None
-    next_chunk_id: Optional[str] = None
+    previous_chunk_id: str | None = None
+    next_chunk_id: str | None = None
 
 
 class StructureAwareChunker:
@@ -45,7 +45,7 @@ class StructureAwareChunker:
         chars = len(text)
         return max(int(words * 1.3), int(chars / 3.5), 1)
 
-    def _split_oversized_text(self, text: str) -> List[str]:
+    def _split_oversized_text(self, text: str) -> list[str]:
         """Splits an oversized paragraph into sentence/word-bounded chunks (§FRAG-006)."""
         import re
 
@@ -88,15 +88,15 @@ class StructureAwareChunker:
 
         return sub_blocks or [text]
 
-    def chunk_document(self, document: Document) -> List[TextChunk]:
+    def chunk_document(self, document: Document) -> list[TextChunk]:
         """Creates linked chunks preserving section headings and document context."""
         raw_markdown = document.clean_markdown
         lines = raw_markdown.splitlines()
 
-        chunks: List[TextChunk] = []
+        chunks: list[TextChunk] = []
         current_heading = document.title
         current_path = [document.title] if document.title else []
-        current_paragraphs: List[str] = []
+        current_paragraphs: list[str] = []
         current_words = 0
 
         def _emit_chunk(block_text: str):

@@ -1,6 +1,7 @@
 """Boilerplate, Navigation, and Spam/Thin Content Filter (DS-SI30, DS-SI31)."""
 
 import re
+
 from pydantic import BaseModel
 
 

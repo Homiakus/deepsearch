@@ -1,7 +1,8 @@
 """Source Candidate Models (DS-SI11)."""
 
 import urllib.parse
-from typing import Dict, List, Optional, Any
+from typing import Any
+
 from pydantic import BaseModel, Field
 
 
@@ -13,11 +14,11 @@ class SourceCandidate(BaseModel):
     provider: str
     provider_rank: int = 1
     source_type: str = "UNKNOWN"
-    published_at: Optional[str] = None
+    published_at: str | None = None
     domain: str = ""
-    goal_ids: List[str] = Field(default_factory=list)
-    query_variants: List[str] = Field(default_factory=list)
-    found_by_providers: List[str] = Field(default_factory=list)
+    goal_ids: list[str] = Field(default_factory=list)
+    query_variants: list[str] = Field(default_factory=list)
+    found_by_providers: list[str] = Field(default_factory=list)
     lexical_score: float = 0.0
     semantic_score: float = 0.0
     authority_prior: float = 0.5
@@ -26,7 +27,7 @@ class SourceCandidate(BaseModel):
     expected_cost: float = 1.0
     expected_extractability: float = 0.9
     risk_score: float = 0.0
-    provider_metadata: Dict[str, Any] = Field(default_factory=dict)
+    provider_metadata: dict[str, Any] = Field(default_factory=dict)
 
     def model_post_init(self, __context):
         if not self.domain and self.url:

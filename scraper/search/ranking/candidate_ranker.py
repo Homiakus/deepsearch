@@ -4,16 +4,16 @@ Combines lexical, semantic, authority, freshness, and cost features into
 a calibrated ranking score with clear explainability.
 """
 
-from typing import Dict, List
 from pydantic import BaseModel, Field
+
 from scraper.research.intent import ResearchIntent
 from scraper.search.candidates import SourceCandidate
+from scraper.search.cost import estimate_acquisition_cost
 from scraper.search.features import CandidateFeatureVector
+from scraper.search.freshness import calculate_freshness_score
 from scraper.search.prerank.lexical import lexical_preranker
 from scraper.search.prerank.semantic import semantic_preranker
 from scraper.search.source_policy import calculate_authority_prior
-from scraper.search.freshness import calculate_freshness_score
-from scraper.search.cost import estimate_acquisition_cost
 from scraper.search.trace import SearchTrace, TraceEventType
 
 
@@ -21,7 +21,7 @@ class RankedCandidate(BaseModel):
     candidate: SourceCandidate
     final_score: float
     features: CandidateFeatureVector
-    score_breakdown: Dict[str, float] = Field(default_factory=dict)
+    score_breakdown: dict[str, float] = Field(default_factory=dict)
 
 
 class CandidateRanker:
@@ -46,7 +46,7 @@ class CandidateRanker:
         candidate: SourceCandidate,
         intent: ResearchIntent,
         depth: int = 0,
-        domain_counts: Dict[str, int] = None,
+        domain_counts: dict[str, int] = None,
     ) -> RankedCandidate:
         domain_counts = domain_counts or {}
 
@@ -113,12 +113,12 @@ class CandidateRanker:
 
     def rank_pool(
         self,
-        candidates: List[SourceCandidate],
+        candidates: list[SourceCandidate],
         intent: ResearchIntent,
         trace: SearchTrace = None,
-    ) -> List[RankedCandidate]:
-        domain_counts: Dict[str, int] = {}
-        ranked: List[RankedCandidate] = []
+    ) -> list[RankedCandidate]:
+        domain_counts: dict[str, int] = {}
+        ranked: list[RankedCandidate] = []
 
         for c in candidates:
             rc = self.score_candidate(c, intent, depth=0, domain_counts=domain_counts)

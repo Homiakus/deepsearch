@@ -4,11 +4,11 @@ Exports structured research documents into an interconnected Obsidian markdown v
 with YAML frontmatter, [[Wikilinks]], backlink references, and tags.
 """
 
+import json
 import os
 import re
-import json
 import time
-from typing import List, Dict, Any, Optional
+from typing import Any
 
 from scraper.extraction.engine import ExtractionResult
 
@@ -37,9 +37,9 @@ class ObsidianVaultExporter:
     def export_vault(
         self,
         query: str,
-        extractions: List[ExtractionResult],
-        evidence_claims: Optional[List[Dict[str, Any]]] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        extractions: list[ExtractionResult],
+        evidence_claims: list[dict[str, Any]] | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> str:
         """Generate and export the complete Obsidian vault. Returns path to vault index."""
         metadata = metadata or {}

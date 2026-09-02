@@ -6,20 +6,21 @@ Hardened for enterprise production reliability, memory safety, cancellation prop
 strict schema validation, and path confinement.
 """
 
-import sys
-import re
-import uuid
 import asyncio
 import json
 import logging
+import re
+import sys
+import uuid
 from pathlib import Path
-from typing import Optional, List, Literal
+from typing import Literal
+
 from mcp.server.fastmcp import FastMCP
 
-from scraper.config import ExecutionMode
-from scraper.discovery.seed_finder import discover_diverse_seeds
 from scraper.application.models import ResearchRequest, RunLifecycleState
 from scraper.application.service import get_deepsearch_service
+from scraper.config import ExecutionMode
+from scraper.discovery.seed_finder import discover_diverse_seeds
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +36,7 @@ MAX_SEARCH_LIMIT = 100
 
 
 def sanitize_archive_path(
-    archive_path: Optional[str], default_prefix: str = "deepsearch_mcp"
+    archive_path: str | None, default_prefix: str = "deepsearch_mcp"
 ) -> str:
     """Ensures archive path is safe, normalized, and confined to the current working directory or subfolders.
 
@@ -65,13 +66,13 @@ def sanitize_archive_path(
 @mcp.tool()
 async def deepsearch_research(
     query: str,
-    domain: Optional[str] = None,
-    preferred_sources: Optional[List[str]] = None,
+    domain: str | None = None,
+    preferred_sources: list[str] | None = None,
     depth: int = 3,
     max_pages: int = 50,
     mode: Literal["fast", "balanced", "complete", "research"] = "balanced",
-    output_archive: Optional[str] = None,
-    category: Optional[str] = None,
+    output_archive: str | None = None,
+    category: str | None = None,
     auto_discover: bool = True,
 ) -> str:
     """Executes end-to-end DeepSearch research pipeline via ResearchApplicationService (DS-A02).
@@ -209,9 +210,9 @@ async def deepsearch_research(
 @mcp.tool()
 async def deepsearch_discover(
     query: str,
-    domain: Optional[str] = None,
-    preferred_sources: Optional[List[str]] = None,
-    category: Optional[str] = None,
+    domain: str | None = None,
+    preferred_sources: list[str] | None = None,
+    category: str | None = None,
 ) -> str:
     """Discovers diverse seed URLs from multiple academic and knowledge sources."""
     if not query or not query.strip():
@@ -275,7 +276,7 @@ async def deepsearch_crawl(
     bounded_depth = max(0, min(depth, MAX_DEPTH))
     bounded_max_pages = max(1, min(max_pages, MAX_PAGES))
 
-    from scraper.application.job_service import JobRequest, JobLifecycleState
+    from scraper.application.job_service import JobLifecycleState, JobRequest
 
     job_req = JobRequest(
         url=url.strip(),
@@ -415,8 +416,8 @@ async def deepsearch_search(query: str, limit: int = 10) -> str:
 
     try:
         from scraper.contracts.capabilities import (
-            require_capability,
             CapabilityUnavailableError,
+            require_capability,
         )
 
         try:

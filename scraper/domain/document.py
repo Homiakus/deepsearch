@@ -1,7 +1,8 @@
 """Structured Document Domain Model (§9, DS-A24)."""
 
-from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from datetime import UTC, datetime
+from typing import Any
+
 from pydantic import BaseModel, Field
 
 
@@ -10,26 +11,26 @@ class DocumentSection(BaseModel):
     level: int = 1
     text: str
     ordinal: int = 0
-    section_path: List[str] = Field(default_factory=list)
+    section_path: list[str] = Field(default_factory=list)
 
 
 class DocumentTable(BaseModel):
     table_id: str
-    caption: Optional[str] = None
-    headers: List[str] = Field(default_factory=list)
-    rows: List[List[str]] = Field(default_factory=list)
-    markdown: Optional[str] = None
+    caption: str | None = None
+    headers: list[str] = Field(default_factory=list)
+    rows: list[list[str]] = Field(default_factory=list)
+    markdown: str | None = None
 
 
 class DocumentFigure(BaseModel):
     figure_id: str
-    caption: Optional[str] = None
-    image_url: Optional[str] = None
-    alt_text: Optional[str] = None
+    caption: str | None = None
+    image_url: str | None = None
+    alt_text: str | None = None
 
 
 class DocumentProvenance(BaseModel):
-    acquired_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    acquired_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     fetch_strategy: str = "HTTP"
     content_hash: str
     status_code: int = 200
@@ -45,8 +46,8 @@ class Document(BaseModel):
     title: str = "Untitled"
     language: str = "en"
     clean_markdown: str
-    sections: List[DocumentSection] = Field(default_factory=list)
-    tables: List[DocumentTable] = Field(default_factory=list)
-    figures: List[DocumentFigure] = Field(default_factory=list)
-    metadata: Dict[str, Any] = Field(default_factory=dict)
+    sections: list[DocumentSection] = Field(default_factory=list)
+    tables: list[DocumentTable] = Field(default_factory=list)
+    figures: list[DocumentFigure] = Field(default_factory=list)
+    metadata: dict[str, Any] = Field(default_factory=dict)
     provenance: DocumentProvenance

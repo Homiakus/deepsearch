@@ -8,13 +8,14 @@ Generates dual-format output structured archive:
 """
 
 import hashlib
-import os
 import json
-import zipfile
+import os
 import shutil
 import time
-from typing import List, Dict, Any, Optional, Tuple
+import zipfile
 from pathlib import Path
+from typing import Any
+
 from pydantic import BaseModel, Field
 
 from scraper.acquisition.engine import CapturedArtifact
@@ -25,15 +26,15 @@ from scraper.search.chunking import StructureAwareChunker, StructuredChunk
 
 class SearchRunMetadata(BaseModel):
     query: str
-    domain: Optional[str] = None
-    preferred_sources: List[str] = Field(default_factory=list)
+    domain: str | None = None
+    preferred_sources: list[str] = Field(default_factory=list)
     depth: int = 3
     max_pages: int = 100
     mode: str = "balanced"
     created_at: float = Field(default_factory=time.time)
     run_status: str = "COMPLETED"
-    warnings: List[str] = Field(default_factory=list)
-    errors: List[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+    errors: list[str] = Field(default_factory=list)
 
 
 class RAGChunk(BaseModel):
@@ -44,14 +45,14 @@ class RAGChunk(BaseModel):
     domain: str
     text: str
     token_estimate: int
-    relevance_score: Optional[float] = None
-    heading_path: List[str] = Field(default_factory=list)
-    parent_section_id: Optional[str] = None
+    relevance_score: float | None = None
+    heading_path: list[str] = Field(default_factory=list)
+    parent_section_id: str | None = None
     ordinal: int = 0
-    provenance: Dict[str, Any] = Field(default_factory=dict)
+    provenance: dict[str, Any] = Field(default_factory=dict)
 
 
-def _compute_file_sha256_and_size(file_path: Path) -> Tuple[str, int]:
+def _compute_file_sha256_and_size(file_path: Path) -> tuple[str, int]:
     """Compute sha256 hex digest and size in bytes for a file on disk."""
     if not file_path.exists():
         return "", 0
@@ -77,7 +78,7 @@ class ArchiveExporter:
         source_url: str = "",
         title: str = "",
         max_words: int = 250,
-    ) -> List[StructuredChunk]:
+    ) -> list[StructuredChunk]:
         """Structure-aware chunking for RAG ingestion."""
         if not text:
             return []
@@ -95,17 +96,17 @@ class ArchiveExporter:
 
     def build_archive_structure(
         self,
-        results: List[Tuple[CapturedArtifact, ExtractionResult]],
+        results: list[tuple[CapturedArtifact, ExtractionResult]],
         output_dir: str,
-        pdf_files: Optional[List[Dict[str, Any]]] = None,
-        media_files: Optional[List[Dict[str, Any]]] = None,
-        rejections: Optional[List[Dict[str, Any]]] = None,
-        quality_report: Optional[Dict[str, Any]] = None,
-        media_quality: Optional[Dict[str, Any]] = None,
-        warnings: Optional[List[str]] = None,
-        errors: Optional[List[str]] = None,
-        run_status: Optional[str] = None,
-        vector_index: Optional[Dict[str, Any]] = None,
+        pdf_files: list[dict[str, Any]] | None = None,
+        media_files: list[dict[str, Any]] | None = None,
+        rejections: list[dict[str, Any]] | None = None,
+        quality_report: dict[str, Any] | None = None,
+        media_quality: dict[str, Any] | None = None,
+        warnings: list[str] | None = None,
+        errors: list[str] | None = None,
+        run_status: str | None = None,
+        vector_index: dict[str, Any] | None = None,
         include_rag_dataset_json: bool = False,
     ) -> str:
         """Builds the uncompressed folder structure containing `files/`, `pdfs/`, `media/`, `rag/`, and `manifest.json`."""
@@ -120,8 +121,8 @@ class ArchiveExporter:
         media_dir.mkdir(parents=True, exist_ok=True)
         rag_dir.mkdir(parents=True, exist_ok=True)
 
-        manifest_files: List[Dict[str, Any]] = []
-        all_rag_chunks: List[RAGChunk] = []
+        manifest_files: list[dict[str, Any]] = []
+        all_rag_chunks: list[RAGChunk] = []
         rag_context_lines = [
             "# DeepSearch RAG Context Corpus",
             f"> Search Query: {self.metadata.query}",
@@ -448,9 +449,9 @@ class ArchiveExporter:
 
     def export_obsidian_vault(
         self,
-        results: List[Tuple[CapturedArtifact, ExtractionResult]],
+        results: list[tuple[CapturedArtifact, ExtractionResult]],
         output_dir: str,
-        evidence_claims: Optional[List[Dict[str, Any]]] = None,
+        evidence_claims: list[dict[str, Any]] | None = None,
     ) -> str:
         """Export research results directly to an Obsidian Vault directory."""
         from scraper.storage.exporters.obsidian import ObsidianVaultExporter
@@ -466,9 +467,9 @@ class ArchiveExporter:
 
     def export_zotero_library(
         self,
-        results: List[Tuple[CapturedArtifact, ExtractionResult]],
+        results: list[tuple[CapturedArtifact, ExtractionResult]],
         output_dir: str,
-    ) -> Dict[str, str]:
+    ) -> dict[str, str]:
         """Export research results to Zotero CSL-JSON and RIS files."""
         from scraper.storage.exporters.zotero import ZoteroLibraryExporter
 

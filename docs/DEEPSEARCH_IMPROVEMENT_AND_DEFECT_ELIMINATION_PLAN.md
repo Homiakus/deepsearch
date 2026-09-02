@@ -87,7 +87,10 @@ def recursive_sanitize(obj: Any) -> Any:
     if isinstance(obj, str):
         return sanitize_unicode_string(obj)
     elif isinstance(obj, dict):
-        return {sanitize_unicode_string(str(k)): recursive_sanitize(v) for k, v in obj.items()}
+        return {
+            sanitize_unicode_string(str(k)): recursive_sanitize(v)
+            for k, v in obj.items()
+        }
     elif isinstance(obj, list):
         return [recursive_sanitize(elem) for elem in obj]
     elif isinstance(obj, tuple):
@@ -140,7 +143,9 @@ def validate_pdf_stream(data: bytes) -> Tuple[bool, str]:
     return True, "VALID_PDF"
 
 
-def extract_text_from_pdf_bytes(pdf_bytes: bytes, max_pages: Optional[int] = None) -> str:
+def extract_text_from_pdf_bytes(
+    pdf_bytes: bytes, max_pages: Optional[int] = None
+) -> str:
     """Безопасное извлечение текста из байтов PDF с валидацией сигнатуры."""
     is_valid, reason = validate_pdf_stream(pdf_bytes)
     if not is_valid:
@@ -149,9 +154,10 @@ def extract_text_from_pdf_bytes(pdf_bytes: bytes, max_pages: Optional[int] = Non
 
     try:
         from pypdf import PdfReader
+
         stream = io.BytesIO(pdf_bytes)
         reader = PdfReader(stream, strict=False)
-        
+
         pages_to_read = len(reader.pages)
         if max_pages and max_pages > 0:
             pages_to_read = min(pages_to_read, max_pages)
@@ -185,6 +191,7 @@ def extract_text_from_pdf_bytes(pdf_bytes: bytes, max_pages: Optional[int] = Non
 ```python
 # scraper/search/quality_report.py (модернизация)
 
+
 class SourceQualityRequirements(BaseModel):
     min_independent_domains: int = 2
     min_direct_evidence: int = 3
@@ -202,7 +209,7 @@ class SourceQualityEvaluator:
     ) -> Dict[str, Any]:
         req = requirements or SourceQualityRequirements()
         # ... (сбор источников и подсчет метрик) ...
-        
+
         direct_evidence_rate = direct_evidence_count / max(accepted_count, 1)
         missing_requirements: List[str] = []
         warnings: List[str] = []
@@ -217,7 +224,12 @@ class SourceQualityEvaluator:
         # Адаптивное условие для Review/Benchmark:
         if review_count < req.min_review_or_benchmark:
             # Если корпус обладает высокой прямой доказательностью и мультидоменностью
-            if req.adaptive_mode and direct_evidence_rate >= 0.85 and independent_domains >= 2 and accepted_count >= 8:
+            if (
+                req.adaptive_mode
+                and direct_evidence_rate >= 0.85
+                and independent_domains >= 2
+                and accepted_count >= 8
+            ):
                 warnings.append("NO_FORMAL_REVIEW_DETECTED_BUT_HIGH_DIRECT_EVIDENCE")
             else:
                 missing_requirements.append("MIN_REVIEW_OR_BENCHMARK")
@@ -275,11 +287,7 @@ class PDFFigureExtractor:
     """Извлекает научные диаграммы, графики и иллюстрации из страниц PDF."""
 
     def extract_figures_from_pdf(
-        self,
-        pdf_path: str,
-        output_media_dir: str,
-        doc_id: str,
-        max_figures: int = 5
+        self, pdf_path: str, output_media_dir: str, doc_id: str, max_figures: int = 5
     ) -> List[Dict[str, Any]]:
         """Извлекает до max_figures значимых изображений из PDF файла."""
         if not os.path.exists(pdf_path):
@@ -291,6 +299,7 @@ class PDFFigureExtractor:
 
         try:
             from pypdf import PdfReader
+
             reader = PdfReader(pdf_path)
             figure_counter = 0
 
@@ -305,9 +314,11 @@ class PDFFigureExtractor:
                     try:
                         raw_bytes = img_obj.data
                         img_name = img_obj.name
-                        
+
                         # Проверка размера
-                        if len(raw_bytes) < 8192:  # < 8 KB -> вероятно иконка или логотип
+                        if (
+                            len(raw_bytes) < 8192
+                        ):  # < 8 KB -> вероятно иконка или логотип
                             continue
 
                         sha256 = hashlib.sha256(raw_bytes).hexdigest()
@@ -315,25 +326,29 @@ class PDFFigureExtractor:
                         if ext not in [".png", ".jpg", ".jpeg", ".webp"]:
                             ext = ".png"
 
-                        file_name = f"fig_{doc_id}_p{page_idx}_{img_idx}_{sha256[:8]}{ext}"
+                        file_name = (
+                            f"fig_{doc_id}_p{page_idx}_{img_idx}_{sha256[:8]}{ext}"
+                        )
                         target_file_path = out_dir / file_name
 
                         with open(target_file_path, "wb") as f:
                             f.write(raw_bytes)
 
                         caption = f"Figure from {doc_id}, Page {page_idx}"
-                        extracted_media.append({
-                            "id": f"pdf_fig_{doc_id}_{page_idx}_{img_idx}",
-                            "filename": file_name,
-                            "file_path": str(target_file_path),
-                            "caption": caption,
-                            "type": "image",
-                            "source_doc_id": doc_id,
-                            "page_number": page_idx,
-                            "size_bytes": len(raw_bytes),
-                            "sha256": sha256,
-                            "relevance_score": 0.85,
-                        })
+                        extracted_media.append(
+                            {
+                                "id": f"pdf_fig_{doc_id}_{page_idx}_{img_idx}",
+                                "filename": file_name,
+                                "file_path": str(target_file_path),
+                                "caption": caption,
+                                "type": "image",
+                                "source_doc_id": doc_id,
+                                "page_number": page_idx,
+                                "size_bytes": len(raw_bytes),
+                                "sha256": sha256,
+                                "relevance_score": 0.85,
+                            }
+                        )
                         figure_counter += 1
                     except Exception as img_err:
                         logger.debug("Ошибка извлечения картинки: %s", img_err)
@@ -392,8 +407,14 @@ class PDFFigureExtractor:
 
 import pytest
 from scraper.normalization.text import sanitize_unicode_string, recursive_sanitize
-from scraper.extraction.pdf_extractor import validate_pdf_stream, extract_text_from_pdf_bytes
-from scraper.search.quality_report import SourceQualityEvaluator, SourceQualityRequirements
+from scraper.extraction.pdf_extractor import (
+    validate_pdf_stream,
+    extract_text_from_pdf_bytes,
+)
+from scraper.search.quality_report import (
+    SourceQualityEvaluator,
+    SourceQualityRequirements,
+)
 
 
 def test_surrogate_sanitization():

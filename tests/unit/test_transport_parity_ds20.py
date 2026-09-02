@@ -1,16 +1,17 @@
 """Unit tests for Transport Parity across CLI, REST, and MCP (§DS-20)."""
 
 import json
-import pytest
-from typer.testing import CliRunner
-from httpx import AsyncClient, ASGITransport
 
-from scraper.cli.main import app as cli_app
+import pytest
+from httpx import ASGITransport, AsyncClient
+from typer.testing import CliRunner
+
 from scraper.api.app import app as fastapi_app
+from scraper.cli.main import app as cli_app
 from scraper.mcp.server import (
+    deepsearch_capabilities,
     deepsearch_crawl,
     deepsearch_inspect,
-    deepsearch_capabilities,
     sanitize_archive_path,
 )
 

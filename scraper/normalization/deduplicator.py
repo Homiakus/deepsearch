@@ -2,16 +2,15 @@
 
 import hashlib
 import re
-from typing import Set, Dict
 
 
 class Deduplicator:
     """Manages 3 levels of deduplication: URL hash, BLAKE3/SHA256 content hash, SimHash near-duplicate."""
 
     def __init__(self, simhash_distance_threshold: int = 3):
-        self.url_hashes: Set[str] = set()
-        self.content_hashes: Set[str] = set()
-        self.simhashes: Dict[int, str] = {}  # simhash_int -> canonical_url
+        self.url_hashes: set[str] = set()
+        self.content_hashes: set[str] = set()
+        self.simhashes: dict[int, str] = {}  # simhash_int -> canonical_url
         self.threshold = simhash_distance_threshold
 
     @staticmethod

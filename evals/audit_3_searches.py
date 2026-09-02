@@ -3,9 +3,9 @@
 import os
 
 os.environ["DEEPSEARCH_OFFLINE"] = "1"
+import asyncio
 import json
 import time
-import asyncio
 from pathlib import Path
 
 from scraper.config import ExecutionMode

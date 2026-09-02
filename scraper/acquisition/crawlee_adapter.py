@@ -2,12 +2,11 @@
 
 import asyncio
 import logging
-from typing import List, Optional
 
+from scraper.acquisition.engine import AdaptiveAcquisitionEngine, CapturedArtifact
 from scraper.config import ExecutionMode
-from scraper.normalization.canonicalizer import canonicalize_url
-from scraper.acquisition.engine import CapturedArtifact, AdaptiveAcquisitionEngine
 from scraper.discovery.robots import robots_manager
+from scraper.normalization.canonicalizer import canonicalize_url
 
 logger = logging.getLogger(__name__)
 
@@ -23,14 +22,14 @@ class CrawleeBatchCrawler:
         self.engine = AdaptiveAcquisitionEngine()
 
     async def crawl_batch(
-        self, urls: List[str], max_pages: int = 50
-    ) -> List[CapturedArtifact]:
+        self, urls: list[str], max_pages: int = 50
+    ) -> list[CapturedArtifact]:
         """Crawls a batch of seed URLs with concurrency bounds, robots checks, and deduplication."""
         semaphore = asyncio.Semaphore(self.max_concurrency)
-        results: List[CapturedArtifact] = []
+        results: list[CapturedArtifact] = []
         seen_canonical = set()
 
-        async def _fetch_one(url: str) -> Optional[CapturedArtifact]:
+        async def _fetch_one(url: str) -> CapturedArtifact | None:
             c_url = canonicalize_url(url)
             if c_url in seen_canonical:
                 return None

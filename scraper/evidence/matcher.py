@@ -4,7 +4,7 @@ Determines whether a candidate citation supports, contradicts, or qualifies a re
 """
 
 import re
-from typing import Tuple
+
 from scraper.evidence.models import EvidenceRelation
 
 
@@ -44,7 +44,7 @@ class EvidenceMatcher:
     @classmethod
     def match_relation(
         cls, claim_text: str, evidence_text: str
-    ) -> Tuple[EvidenceRelation, float]:
+    ) -> tuple[EvidenceRelation, float]:
         ev_lower = evidence_text.lower()
         cl_lower = claim_text.lower()
 

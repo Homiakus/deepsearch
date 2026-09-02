@@ -4,7 +4,6 @@ Selects the least expensive backend satisfying hard capability requirements,
 learning domain-level routing history without premature linear escalation.
 """
 
-from typing import Dict, List, Optional, Tuple
 from urllib.parse import urlparse
 
 from scraper.acquisition.capabilities import BackendDescriptor
@@ -17,7 +16,7 @@ class DomainTelemetry:
     def __init__(self, alpha: float = 0.2):
         self.alpha = alpha
         # (domain, backend) -> {attempts, successes, quality_ewma, latency_ewma}
-        self.stats: Dict[Tuple[str, str], Dict[str, float]] = {}
+        self.stats: dict[tuple[str, str], dict[str, float]] = {}
 
     def record(
         self,
@@ -60,21 +59,21 @@ class DomainTelemetry:
 class BackendPlanner:
     """Capability-oriented planner selecting minimal effective execution backend."""
 
-    def __init__(self, telemetry: Optional[DomainTelemetry] = None):
+    def __init__(self, telemetry: DomainTelemetry | None = None):
         self.telemetry = telemetry or DomainTelemetry()
 
     def select_backend(
         self,
         request: AcquisitionRequest,
-        available_backends: List[BackendDescriptor],
-    ) -> Optional[BackendDescriptor]:
+        available_backends: list[BackendDescriptor],
+    ) -> BackendDescriptor | None:
         if not available_backends:
             return None
 
         domain = urlparse(request.url).netloc.split(":")[0]
 
         # 1. Filter by hard capabilities
-        eligible: List[BackendDescriptor] = []
+        eligible: list[BackendDescriptor] = []
         for desc in available_backends:
             if desc.capabilities.satisfies(request.required_capabilities):
                 eligible.append(desc)
@@ -83,7 +82,7 @@ class BackendPlanner:
             return None
 
         # 2. Score eligible backends by expected cost
-        scored: List[Tuple[float, BackendDescriptor]] = []
+        scored: list[tuple[float, BackendDescriptor]] = []
         for desc in eligible:
             p_success = self.telemetry.get_success_probability(domain, desc.name)
             # Cost model (§8): expected_cost = base_cost / p_success
@@ -97,8 +96,8 @@ class BackendPlanner:
         self,
         result: AcquisitionResult,
         current_backend: BackendDescriptor,
-        available_backends: List[BackendDescriptor],
-    ) -> Tuple[bool, Optional[BackendDescriptor]]:
+        available_backends: list[BackendDescriptor],
+    ) -> tuple[bool, BackendDescriptor | None]:
         """Determines whether quality signals mandate escalation to a higher tier backend."""
         # If quality is adequate, no escalation needed
         if (

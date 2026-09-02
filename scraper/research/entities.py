@@ -2,7 +2,7 @@
 
 import re
 from enum import Enum
-from typing import List
+
 from scraper.research.intent import Entity
 
 
@@ -59,9 +59,9 @@ TECH_TERMS = {
 }
 
 
-def extract_entities_from_query(query: str) -> List[Entity]:
+def extract_entities_from_query(query: str) -> list[Entity]:
     """Extracts typed entities from query string."""
-    entities: List[Entity] = []
+    entities: list[Entity] = []
     q_lower = query.lower()
 
     # 1. Regex-based pattern extractors

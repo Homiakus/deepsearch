@@ -792,6 +792,7 @@ scraper/discovery/providers/
 ```python
 class DiscoveryProvider(Protocol):
     descriptor: ProviderDescriptor
+
     async def search(self, request: ProviderSearchRequest) -> list[SourceCandidate]: ...
 ```
 

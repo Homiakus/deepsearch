@@ -4,29 +4,30 @@ Verifies protocol conformance, tool execution, path sanitization, cancellation p
 SSRF redirect protection, and error boundaries.
 """
 
-import sys
-import os
-import json
 import asyncio
+import json
+import os
 import subprocess
+import sys
 from pathlib import Path
-import pytest
 from unittest.mock import AsyncMock, patch
 
-from scraper.acquisition.engine import CapturedArtifact, AdaptiveAcquisitionEngine
-from scraper.acquisition.page_classifier import PageIntelligence
+import pytest
+
+from scraper.acquisition.engine import AdaptiveAcquisitionEngine, CapturedArtifact
 from scraper.acquisition.http_fetcher import HTTPFetcher, SSRFValidationError
+from scraper.acquisition.page_classifier import PageIntelligence
+from scraper.application.research_service import research_service
 from scraper.config import ExecutionMode
 from scraper.mcp.server import (
-    deepsearch_inspect,
-    deepsearch_extract,
-    deepsearch_search,
-    deepsearch_research,
     deepsearch_discover,
-    sanitize_archive_path,
+    deepsearch_extract,
+    deepsearch_inspect,
+    deepsearch_research,
+    deepsearch_search,
     mcp,
+    sanitize_archive_path,
 )
-from scraper.application.research_service import research_service
 
 
 @pytest.fixture(autouse=True)

@@ -5,7 +5,7 @@ Extracts factual claim candidates and citation quotes with exact provenance.
 
 import re
 import urllib.parse
-from typing import List, Tuple
+
 from scraper.evidence.models import Claim, EvidenceItem, EvidenceRelation
 from scraper.search.retrieval.hybrid import FusedResult
 
@@ -15,10 +15,10 @@ class EvidenceExtractor:
 
     @staticmethod
     def extract_from_passages(
-        passages: List[FusedResult], goal_id: str = None
-    ) -> Tuple[List[Claim], List[EvidenceItem]]:
-        claims: List[Claim] = []
-        evidence_items: List[EvidenceItem] = []
+        passages: list[FusedResult], goal_id: str = None
+    ) -> tuple[list[Claim], list[EvidenceItem]]:
+        claims: list[Claim] = []
+        evidence_items: list[EvidenceItem] = []
 
         for p in passages:
             hit = p.hit

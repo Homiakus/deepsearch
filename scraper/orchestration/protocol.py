@@ -1,8 +1,9 @@
 """Protocol models for Axiom ADGO Remote Worker Protocol (DS-A06, DS-A34, DS-A35)."""
 
 from datetime import datetime
-from typing import Any, Dict, List, Optional
-from pydantic import BaseModel, Field, ConfigDict
+from typing import Any
+
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class WorkToken(BaseModel):
@@ -14,7 +15,7 @@ class WorkToken(BaseModel):
 
 class WorkerSpec(BaseModel):
     id: str
-    activities: List[str] = Field(default_factory=list)
+    activities: list[str] = Field(default_factory=list)
     concurrency: int = 4
     leaseTTL: int = 30_000_000_000  # 30 seconds in nanoseconds
     pollInterval: int = 100_000_000  # 100 milliseconds in nanoseconds
@@ -23,27 +24,27 @@ class WorkerSpec(BaseModel):
 class RemoteNode(BaseModel):
     id: str
     kind: str
-    activity: Optional[str] = None
-    capability: Optional[str] = None
-    risk: Optional[int] = None
-    timeout: Optional[int] = None
+    activity: str | None = None
+    capability: str | None = None
+    risk: int | None = None
+    timeout: int | None = None
 
 
 class RemoteActivityRequest(BaseModel):
-    executionId: Optional[str] = None
-    nodeId: Optional[str] = None
-    attempt: Optional[int] = 1
-    input: Dict[str, Any] = Field(default_factory=dict)
+    executionId: str | None = None
+    nodeId: str | None = None
+    attempt: int | None = 1
+    input: dict[str, Any] = Field(default_factory=dict)
 
 
 class RemoteWorkItem(BaseModel):
     token: WorkToken
     node: RemoteNode
     activity: str
-    provider: Optional[str] = None
-    request: Optional[RemoteActivityRequest] = None
-    leaseUntil: Optional[datetime] = None
-    score: Optional[float] = 0.0
+    provider: str | None = None
+    request: RemoteActivityRequest | None = None
+    leaseUntil: datetime | None = None
+    score: float | None = 0.0
 
 
 class ResourceUsage(BaseModel):
@@ -56,9 +57,9 @@ class ResourceUsage(BaseModel):
 
 
 class ActivityResult(BaseModel):
-    data: Dict[str, Any] = Field(default_factory=dict)
-    usage: Optional[ResourceUsage] = Field(default_factory=ResourceUsage)
-    quality: Dict[str, float] = Field(default_factory=dict)
+    data: dict[str, Any] = Field(default_factory=dict)
+    usage: ResourceUsage | None = Field(default_factory=ResourceUsage)
+    quality: dict[str, float] = Field(default_factory=dict)
 
 
 class RemoteFailure(BaseModel):
@@ -83,4 +84,4 @@ class FailHTTPRequest(BaseModel):
 
 class HeartbeatHTTPRequest(BaseModel):
     token: WorkToken
-    details: Dict[str, Any] = Field(default_factory=dict)
+    details: dict[str, Any] = Field(default_factory=dict)

@@ -5,12 +5,13 @@ ColPali and Qwen2-VL architectural principles.
 """
 
 import hashlib
+from typing import Any
+
 import numpy as np
-from typing import List, Dict, Any
 from pydantic import BaseModel, Field
 
-from scraper.visual.tiling import VisualTile
 from scraper.config import settings
+from scraper.visual.tiling import VisualTile
 
 
 class VisualEmbedding(BaseModel):
@@ -18,9 +19,9 @@ class VisualEmbedding(BaseModel):
 
     tile_id: int
     page_id: str
-    vector: List[float]
+    vector: list[float]
     dim: int
-    metadata: Dict[str, Any] = Field(default_factory=dict)
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 class VLMEmbeddingEngine:
@@ -33,7 +34,7 @@ class VLMEmbeddingEngine:
     ):
         self.model_name = model_name
         self.dim = embedding_dim
-        self._cache: Dict[str, List[float]] = {}
+        self._cache: dict[str, list[float]] = {}
 
     def _hash_bytes(self, data: bytes) -> str:
         return hashlib.sha256(data).hexdigest()
@@ -74,11 +75,11 @@ class VLMEmbeddingEngine:
             },
         )
 
-    def embed_tiles_batch(self, tiles: List[VisualTile]) -> List[VisualEmbedding]:
+    def embed_tiles_batch(self, tiles: list[VisualTile]) -> list[VisualEmbedding]:
         """Batch embedding generation for visual tiles."""
         return [self.embed_tile(t) for t in tiles]
 
-    def embed_query(self, query: str) -> List[float]:
+    def embed_query(self, query: str) -> list[float]:
         """Generate multimodal visual-textual embedding for a search query."""
         cache_key = f"q_{query}_{self.dim}"
         if cache_key in self._cache:
@@ -94,7 +95,7 @@ class VLMEmbeddingEngine:
         return vector
 
     def compute_similarity(
-        self, query_vector: List[float], tile_vector: List[float]
+        self, query_vector: list[float], tile_vector: list[float]
     ) -> float:
         """Compute cosine similarity between query and visual tile embedding."""
         v1 = np.array(query_vector, dtype=float)

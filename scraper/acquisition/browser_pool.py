@@ -2,15 +2,17 @@
 
 import asyncio
 from pathlib import Path
-from typing import Optional, Dict, Any, List
+from typing import Any
+
 from pydantic import BaseModel, Field
-from scraper.config import settings
+
 from scraper.acquisition.http_fetcher import HTTPFetcher
+from scraper.config import settings
 from scraper.exceptions import BrowserPoolError
 from scraper.security.url_policy import url_security_policy
 
 try:
-    from playwright.async_api import async_playwright, Playwright, Browser
+    from playwright.async_api import Browser, Playwright, async_playwright
 
     PLAYWRIGHT_AVAILABLE = True
 except ImportError:
@@ -21,9 +23,9 @@ class BrowserResponse(BaseModel):
     url: str
     status_code: int
     content: str
-    screenshot_bytes: Optional[bytes] = None
-    network_requests: List[Dict[str, Any]] = Field(default_factory=list)
-    headers: Dict[str, str] = Field(default_factory=dict)
+    screenshot_bytes: bytes | None = None
+    network_requests: list[dict[str, Any]] = Field(default_factory=list)
+    headers: dict[str, str] = Field(default_factory=dict)
 
 
 # Anti-detection stealth script to override automation artifacts
@@ -77,8 +79,8 @@ class BrowserPoolManager:
     def __init__(self, max_browsers: int = 2, contexts_per_browser: int = 10):
         self.max_browsers = max_browsers
         self.contexts_per_browser = contexts_per_browser
-        self._playwright: Optional[Playwright] = None
-        self._browser: Optional[Browser] = None
+        self._playwright: Playwright | None = None
+        self._browser: Browser | None = None
         self._lock = asyncio.Lock()
         self._storage_state_path = Path(".browser_profile/storage_state.json")
         self._init_failed: bool = False
@@ -125,7 +127,7 @@ class BrowserPoolManager:
         self,
         url: str,
         visual_mode: bool = False,
-        wait_for_selector: Optional[str] = None,
+        wait_for_selector: str | None = None,
         take_screenshot: bool = False,
     ) -> BrowserResponse:
         """Fetch URL using Playwright Chromium with stealth anti-detection, resource management & SSRF validation."""
@@ -172,7 +174,7 @@ class BrowserPoolManager:
         await context.add_init_script(STEALTH_EVASION_SCRIPT)
 
         page = await context.new_page()
-        network_logs: List[Dict[str, Any]] = []
+        network_logs: list[dict[str, Any]] = []
 
         # Intercept network requests (§29 Network Intelligence)
         def handle_response(res):

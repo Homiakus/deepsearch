@@ -1,8 +1,9 @@
 """Unit tests for Crawlee adapter and robots policy (DS-A13, DS-A15)."""
 
 import pytest
-from scraper.discovery.robots import RobotsPolicyManager, RobotsDecision
+
 from scraper.acquisition.crawlee_adapter import CrawleeBatchCrawler
+from scraper.discovery.robots import RobotsDecision, RobotsPolicyManager
 
 
 def test_robots_policy_evaluation():

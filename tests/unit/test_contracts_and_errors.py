@@ -1,40 +1,40 @@
 """Unit and Contract tests for Protocols and Error Taxonomy (§DS-05)."""
 
-import pytest
-from typing import Dict, Any, Optional, List
+from typing import Any
 
-from scraper.contracts import (
-    FetcherProtocol,
-    BrowserPoolProtocol,
-    StorageProtocol,
-    OCREngineProtocol,
-    AcquisitionBackend,
-    DiscoveryProviderProtocol,
-)
-from scraper.acquisition.http_fetcher import HTTPFetcher, HTTPResponse
+import pytest
+
 from scraper.acquisition.browser_pool import BrowserPoolManager, BrowserResponse
+from scraper.acquisition.http_fetcher import HTTPFetcher, HTTPResponse
 from scraper.acquisition.models import AcquisitionRequest, AcquisitionResult
 from scraper.application.models import (
-    RunResult,
-    ResearchResult,
     ProviderStatus,
+    ResearchResult,
     RunLifecycleState,
+    RunResult,
+)
+from scraper.contracts import (
+    AcquisitionBackend,
+    BrowserPoolProtocol,
+    DiscoveryProviderProtocol,
+    FetcherProtocol,
+    OCREngineProtocol,
+    StorageProtocol,
 )
 from scraper.exceptions import (
-    ErrorCode,
-    DeepSearchError,
-    InvalidInputError,
+    ERROR_CODE_CLI_EXIT,
+    ERROR_CODE_HTTP_STATUS,
     BlockedTargetError,
-    SSRFError,
+    BudgetExceededError,
+    DeepSearchError,
     DeepSearchTimeoutError,
     DependencyUnavailableError,
-    BudgetExceededError,
-    PartialResultError,
+    ErrorCode,
     InternalError,
-    ERROR_CODE_HTTP_STATUS,
-    ERROR_CODE_CLI_EXIT,
+    InvalidInputError,
+    PartialResultError,
+    SSRFError,
 )
-
 
 # --- 1. Fake implementations testing Protocol compliance ---
 
@@ -43,8 +43,8 @@ class FakeFetcher:
     async def fetch(
         self,
         url: str,
-        headers: Optional[Dict[str, str]] = None,
-        proxy: Optional[str] = None,
+        headers: dict[str, str] | None = None,
+        proxy: str | None = None,
     ) -> HTTPResponse:
         return HTTPResponse(
             url=url,
@@ -65,7 +65,7 @@ class FakeBrowserPool:
         self,
         url: str,
         visual_mode: bool = False,
-        wait_for_selector: Optional[str] = None,
+        wait_for_selector: str | None = None,
         take_screenshot: bool = False,
     ) -> BrowserResponse:
         return BrowserResponse(
@@ -85,12 +85,12 @@ class FakeStorage:
     def __init__(self):
         self.store = {}
 
-    async def put(self, data: bytes, metadata: Optional[Dict[str, Any]] = None) -> str:
+    async def put(self, data: bytes, metadata: dict[str, Any] | None = None) -> str:
         key = str(len(self.store))
         self.store[key] = data
         return key
 
-    async def get(self, key: str) -> Optional[bytes]:
+    async def get(self, key: str) -> bytes | None:
         return self.store.get(key)
 
     async def exists(self, key: str) -> bool:
@@ -104,7 +104,7 @@ class FakeOCR:
 
 class FakeAcquisitionBackend:
     @property
-    def descriptor(self) -> Dict[str, Any]:
+    def descriptor(self) -> dict[str, Any]:
         return {"name": "fake_backend", "version": "1.0.0"}
 
     async def acquire(self, request: AcquisitionRequest) -> AcquisitionResult:
@@ -125,7 +125,7 @@ class FakeDiscoveryProvider:
         query: str,
         limit: int = 10,
         **kwargs: Any,
-    ) -> List[str]:
+    ) -> list[str]:
         return [f"https://example.com/item/{i}" for i in range(limit)]
 
 

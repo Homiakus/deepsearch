@@ -1,15 +1,16 @@
 """Unit tests for application activities and execution context (DS-A09, DS-A10)."""
 
 import pytest
-from scraper.application.context import ResearchExecutionContext
+
 from scraper.application.activities import (
+    run_coverage_evaluation_activity,
+    run_evidence_activity,
+    run_indexing_activity,
+    run_normalization_activity,
     run_normalize_query_activity,
     run_plan_research_activity,
-    run_normalization_activity,
-    run_indexing_activity,
-    run_evidence_activity,
-    run_coverage_evaluation_activity,
 )
+from scraper.application.context import ResearchExecutionContext
 from scraper.orchestration.registry import activity_registry
 
 

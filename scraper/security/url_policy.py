@@ -6,7 +6,7 @@ import asyncio
 import ipaddress
 import socket
 import urllib.parse
-from typing import List, Optional
+
 from scraper.config import settings
 from scraper.exceptions import SSRFBlockedError
 
@@ -42,9 +42,9 @@ class URLSecurityPolicy:
 
     def __init__(
         self,
-        block_private_ips: Optional[bool] = None,
-        allowed_protocols: Optional[List[str]] = None,
-        max_response_size: Optional[int] = None,
+        block_private_ips: bool | None = None,
+        allowed_protocols: list[str] | None = None,
+        max_response_size: int | None = None,
     ):
         self.block_private_ips = (
             block_private_ips

@@ -1,15 +1,14 @@
 """Research Execution Context and runtime dependency container (§3, DS-A10)."""
 
-from typing import Optional
-from dataclasses import dataclass, field
 import time
+from dataclasses import dataclass, field
 
 from scraper.config import ExecutionMode
 from scraper.control.budget import BudgetTracker
 from scraper.control.rate_limiter import HostRateLimiter
+from scraper.monitoring.telemetry import TelemetryTracker, telemetry
 from scraper.normalization.deduplicator import Deduplicator
 from scraper.storage.cas import ContentAddressableStore
-from scraper.monitoring.telemetry import TelemetryTracker, telemetry
 
 
 @dataclass
@@ -22,7 +21,7 @@ class ResearchExecutionContext:
     budget: BudgetTracker = field(default_factory=BudgetTracker)
     rate_limiter: HostRateLimiter = field(default_factory=HostRateLimiter)
     deduplicator: Deduplicator = field(default_factory=Deduplicator)
-    cas: Optional[ContentAddressableStore] = None
+    cas: ContentAddressableStore | None = None
     telemetry_tracker: TelemetryTracker = field(default_factory=lambda: telemetry)
     created_at_epoch: float = field(default_factory=time.time)
     is_cancelled: bool = False

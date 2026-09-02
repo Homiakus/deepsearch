@@ -6,9 +6,10 @@ Measures baseline latency, memory, status, content bytes, useful text, links cou
 import asyncio
 import logging
 import os
-import psutil
 import time
-from typing import Dict, Any, List
+from typing import Any
+
+import psutil
 import yaml
 
 from scraper.acquisition.http_fetcher import HTTPFetcher
@@ -17,12 +18,12 @@ from scraper.acquisition.page_classifier import classify_page
 logger = logging.getLogger("browser_baseline")
 
 
-async def measure_url_acquisition(url: str, fetcher: HTTPFetcher) -> Dict[str, Any]:
+async def measure_url_acquisition(url: str, fetcher: HTTPFetcher) -> dict[str, Any]:
     proc = psutil.Process(os.getpid())
     rss_before = proc.memory_info().rss / (1024 * 1024)
     t0 = time.perf_counter()
 
-    result: Dict[str, Any] = {
+    result: dict[str, Any] = {
         "url": url,
         "success": False,
         "status_code": 0,
@@ -63,7 +64,7 @@ async def measure_url_acquisition(url: str, fetcher: HTTPFetcher) -> Dict[str, A
     return result
 
 
-async def run_baseline(corpus_path: str, max_items: int = 50) -> List[Dict[str, Any]]:
+async def run_baseline(corpus_path: str, max_items: int = 50) -> list[dict[str, Any]]:
     if not os.path.exists(corpus_path):
         logger.error("Corpus file not found: %s", corpus_path)
         return []
@@ -71,7 +72,7 @@ async def run_baseline(corpus_path: str, max_items: int = 50) -> List[Dict[str, 
     with open(corpus_path, "r", encoding="utf-8") as f:
         data = yaml.safe_load(f)
 
-    urls: List[str] = []
+    urls: list[str] = []
     for cat in data.get("categories", []):
         for item in cat.get("items", []):
             if not item.get("should_block"):

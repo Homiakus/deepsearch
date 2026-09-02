@@ -4,25 +4,26 @@ from __future__ import annotations
 
 import asyncio
 import time
-from typing import Optional, Dict, Any, List
+from typing import Any
+
 from pydantic import BaseModel, Field
 
-from scraper.config import settings, ExecutionMode
+from scraper.config import ExecutionMode, settings
 from scraper.control.budget import BudgetTracker, JobBudget
 from scraper.control.rate_limiter import HostRateLimiter
 from scraper.discovery.robots import RobotsPolicyManager
-from scraper.normalization.deduplicator import Deduplicator
 from scraper.exceptions import BudgetExceededError
+from scraper.normalization.deduplicator import Deduplicator
 
 
 class RunContextOptions(BaseModel):
     run_id: str
     query: str
-    domain: Optional[str] = None
+    domain: str | None = None
     depth: int = Field(default_factory=lambda: settings.budget.max_depth)
     max_pages: int = Field(default_factory=lambda: settings.budget.max_pages)
     max_bytes: int = Field(default_factory=lambda: settings.budget.max_bytes)
-    timeout_seconds: Optional[float] = None
+    timeout_seconds: float | None = None
     mode: ExecutionMode = ExecutionMode.BALANCED
 
 
@@ -33,11 +34,11 @@ class RunContext:
         self,
         run_id: str,
         query: str,
-        domain: Optional[str] = None,
-        budget: Optional[JobBudget] = None,
-        rate_limiter: Optional[HostRateLimiter] = None,
-        robots_manager: Optional[RobotsPolicyManager] = None,
-        deduplicator: Optional[Deduplicator] = None,
+        domain: str | None = None,
+        budget: JobBudget | None = None,
+        rate_limiter: HostRateLimiter | None = None,
+        robots_manager: RobotsPolicyManager | None = None,
+        deduplicator: Deduplicator | None = None,
     ):
         self.run_id = run_id
         self.query = query
@@ -47,7 +48,7 @@ class RunContext:
         self.robots_manager = robots_manager or RobotsPolicyManager()
         self.deduplicator = deduplicator or Deduplicator()
         self.cancellation_event = asyncio.Event()
-        self.telemetry_events: List[Dict[str, Any]] = []
+        self.telemetry_events: list[dict[str, Any]] = []
         self._lock = asyncio.Lock()
 
     @classmethod
@@ -85,7 +86,7 @@ class RunContext:
                 f"Run '{self.run_id}' exceeded execution deadline."
             )
 
-    async def record_telemetry(self, event_type: str, details: Dict[str, Any]) -> None:
+    async def record_telemetry(self, event_type: str, details: dict[str, Any]) -> None:
         async with self._lock:
             self.telemetry_events.append(
                 {"event": event_type, "timestamp": time.time(), "details": details}

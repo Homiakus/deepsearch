@@ -7,7 +7,9 @@ to connected web clients and UI dashboards.
 import asyncio
 import json
 import time
-from typing import Dict, List, Set, AsyncGenerator, Any, Optional
+from collections.abc import AsyncGenerator
+from typing import Any
+
 from pydantic import BaseModel, Field
 
 
@@ -17,7 +19,7 @@ class ResearchEvent(BaseModel):
     job_id: str
     event_type: str  # stage_change, url_discovered, page_crawled, evidence_found, completed, error
     timestamp: float = Field(default_factory=time.time)
-    data: Dict[str, Any] = Field(default_factory=dict)
+    data: dict[str, Any] = Field(default_factory=dict)
 
     def to_sse(self) -> str:
         """Format event in standard SSE wire format."""
@@ -36,8 +38,8 @@ class SSEEventBroker:
     """In-memory event hub for managing SSE client subscriptions per research job."""
 
     def __init__(self):
-        self._listeners: Dict[str, Set[asyncio.Queue]] = {}
-        self._history: Dict[str, List[ResearchEvent]] = {}
+        self._listeners: dict[str, set[asyncio.Queue]] = {}
+        self._history: dict[str, list[ResearchEvent]] = {}
         self._lock = asyncio.Lock()
 
     async def subscribe(
@@ -71,7 +73,7 @@ class SSEEventBroker:
                         del self._listeners[job_id]
 
     async def publish(
-        self, job_id: str, event_type: str, data: Optional[Dict[str, Any]] = None
+        self, job_id: str, event_type: str, data: dict[str, Any] | None = None
     ) -> None:
         """Publish event to all active subscribers of job_id and record in history."""
         ev = ResearchEvent(job_id=job_id, event_type=event_type, data=data or {})

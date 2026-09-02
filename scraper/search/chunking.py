@@ -6,7 +6,7 @@ and contextual relationships for parent-child retrieval.
 
 import hashlib
 import uuid
-from typing import List, Optional
+
 from pydantic import BaseModel, Field
 
 
@@ -17,15 +17,15 @@ class StructuredChunk(BaseModel):
     canonical_url: str = ""
     domain: str = ""
     title: str = ""
-    heading_path: List[str] = Field(default_factory=list)
-    parent_section_id: Optional[str] = None
+    heading_path: list[str] = Field(default_factory=list)
+    parent_section_id: str | None = None
     ordinal: int = 0
     text: str
     word_count: int = 0
     token_estimate: int = 0
     content_hash: str = ""
-    previous_chunk_id: Optional[str] = None
-    next_chunk_id: Optional[str] = None
+    previous_chunk_id: str | None = None
+    next_chunk_id: str | None = None
 
 
 class StructureAwareChunker:
@@ -50,7 +50,7 @@ class StructureAwareChunker:
         chars = len(text)
         return max(int(words * 1.3), int(chars / 3.5), 1)
 
-    def _split_oversized_text(self, text: str) -> List[str]:
+    def _split_oversized_text(self, text: str) -> list[str]:
         """Splits an oversized paragraph into sentence-bounded chunks."""
         import re
 
@@ -83,15 +83,15 @@ class StructureAwareChunker:
         document_id: str,
         source_url: str,
         title: str = "",
-    ) -> List[StructuredChunk]:
+    ) -> list[StructuredChunk]:
         if not markdown_text:
             return []
 
         lines = markdown_text.splitlines()
-        chunks: List[StructuredChunk] = []
+        chunks: list[StructuredChunk] = []
 
-        current_heading_path: List[str] = [title] if title else []
-        current_paragraphs: List[str] = []
+        current_heading_path: list[str] = [title] if title else []
+        current_paragraphs: list[str] = []
         current_words = 0
         section_id = f"sec_{uuid.uuid4().hex[:8]}"
 

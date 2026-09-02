@@ -1,6 +1,7 @@
 """Unit tests for Distributed Request Queue Adapter."""
 
 import pytest
+
 from scraper.control.distributed_queue import (
     InMemoryDistributedQueue,
     get_distributed_queue,

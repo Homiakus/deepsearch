@@ -6,13 +6,13 @@ identifier, standard, and technical symbol matching in hybrid search.
 
 import hashlib
 import re
-from typing import Dict, List
+
 from pydantic import BaseModel, Field
 
 
 class SparseVector(BaseModel):
-    indices: List[int] = Field(default_factory=list)
-    values: List[float] = Field(default_factory=list)
+    indices: list[int] = Field(default_factory=list)
+    values: list[float] = Field(default_factory=list)
 
 
 class SparseEmbeddingEngine:
@@ -27,12 +27,12 @@ class SparseEmbeddingEngine:
             return SparseVector()
 
         # Token frequencies
-        counts: Dict[str, int] = {}
+        counts: dict[str, int] = {}
         for t in tokens:
             if len(t) > 1:
                 counts[t] = counts.get(t, 0) + 1
 
-        sparse_map: Dict[int, float] = {}
+        sparse_map: dict[int, float] = {}
         for token, count in counts.items():
             # Stable token index hash
             idx = (

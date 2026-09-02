@@ -1,8 +1,8 @@
+from benchmarks.search.metrics import evaluate_quality_gate_report
 from scraper.acquisition.engine import CapturedArtifact
 from scraper.acquisition.page_classifier import PageIntelligence
 from scraper.extraction.engine import ExtractionResult
 from scraper.search.quality_report import SourceQualityEvaluator
-from benchmarks.search.metrics import evaluate_quality_gate_report
 
 
 def _source(url: str, title: str, source_type: str = "PRIMARY_RESEARCH"):

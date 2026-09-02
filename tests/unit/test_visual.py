@@ -1,9 +1,11 @@
 """Unit tests for Visual Intelligence Engine (§38), Screenshot Tiling (§40), and PixelRAG (§41)."""
 
 import io
+
 from PIL import Image
-from scraper.visual.tiling import generate_screenshot_tiles
+
 from scraper.visual.pixel_rag import PixelRAGPipeline
+from scraper.visual.tiling import generate_screenshot_tiles
 
 
 def test_screenshot_tiling():

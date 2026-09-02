@@ -3,10 +3,11 @@
 Enables distributed, durable object storage for compressed crawl artifacts and media.
 """
 
-import os
 import hashlib
 import logging
-from typing import Optional, Tuple, Any
+import os
+from typing import Any
+
 from scraper.config import settings
 
 logger = logging.getLogger(__name__)
@@ -29,8 +30,8 @@ class S3ContentAddressableStore:
         access_key: str = settings.s3_access_key_id,
         secret_key: str = settings.s3_secret_access_key,
         region: str = settings.s3_region,
-        local_cache_dir: Optional[str] = None,
-        s3_client: Optional[Any] = None,
+        local_cache_dir: str | None = None,
+        s3_client: Any | None = None,
     ):
         self.bucket_name = bucket_name
         self.endpoint_url = endpoint_url
@@ -94,7 +95,7 @@ class S3ContentAddressableStore:
         os.makedirs(dir_path, exist_ok=True)
         return os.path.join(dir_path, f"{content_hash}.zst")
 
-    def store(self, content: bytes) -> Tuple[str, int]:
+    def store(self, content: bytes) -> tuple[str, int]:
         """Compress content and store to S3/MinIO CAS with local cache."""
         content_hash = hashlib.sha256(content).hexdigest()
         cache_path = self._get_cache_path(content_hash)
@@ -126,7 +127,7 @@ class S3ContentAddressableStore:
 
         return content_hash, len(content)
 
-    def retrieve(self, content_hash: str) -> Optional[bytes]:
+    def retrieve(self, content_hash: str) -> bytes | None:
         """Retrieve and decompress content from local cache or S3/MinIO CAS."""
         cache_path = self._get_cache_path(content_hash)
         s3_key = self._get_s3_key(content_hash)

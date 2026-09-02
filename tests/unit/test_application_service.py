@@ -1,17 +1,19 @@
 """Unit tests for DeepSearchService and ResearchApplicationService (DS-A02, DS-A07, §DS-04)."""
 
 from unittest.mock import AsyncMock, patch
+
 import pytest
+
+from scraper.acquisition.engine import CapturedArtifact, PageIntelligence
 from scraper.application.models import ResearchRequest, RunLifecycleState
 from scraper.application.research_service import DefaultResearchApplicationService
 from scraper.application.service import (
     DeepSearchService,
-    PageInspectionResult,
     ExtractedContentResult,
+    PageInspectionResult,
     get_deepsearch_service,
 )
 from scraper.config import ExecutionMode
-from scraper.acquisition.engine import CapturedArtifact, PageIntelligence
 
 
 @pytest.mark.asyncio
@@ -128,9 +130,11 @@ def test_get_deepsearch_service_composition_root():
 async def test_interface_parity_inspect_and_extract():
     """Verify FastAPI, MCP, and Service produce identical domain results for inspect (§DS-04)."""
     import json
+
     from fastapi.testclient import TestClient
+
     from scraper.api.app import app
-    from scraper.mcp.server import deepsearch_inspect, deepsearch_extract
+    from scraper.mcp.server import deepsearch_extract, deepsearch_inspect
 
     fake_artifact = CapturedArtifact(
         url="https://example.com/contract",

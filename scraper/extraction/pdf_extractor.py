@@ -5,11 +5,10 @@ Includes strict magic byte validation to reject HTML error pages masquerading as
 and enforces bounded page counts, memory budgets, and extraction timeouts.
 """
 
-import os
-import io
 import asyncio
+import io
 import logging
-from typing import Optional, Tuple
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +18,7 @@ DEFAULT_MAX_PAGES = 50
 DEFAULT_MAX_PAGE_CHARS = 50000
 
 
-def validate_pdf_stream(data: bytes) -> Tuple[bool, str]:
+def validate_pdf_stream(data: bytes) -> tuple[bool, str]:
     """Validates the byte stream to ensure it is a valid PDF according to ISO 32000-1."""
     if not data:
         return False, "EMPTY_STREAM"
@@ -38,7 +37,7 @@ def validate_pdf_stream(data: bytes) -> Tuple[bool, str]:
 
 def extract_text_from_pdf_file(
     file_path: str,
-    max_pages: Optional[int] = DEFAULT_MAX_PAGES,
+    max_pages: int | None = DEFAULT_MAX_PAGES,
     max_bytes: int = DEFAULT_MAX_PDF_BYTES,
 ) -> str:
     """Extracts plain text from a local PDF file after header and size validation."""
@@ -67,7 +66,7 @@ def extract_text_from_pdf_file(
 
 def extract_text_from_pdf_bytes(
     pdf_bytes: bytes,
-    max_pages: Optional[int] = DEFAULT_MAX_PAGES,
+    max_pages: int | None = DEFAULT_MAX_PAGES,
     max_page_chars: int = DEFAULT_MAX_PAGE_CHARS,
 ) -> str:
     """Extracts plain text from raw PDF bytes with header validation and error handling."""
@@ -105,7 +104,7 @@ def extract_text_from_pdf_bytes(
 
 async def async_extract_text_from_pdf_file(
     file_path: str,
-    max_pages: Optional[int] = DEFAULT_MAX_PAGES,
+    max_pages: int | None = DEFAULT_MAX_PAGES,
     max_bytes: int = DEFAULT_MAX_PDF_BYTES,
     timeout_sec: float = 30.0,
 ) -> str:
@@ -120,7 +119,7 @@ async def async_extract_text_from_pdf_file(
             ),
             timeout=timeout_sec,
         )
-    except asyncio.TimeoutError:
+    except TimeoutError:
         logger.warning(
             "PDF extraction timed out for %s after %.1fs", file_path, timeout_sec
         )

@@ -1,7 +1,8 @@
 """Page Intelligence Engine (§7)."""
 
 import re
-from typing import List, Dict, Any
+from typing import Any
+
 from pydantic import BaseModel
 
 
@@ -13,8 +14,8 @@ class PageIntelligence(BaseModel):
     visual_score: float = 0.10
     content_quality: float = 0.90
     block_score: float = 0.0
-    detected_frameworks: List[str] = []
-    detected_apis: List[str] = []
+    detected_frameworks: list[str] = []
+    detected_apis: list[str] = []
     has_canvas: bool = False
     has_svg: bool = False
     tables_count: int = 0
@@ -23,9 +24,9 @@ class PageIntelligence(BaseModel):
 def classify_page(
     url: str,
     status_code: int,
-    headers: Dict[str, str],
+    headers: dict[str, str],
     content_text: str,
-    network_requests: List[Dict[str, Any]] = None,
+    network_requests: list[dict[str, Any]] = None,
 ) -> PageIntelligence:
     """Calculates metrics for Page Intelligence Engine (§7)."""
     mime = headers.get("content-type", "").lower()

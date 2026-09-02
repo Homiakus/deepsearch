@@ -1,7 +1,8 @@
 """Unit tests for Ranked Frontier & Retry Lifecycle (DS-SI23 - DS-SI27)."""
 
 import pytest
-from scraper.control.ranked_frontier import RankedFrontier, CandidateState
+
+from scraper.control.ranked_frontier import CandidateState, RankedFrontier
 from scraper.search.candidates import SourceCandidate
 
 

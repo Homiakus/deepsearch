@@ -1,8 +1,8 @@
 """Exact Content Hash Engine (DS-SI33)."""
 
 import hashlib
-import unicodedata
 import re
+import unicodedata
 
 
 def compute_content_hash(text: str) -> str:

@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import httpx
-from typing import Dict, Optional, List
 from pydantic import BaseModel, Field
+
 from scraper.config import settings
 from scraper.exceptions import SSRFBlockedError
 from scraper.security.url_policy import url_security_policy
@@ -15,12 +15,12 @@ SSRFValidationError = SSRFBlockedError
 class HTTPResponse(BaseModel):
     url: str
     status_code: int
-    headers: Dict[str, str]
+    headers: dict[str, str]
     content: bytes
     text: str
     content_type: str
     elapsed_sec: float
-    redirect_chain: List[str] = Field(default_factory=list)
+    redirect_chain: list[str] = Field(default_factory=list)
 
 
 STEALTH_BROWSER_HEADERS = {
@@ -52,8 +52,8 @@ class HTTPFetcher:
     async def fetch(
         self,
         url: str,
-        headers: Optional[Dict[str, str]] = None,
-        proxy: Optional[str] = None,
+        headers: dict[str, str] | None = None,
+        proxy: str | None = None,
     ) -> HTTPResponse:
         """Fetch URL content via direct HTTP request with streaming size checks and redirect security hooks (§74, §DS-07)."""
         await url_security_policy.async_validate_url(url)
@@ -119,4 +119,3 @@ class HTTPFetcher:
 
     async def close(self) -> None:
         """Release any client session resources."""
-        pass

@@ -1,17 +1,16 @@
 """Self-Healing Selector Fingerprint Engine (§60)."""
 
-from typing import Dict, Optional
 from pydantic import BaseModel
 from selectolax.parser import HTMLParser, Node
 
 
 class ElementFingerprint(BaseModel):
     tag: str
-    attributes: Dict[str, str]
+    attributes: dict[str, str]
     text: str
     nearby_text: str
     dom_path: str
-    semantic_role: Optional[str] = None
+    semantic_role: str | None = None
 
 
 class SelfHealingSelector:
@@ -41,8 +40,8 @@ class SelfHealingSelector:
         cls,
         raw_html: str,
         selector: str,
-        fingerprint: Optional[ElementFingerprint] = None,
-    ) -> Optional[Node]:
+        fingerprint: ElementFingerprint | None = None,
+    ) -> Node | None:
         """Tries primary CSS selector first; if missing, searches for closest fingerprint match (§60)."""
         parser = HTMLParser(raw_html)
         primary_node = parser.css_first(selector)

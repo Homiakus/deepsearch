@@ -5,12 +5,12 @@ from scraper.retrieval.embeddings import FastEmbedEngine, embedding_engine
 from scraper.retrieval.hybrid import RankedHit, ScoredResult, reciprocal_rank_fusion
 
 __all__ = [
+    "FastEmbedEngine",
+    "RankedHit",
+    "ScoredResult",
     "StructureAwareChunker",
     "TextChunk",
     "chunker",
-    "FastEmbedEngine",
     "embedding_engine",
-    "RankedHit",
-    "ScoredResult",
     "reciprocal_rank_fusion",
 ]

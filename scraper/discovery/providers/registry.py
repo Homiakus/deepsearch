@@ -4,32 +4,32 @@ import asyncio
 import logging
 import time
 import urllib.parse
-from typing import Dict, List, Optional, Tuple
+
 from scraper.config import settings
+from scraper.discovery.providers.annas_archive import AnnasArchiveProvider
+from scraper.discovery.providers.arxiv import ArxivProvider
 from scraper.discovery.providers.base import (
     DiscoveryProvider,
+    ProviderExecutionReport,
     ProviderSearchRequest,
     ProviderStatus,
-    ProviderExecutionReport,
 )
-from scraper.discovery.providers.wikipedia import WikipediaProvider
-from scraper.discovery.providers.arxiv import ArxivProvider
-from scraper.discovery.providers.europe_pmc import EuropePMCProvider
-from scraper.discovery.providers.pubmed import PubMedProvider
-from scraper.discovery.providers.semantic_scholar import SemanticScholarProvider
-from scraper.discovery.providers.openalex import OpenAlexProvider
 from scraper.discovery.providers.crossref import CrossRefProvider
-from scraper.discovery.providers.regional_academic import RegionalAcademicProvider
+from scraper.discovery.providers.europe_pmc import EuropePMCProvider
 from scraper.discovery.providers.github import GitHubProvider
-from scraper.discovery.providers.annas_archive import AnnasArchiveProvider
+from scraper.discovery.providers.openalex import OpenAlexProvider
+from scraper.discovery.providers.pubmed import PubMedProvider
+from scraper.discovery.providers.regional_academic import RegionalAcademicProvider
+from scraper.discovery.providers.semantic_scholar import SemanticScholarProvider
 from scraper.discovery.providers.web_search import WebSearchProvider
+from scraper.discovery.providers.wikipedia import WikipediaProvider
 from scraper.search.candidates import SourceCandidate
 from scraper.search.trace import SearchTrace, TraceEventType
 
 logger = logging.getLogger(__name__)
 
 
-def is_matching_domain(url: str, domain: Optional[str]) -> bool:
+def is_matching_domain(url: str, domain: str | None) -> bool:
     """Verifies that URL matches target domain hostname, rejecting substring collisions (DS-13)."""
     if not domain:
         return True
@@ -45,7 +45,7 @@ class ProviderRegistry:
     """Central registry of discovery providers with bounded parallel execution (DS-13)."""
 
     def __init__(self):
-        self._providers: Dict[str, DiscoveryProvider] = {}
+        self._providers: dict[str, DiscoveryProvider] = {}
         # Register standard default providers
         self.register(WikipediaProvider())
         self.register(ArxivProvider())
@@ -62,27 +62,27 @@ class ProviderRegistry:
     def register(self, provider: DiscoveryProvider):
         self._providers[provider.descriptor.name] = provider
 
-    def get(self, name: str) -> Optional[DiscoveryProvider]:
+    def get(self, name: str) -> DiscoveryProvider | None:
         return self._providers.get(name)
 
-    def list_all(self) -> List[DiscoveryProvider]:
+    def list_all(self) -> list[DiscoveryProvider]:
         return list(self._providers.values())
 
     async def search_parallel_with_reports(
         self,
-        requests: List[Tuple[DiscoveryProvider, ProviderSearchRequest]],
+        requests: list[tuple[DiscoveryProvider, ProviderSearchRequest]],
         max_concurrency: int = 5,
-        trace: Optional[SearchTrace] = None,
-        domain: Optional[str] = None,
+        trace: SearchTrace | None = None,
+        domain: str | None = None,
         include_opt_in: bool = False,
-    ) -> Tuple[List[SourceCandidate], List[ProviderExecutionReport]]:
+    ) -> tuple[list[SourceCandidate], list[ProviderExecutionReport]]:
         """Executes provider requests in parallel with bounded concurrency, returning merged candidates and reports (DS-13)."""
         semaphore = asyncio.Semaphore(max_concurrency)
-        reports: List[ProviderExecutionReport] = []
+        reports: list[ProviderExecutionReport] = []
 
         allow_annas = include_opt_in or getattr(settings, "enable_annas_archive", False)
 
-        valid_requests: List[Tuple[int, DiscoveryProvider, ProviderSearchRequest]] = []
+        valid_requests: list[tuple[int, DiscoveryProvider, ProviderSearchRequest]] = []
         for idx, (provider, req) in enumerate(requests):
             if provider.descriptor.opt_in_only and not allow_annas:
                 reports.append(
@@ -99,7 +99,7 @@ class ProviderRegistry:
 
         async def _run_single(
             req_idx: int, provider: DiscoveryProvider, req: ProviderSearchRequest
-        ) -> Tuple[int, List[SourceCandidate], ProviderExecutionReport]:
+        ) -> tuple[int, list[SourceCandidate], ProviderExecutionReport]:
             p_name = provider.descriptor.name
             start_t = time.perf_counter()
             async with semaphore:
@@ -134,7 +134,7 @@ class ProviderRegistry:
                                 },
                             )
                     return req_idx, results, report
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     elapsed = time.perf_counter() - start_t
                     logger.warning(
                         "Provider %s timed out after %.2fs", p_name, req.timeout_sec
@@ -165,8 +165,8 @@ class ProviderRegistry:
         batch_results = await asyncio.gather(*tasks, return_exceptions=True)
 
         # Sort results deterministically by original request index
-        ordered_results: List[
-            Tuple[int, List[SourceCandidate], ProviderExecutionReport]
+        ordered_results: list[
+            tuple[int, list[SourceCandidate], ProviderExecutionReport]
         ] = []
         for item in batch_results:
             if isinstance(item, tuple) and len(item) == 3:
@@ -178,7 +178,7 @@ class ProviderRegistry:
         ordered_results.sort(key=lambda x: x[0])
 
         # Merge and deduplicate candidates deterministically
-        candidates: List[SourceCandidate] = []
+        candidates: list[SourceCandidate] = []
         seen_urls: set[str] = set()
 
         for _, cand_list, _ in ordered_results:
@@ -194,12 +194,12 @@ class ProviderRegistry:
 
     async def search_parallel(
         self,
-        requests: List[Tuple[DiscoveryProvider, ProviderSearchRequest]],
+        requests: list[tuple[DiscoveryProvider, ProviderSearchRequest]],
         max_concurrency: int = 5,
-        trace: Optional[SearchTrace] = None,
-        domain: Optional[str] = None,
+        trace: SearchTrace | None = None,
+        domain: str | None = None,
         include_opt_in: bool = False,
-    ) -> List[SourceCandidate]:
+    ) -> list[SourceCandidate]:
         """Executes provider requests in parallel with bounded concurrency and trace logging (DS-13)."""
         candidates, _ = await self.search_parallel_with_reports(
             requests=requests,

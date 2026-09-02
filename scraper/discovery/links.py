@@ -5,32 +5,32 @@ Preserves DOM document order and contextual metadata without set-randomization.
 
 import urllib.parse
 import xml.etree.ElementTree as ET
-from typing import List, Optional, Set
+
 from pydantic import BaseModel
 from selectolax.parser import HTMLParser
 
 
 class DiscoveredLink(BaseModel):
     url: str
-    canonical_url: Optional[str] = None
+    canonical_url: str | None = None
     anchor_text: str = ""
     surrounding_text: str = ""
     dom_position: int = 0
-    section_heading: Optional[str] = None
-    rel: Optional[str] = None
+    section_heading: str | None = None
+    rel: str | None = None
     is_navigation: bool = False
     is_footer: bool = False
     is_sidebar: bool = False
 
 
-def extract_discovered_links(raw_html: str, base_url: str) -> List[DiscoveredLink]:
+def extract_discovered_links(raw_html: str, base_url: str) -> list[DiscoveredLink]:
     """Extracts hyper-links in deterministic DOM document order with layout context (DS-SI12)."""
     if not raw_html:
         return []
 
     parser = HTMLParser(raw_html)
-    discovered: List[DiscoveredLink] = []
-    seen_urls: Set[str] = set()
+    discovered: list[DiscoveredLink] = []
+    seen_urls: set[str] = set()
 
     for idx, node in enumerate(parser.css("a[href]"), start=1):
         href = node.attributes.get("href")
@@ -96,15 +96,15 @@ def extract_discovered_links(raw_html: str, base_url: str) -> List[DiscoveredLin
     return discovered
 
 
-def extract_links_from_html(raw_html: str, base_url: str) -> List[str]:
+def extract_links_from_html(raw_html: str, base_url: str) -> list[str]:
     """Extracts list of unique URLs in deterministic DOM order (DS-SI12)."""
     links = extract_discovered_links(raw_html, base_url)
     return [link.url for link in links]
 
 
-def extract_sitemap_urls(sitemap_xml: str) -> List[str]:
+def extract_sitemap_urls(sitemap_xml: str) -> list[str]:
     """Parses sitemap.xml or sitemap index to discover target URLs (§19)."""
-    urls: List[str] = []
+    urls: list[str] = []
     if not sitemap_xml:
         return urls
 
@@ -120,7 +120,7 @@ def extract_sitemap_urls(sitemap_xml: str) -> List[str]:
     return urls
 
 
-def extract_canonical_link(raw_html: str) -> Optional[str]:
+def extract_canonical_link(raw_html: str) -> str | None:
     """Extracts <link rel="canonical"> from HTML header."""
     if not raw_html:
         return None

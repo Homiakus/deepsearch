@@ -1,16 +1,16 @@
 """Result Adapter: AcquisitionResult & ArtifactReference -> CapturedArtifact (§4, DS-RB26)."""
 
 import os
-from typing import Optional
-from scraper.acquisition.models import AcquisitionResult
+
 from scraper.acquisition.engine import CapturedArtifact
+from scraper.acquisition.models import AcquisitionResult
 from scraper.acquisition.page_classifier import classify_page
 
 
 def adapt_acquisition_result_to_captured_artifact(
     result: AcquisitionResult,
     canonical_url: str,
-    cas_storage_dir: Optional[str] = None,
+    cas_storage_dir: str | None = None,
 ) -> CapturedArtifact:
     """Transforms an AcquisitionResult from Rust/Playwright into the standard CapturedArtifact."""
     raw_content = result.raw_content

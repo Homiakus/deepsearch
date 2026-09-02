@@ -1,6 +1,7 @@
 """Source Policy & Contextual Authority Prior (DS-SI18, DS-SI48)."""
 
 from enum import Enum
+
 from scraper.search.source_types import SourceType
 
 

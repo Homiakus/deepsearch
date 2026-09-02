@@ -1,10 +1,10 @@
-import sys
 import asyncio
-from typing import Optional
+import sys
+
 import typer
 from rich.console import Console
-from rich.table import Table
 from rich.panel import Panel
+from rich.table import Table
 
 if hasattr(sys.stdout, "reconfigure"):
     try:
@@ -13,14 +13,14 @@ if hasattr(sys.stdout, "reconfigure"):
     except Exception:
         pass
 
-from scraper.config import ExecutionMode
+from scraper.application.job_service import JobLifecycleState, JobRequest
 from scraper.application.models import (
+    FeatureAvailabilityState,
     ResearchRequest,
     RunLifecycleState,
-    FeatureAvailabilityState,
 )
-from scraper.application.job_service import JobRequest, JobLifecycleState
 from scraper.application.service import get_deepsearch_service
+from scraper.config import ExecutionMode
 
 app = typer.Typer(
     name="scraper",
@@ -147,8 +147,8 @@ def extract(
 def search(query: str = typer.Argument(..., help="Search query string")):
     """Perform hybrid text and visual multivector search (§56, DS-A03, DS-16)."""
     from scraper.contracts.capabilities import (
-        require_capability,
         CapabilityUnavailableError,
+        require_capability,
     )
 
     try:
@@ -184,10 +184,10 @@ def research(
     query: str = typer.Option(
         ..., "--query", "-q", help="Search query or topic to research"
     ),
-    domain: Optional[str] = typer.Option(
+    domain: str | None = typer.Option(
         None, "--domain", "-d", help="Subject domain or area filter"
     ),
-    sources: Optional[str] = typer.Option(
+    sources: str | None = typer.Option(
         None, "--sources", "-s", help="Comma-separated preferred source URLs"
     ),
     depth: int = typer.Option(3, "--depth", help="Maximum search/crawl depth"),
@@ -201,7 +201,7 @@ def research(
     max_media: int = typer.Option(
         25, "--max-media", help="Maximum topic media images to archive"
     ),
-    output: Optional[str] = typer.Option(
+    output: str | None = typer.Option(
         "deepsearch_results.zip", "--output", "-o", help="Output ZIP file path"
     ),
 ):
@@ -329,7 +329,7 @@ def download_file(
     output_dir: str = typer.Option(
         "laser_research_dataset/pdfs", "--output", "-o", help="Target output folder"
     ),
-    selector: Optional[str] = typer.Option(
+    selector: str | None = typer.Option(
         None, "--selector", "-s", help="CSS selector of download button to click"
     ),
     headed: bool = typer.Option(

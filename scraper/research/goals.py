@@ -2,7 +2,7 @@
 
 import uuid
 from enum import Enum
-from typing import Dict, List, Optional
+
 from pydantic import BaseModel, Field
 
 
@@ -18,18 +18,18 @@ class ResearchGoal(BaseModel):
     id: str = Field(default_factory=lambda: f"goal_{uuid.uuid4().hex[:8]}")
     question: str
     importance: float = 1.0  # 0.0 to 1.0
-    dependencies: List[str] = Field(default_factory=list)
-    required_evidence_types: List[str] = Field(default_factory=list)
+    dependencies: list[str] = Field(default_factory=list)
+    required_evidence_types: list[str] = Field(default_factory=list)
     status: GoalStatus = GoalStatus.UNEXPLORED
     coverage: float = 0.0  # 0.0 to 1.0
-    unresolved_conflicts: List[str] = Field(default_factory=list)
+    unresolved_conflicts: list[str] = Field(default_factory=list)
     independent_sources_count: int = 0
-    assigned_queries: List[str] = Field(default_factory=list)
+    assigned_queries: list[str] = Field(default_factory=list)
 
 
 class ResearchGoalGraph(BaseModel):
-    root_goal_id: Optional[str] = None
-    goals: Dict[str, ResearchGoal] = Field(default_factory=dict)
+    root_goal_id: str | None = None
+    goals: dict[str, ResearchGoal] = Field(default_factory=dict)
 
     def add_goal(self, goal: ResearchGoal, is_root: bool = False) -> ResearchGoal:
         self.goals[goal.id] = goal
@@ -39,7 +39,7 @@ class ResearchGoalGraph(BaseModel):
 
     def get_uncovered_goals(
         self, coverage_threshold: float = 0.8
-    ) -> List[ResearchGoal]:
+    ) -> list[ResearchGoal]:
         """Returns goals that are below the target coverage threshold."""
         return [g for g in self.goals.values() if g.coverage < coverage_threshold]
 

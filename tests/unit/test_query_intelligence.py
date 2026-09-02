@@ -1,9 +1,9 @@
 """Unit tests for Query Intelligence & Research Goals (DS-SI02 - DS-SI07)."""
 
+from scraper.research.decomposer import decompose_intent
+from scraper.research.entities import extract_entities_from_query
 from scraper.research.intent import ResearchIntent
 from scraper.research.query_normalizer import normalize_query
-from scraper.research.entities import extract_entities_from_query
-from scraper.research.decomposer import decompose_intent
 from scraper.search.query_generator import QueryGenerator
 
 
