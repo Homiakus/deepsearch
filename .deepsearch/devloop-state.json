@@ -125,6 +125,11 @@
       "plan_fingerprint": "30030ede9f10cd44",
       "priority": "P2",
       "title": "Добавить проверяемые performance budgets"
+    },
+    "DS-26": {
+      "plan_fingerprint": "f8d4fc10a254a7e0",
+      "priority": "P2",
+      "title": "Провести release audit и синхронизацию документации"
     }
   },
   "version": 1
