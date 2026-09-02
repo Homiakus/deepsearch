@@ -160,9 +160,7 @@ class Settings(BaseSettings):
     api_key: str = "dev-secret"
 
     # Database & Storage
-    database_url: str = (
-        "postgresql+asyncpg://deepsearch:deepsearch@localhost:5432/deepsearch"
-    )
+    database_url: str = "sqlite+aiosqlite:///./data/deepsearch.db"
     redis_url: str = "redis://localhost:6379/0"
     qdrant_url: str = "http://localhost:6333"
     storage_path: str = "./data"

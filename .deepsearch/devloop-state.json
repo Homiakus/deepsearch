@@ -80,6 +80,11 @@
       "plan_fingerprint": "9c43547a6401991a",
       "priority": "P1",
       "title": "Вывести fake search/PixelRAG из stable surface"
+    },
+    "DS-17": {
+      "plan_fingerprint": "fb213d86c47fc44b",
+      "priority": "P1",
+      "title": "Выбрать один источник истины для хранения и миграций"
     }
   },
   "version": 1
