@@ -1,6 +1,7 @@
 """Crawl Request Scheduler and Frontier Management (§14, §15, §18)."""
 
 import asyncio
+import bisect
 import time
 import uuid
 from collections.abc import Callable
@@ -57,6 +58,7 @@ class RequestFrontier:
         self._queue: list[CrawlRequest] = []
         self._discovered_urls: set[str] = set()
         self._requests_by_id: dict[str, CrawlRequest] = {}
+        self._leased_request_ids: set[str] = set()
         self._lock = asyncio.Lock()
         self._condition = asyncio.Condition(self._lock)
 
@@ -74,9 +76,7 @@ class RequestFrontier:
             req.updated_at = self._now_wall()
             self._discovered_urls.add(req.canonical_url)
             self._requests_by_id[req.id] = req
-            self._queue.append(req)
-            # Keep queue sorted by priority descending
-            self._queue.sort(key=lambda r: r.priority, reverse=True)
+            bisect.insort(self._queue, req, key=lambda r: -r.priority)
             self._condition.notify_all()
             return True
 
@@ -86,18 +86,23 @@ class RequestFrontier:
         """Lease the highest priority available request (§15 at-least-once)."""
         async with self._condition:
             now = self._now_wall()
-            # First clean up expired leases
-            for req in self._requests_by_id.values():
-                if (
-                    req.state == RequestState.LEASED
+            # Clean up only currently leased requests that have expired (O(leased) not O(all))
+            if self._leased_request_ids:
+                expired_ids = [
+                    req_id
+                    for req_id in self._leased_request_ids
+                    if (req := self._requests_by_id.get(req_id)) is not None
+                    and req.state == RequestState.LEASED
                     and req.lease_expires_at is not None
                     and req.lease_expires_at <= now
-                ):
+                ]
+                for req_id in expired_ids:
+                    req = self._requests_by_id[req_id]
                     req.state = RequestState.QUEUED
                     req.lease_expires_at = None
+                    self._leased_request_ids.discard(req_id)
                     if req not in self._queue:
-                        self._queue.append(req)
-                        self._queue.sort(key=lambda r: r.priority, reverse=True)
+                        bisect.insort(self._queue, req, key=lambda r: -r.priority)
 
             while self._queue:
                 candidate = self._queue.pop(0)
@@ -110,6 +115,7 @@ class RequestFrontier:
                 candidate.state = RequestState.LEASED
                 candidate.updated_at = now
                 candidate.lease_expires_at = now + lease_duration_sec
+                self._leased_request_ids.add(candidate.id)
                 return candidate
 
             return None
@@ -131,6 +137,7 @@ class RequestFrontier:
                     RequestState.SKIPPED,
                 ):
                     req.lease_expires_at = None
+                    self._leased_request_ids.discard(req_id)
                     if req in self._queue:
                         self._queue.remove(req)
 
@@ -139,6 +146,7 @@ class RequestFrontier:
         async with self._condition:
             if req_id in self._requests_by_id:
                 req = self._requests_by_id[req_id]
+                self._leased_request_ids.discard(req_id)
                 if req in self._queue:
                     return
                 if req.state in (
@@ -159,8 +167,7 @@ class RequestFrontier:
                         0.0, req.priority - 5.0
                     )  # Lower priority on retry
                     if req not in self._queue:
-                        self._queue.append(req)
-                        self._queue.sort(key=lambda r: r.priority, reverse=True)
+                        bisect.insort(self._queue, req, key=lambda r: -r.priority)
                     self._condition.notify_all()
 
     async def stats(self) -> dict[str, int]:

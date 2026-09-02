@@ -7,11 +7,12 @@ import re
 class Deduplicator:
     """Manages 3 levels of deduplication: URL hash, BLAKE3/SHA256 content hash, SimHash near-duplicate."""
 
-    def __init__(self, simhash_distance_threshold: int = 3):
+    def __init__(self, simhash_distance_threshold: int = 3, max_simhashes: int = 50000):
         self.url_hashes: set[str] = set()
         self.content_hashes: set[str] = set()
         self.simhashes: dict[int, str] = {}  # simhash_int -> canonical_url
         self.threshold = simhash_distance_threshold
+        self.max_simhashes = max_simhashes
 
     @staticmethod
     def hash_url(canonical_url: str) -> str:
@@ -29,22 +30,27 @@ class Deduplicator:
             return hashlib.sha256(content_bytes).hexdigest()
 
     @staticmethod
-    def compute_simhash(text: str) -> int:
+    def compute_simhash(text: str, max_tokens: int = 10000) -> int:
         """Level 3: SimHash algorithm for near-duplicate text detection."""
         tokens = re.findall(r"\w+", text.lower())
         if not tokens:
             return 0
 
+        if len(tokens) > max_tokens:
+            tokens = tokens[:max_tokens]
+
+        from collections import Counter
+
+        token_counts = Counter(tokens)
+
         v = [0] * 64
-        for token in tokens:
-            # 64-bit hash of token
+        for token, weight in token_counts.items():
             t_hash = int(hashlib.md5(token.encode("utf-8")).hexdigest()[:16], 16)
             for i in range(64):
-                bitmask = 1 << i
-                if t_hash & bitmask:
-                    v[i] += 1
+                if (t_hash >> i) & 1:
+                    v[i] += weight
                 else:
-                    v[i] -= 1
+                    v[i] -= weight
 
         fingerprint = 0
         for i in range(64):
@@ -56,12 +62,7 @@ class Deduplicator:
     @staticmethod
     def hamming_distance(h1: int, h2: int) -> int:
         """Calculate Hamming distance between two 64-bit integers."""
-        x = h1 ^ h2
-        set_bits = 0
-        while x > 0:
-            set_bits += x & 1
-            x >>= 1
-        return set_bits
+        return (h1 ^ h2).bit_count()
 
     def is_url_duplicate(self, canonical_url: str) -> bool:
         u_hash = self.hash_url(canonical_url)
@@ -82,11 +83,17 @@ class Deduplicator:
         if s_hash == 0:
             return False
 
-        for existing_hash in self.simhashes.keys():
-            if self.hamming_distance(s_hash, existing_hash) <= self.threshold:
+        # Fast exact match check
+        if s_hash in self.simhashes:
+            return True
+
+        threshold = self.threshold
+        for existing_hash in self.simhashes:
+            if (s_hash ^ existing_hash).bit_count() <= threshold:
                 return True
 
-        self.simhashes[s_hash] = text[:100]
+        if len(self.simhashes) < self.max_simhashes:
+            self.simhashes[s_hash] = text[:100]
         return False
 
     def compute_hashes(self, text: str):

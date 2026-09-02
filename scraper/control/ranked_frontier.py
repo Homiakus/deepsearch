@@ -5,6 +5,7 @@ and explicit transient failure retry semantics.
 """
 
 import asyncio
+import bisect
 import time
 import uuid
 from enum import Enum
@@ -60,6 +61,7 @@ class RankedFrontier:
         self._queue: list[FrontierItem] = []
         self._items_by_url: dict[str, FrontierItem] = {}
         self._items_by_id: dict[str, FrontierItem] = {}
+        self._leased_item_ids: set[str] = set()
         self._active_per_domain: dict[str, int] = {}
         self._lock = asyncio.Lock()
         self._condition = asyncio.Condition(self._lock)
@@ -82,7 +84,11 @@ class RankedFrontier:
                     existing.candidate.goal_ids.append(goal_id)
                 if priority > existing.priority:
                     existing.priority = priority
-                    self._queue.sort(key=lambda item: item.priority, reverse=True)
+                    if existing in self._queue:
+                        self._queue.remove(existing)
+                        bisect.insort(
+                            self._queue, existing, key=lambda item: -item.priority
+                        )
                 return False
 
             if len(self._queue) >= self.max_capacity:
@@ -101,8 +107,7 @@ class RankedFrontier:
 
             self._items_by_url[c_url] = item
             self._items_by_id[item.id] = item
-            self._queue.append(item)
-            self._queue.sort(key=lambda it: it.priority, reverse=True)
+            bisect.insort(self._queue, item, key=lambda it: -it.priority)
             self._condition.notify_all()
             return True
 
@@ -111,22 +116,27 @@ class RankedFrontier:
         async with self._condition:
             now = time.time()
 
-            # Clean expired leases
-            for item in self._items_by_id.values():
-                if (
-                    item.state == CandidateState.LEASED
-                    and item.lease_expires_at
+            # Clean expired leases (only check currently leased items O(leased) not O(all))
+            if self._leased_item_ids:
+                expired_ids = [
+                    item_id
+                    for item_id in self._leased_item_ids
+                    if (item := self._items_by_id.get(item_id)) is not None
+                    and item.state == CandidateState.LEASED
+                    and item.lease_expires_at is not None
                     and item.lease_expires_at < now
-                ):
+                ]
+                for item_id in expired_ids:
+                    item = self._items_by_id[item_id]
                     item.state = CandidateState.QUEUED
                     item.lease_expires_at = None
                     dom = item.candidate.domain
                     self._active_per_domain[dom] = max(
                         0, self._active_per_domain.get(dom, 1) - 1
                     )
+                    self._leased_item_ids.discard(item_id)
                     if item not in self._queue:
-                        self._queue.append(item)
-                        self._queue.sort(key=lambda it: it.priority, reverse=True)
+                        bisect.insort(self._queue, item, key=lambda it: -it.priority)
 
             if not self._queue:
                 return None
@@ -149,6 +159,7 @@ class RankedFrontier:
             item.attempt += 1
             item.updated_at = now
             item.lease_expires_at = now + lease_duration_sec
+            self._leased_item_ids.add(item.id)
 
             dom = item.candidate.domain
             self._active_per_domain[dom] = self._active_per_domain.get(dom, 0) + 1
@@ -173,6 +184,7 @@ class RankedFrontier:
             )
             item.lease_expires_at = None
             item.updated_at = time.time()
+            self._leased_item_ids.discard(item_id)
 
             if is_transient_error and item.attempt < item.max_attempts:
                 item.state = CandidateState.RETRY
@@ -180,8 +192,7 @@ class RankedFrontier:
                     0.05, item.priority - 0.10
                 )  # Gentle penalty on retry
                 item.error_message = error
-                self._queue.append(item)
-                self._queue.sort(key=lambda it: it.priority, reverse=True)
+                bisect.insort(self._queue, item, key=lambda it: -it.priority)
                 self._condition.notify_all()
             else:
                 item.state = state

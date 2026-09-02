@@ -160,6 +160,11 @@
       "plan_fingerprint": "f918f1406fdcbfd6",
       "priority": "P1",
       "title": "Измерить чувствительность эвристик, порогов и tie-break"
+    },
+    "DS-33": {
+      "plan_fingerprint": "e87ace33bd3f6bc6",
+      "priority": "P2",
+      "title": "Найти complexity cliffs и худшие реалистичные входы"
     }
   },
   "version": 1

@@ -22,29 +22,38 @@ class NearDuplicateDetector:
         self._next_cluster_id = 1
 
     @staticmethod
-    def compute_simhash(text: str, shingle_size: int = 2) -> int:
+    def compute_simhash(
+        text: str, shingle_size: int = 2, max_shingles: int = 10000
+    ) -> int:
         """Computes 64-bit SimHash over word tokens/shingles."""
         tokens = [t for t in re.findall(r"\w+", text.lower()) if len(t) > 1]
         if not tokens:
             return 0
 
         # Generate shingles
-        shingles = []
         if len(tokens) < shingle_size:
-            shingles = tokens
+            shingles = tokens[:max_shingles]
         else:
-            for i in range(len(tokens) - shingle_size + 1):
-                shingles.append(" ".join(tokens[i : i + shingle_size]))
+            limit = min(len(tokens) - shingle_size + 1, max_shingles)
+            if shingle_size == 2:
+                shingles = [f"{tokens[i]} {tokens[i + 1]}" for i in range(limit)]
+            else:
+                shingles = [
+                    " ".join(tokens[i : i + shingle_size]) for i in range(limit)
+                ]
+
+        from collections import Counter
+
+        shingle_counts = Counter(shingles)
 
         v = [0] * 64
-        for sh in shingles:
+        for sh, weight in shingle_counts.items():
             sh_hash = int(hashlib.md5(sh.encode("utf-8")).hexdigest()[:16], 16)
             for i in range(64):
-                bitmask = 1 << i
-                if sh_hash & bitmask:
-                    v[i] += 1
+                if (sh_hash >> i) & 1:
+                    v[i] += weight
                 else:
-                    v[i] -= 1
+                    v[i] -= weight
 
         fingerprint = 0
         for i in range(64):
@@ -55,7 +64,7 @@ class NearDuplicateDetector:
 
     @staticmethod
     def hamming_distance(h1: int, h2: int) -> int:
-        return bin(h1 ^ h2).count("1")
+        return (h1 ^ h2).bit_count()
 
     def register_document(self, doc_id: str, text: str) -> NearDupCheckResult:
         """Registers a document and returns NearDupCheckResult(is_near_dup, existing_doc_id, cluster_id)."""
