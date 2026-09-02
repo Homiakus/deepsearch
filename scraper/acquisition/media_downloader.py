@@ -52,9 +52,10 @@ def sanitize_media_filename(url: str, prefix: str = "doc") -> str:
         ext = ".jpg" if "img" in prefix or "media" in prefix else ".pdf"
 
     clean_name = re.sub(r"[^a-zA-Z0-9_-]", "_", basename.replace(ext, ""))
-    clean_name = clean_name.strip("_")[:40] or "file"
+    clean_name = clean_name.strip("_")[:30] or "file"
+    url_digest = hashlib.sha256(url.encode("utf-8")).hexdigest()[:8]
 
-    return f"{prefix}_{clean_name}{ext}"
+    return f"{prefix}_{clean_name}_{url_digest}{ext}"
 
 
 def _is_valid_binary_header(

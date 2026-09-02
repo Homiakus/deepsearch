@@ -29,3 +29,9 @@ def test_canonicalize_upgrades_known_secure_discovery_domains():
         canonicalize_url("http://arxiv.org/abs/2309.15217v2")
         == "https://arxiv.org/abs/2309.15217v2"
     )
+
+
+def test_preserves_encoded_path_separator():
+    """FRAG-001: Encoded reserved path separator %2F must not be merged into /."""
+    raw = "https://example.com/a%2Fb"
+    assert canonicalize_url(raw) == "https://example.com/a%2Fb"

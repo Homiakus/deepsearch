@@ -45,49 +45,54 @@ class BudgetTracker:
         llm_tokens: int = 0,
     ):
         async with self._lock:
-            if depth > self.budget.max_depth:
-                raise BudgetExceededError(
-                    f"Depth limit exceeded: {depth} > {self.budget.max_depth}"
-                )
-
-            self.pages_processed += 1
-            if self.pages_processed > self.budget.max_pages:
-                raise BudgetExceededError(
-                    f"Page limit exceeded: {self.pages_processed} > {self.budget.max_pages}"
-                )
-
-            self.bytes_downloaded += bytes_size
-            if self.bytes_downloaded > self.budget.max_bytes:
-                raise BudgetExceededError(
-                    f"Byte limit exceeded: {self.bytes_downloaded} > {self.budget.max_bytes}"
-                )
-
-            if was_browser:
-                self.browser_seconds_used += browser_sec
-                if self.browser_seconds_used > self.budget.max_browser_seconds:
-                    raise BudgetExceededError(
-                        f"Browser execution time limit exceeded: {self.browser_seconds_used:.1f}s"
-                    )
-
-            if was_visual:
-                self.visual_pages_processed += 1
-                if self.visual_pages_processed > self.budget.max_visual_pages:
-                    raise BudgetExceededError(
-                        f"Visual page limit exceeded: {self.visual_pages_processed}"
-                    )
-
-            if llm_tokens > 0:
-                self.llm_tokens_used += llm_tokens
-                if self.llm_tokens_used > self.budget.max_llm_tokens:
-                    raise BudgetExceededError(
-                        f"LLM token limit exceeded: {self.llm_tokens_used}"
-                    )
-
+            # Pre-flight check: deadline and depth (§FRAG-005)
             if (
                 self.budget.deadline_timestamp
                 and time.time() > self.budget.deadline_timestamp
             ):
                 raise BudgetExceededError("Job deadline reached")
+
+            if depth > self.budget.max_depth:
+                raise BudgetExceededError(
+                    f"Depth limit exceeded: {depth} > {self.budget.max_depth}"
+                )
+
+            new_pages = self.pages_processed + 1
+            if new_pages > self.budget.max_pages:
+                raise BudgetExceededError(
+                    f"Page limit exceeded: {new_pages} > {self.budget.max_pages}"
+                )
+
+            new_bytes = self.bytes_downloaded + bytes_size
+            if new_bytes > self.budget.max_bytes:
+                raise BudgetExceededError(
+                    f"Byte limit exceeded: {new_bytes} > {self.budget.max_bytes}"
+                )
+
+            new_browser_sec = self.browser_seconds_used + (
+                browser_sec if was_browser else 0.0
+            )
+            if was_browser and new_browser_sec > self.budget.max_browser_seconds:
+                raise BudgetExceededError(
+                    f"Browser execution time limit exceeded: {new_browser_sec:.1f}s"
+                )
+
+            new_visual_pages = self.visual_pages_processed + (1 if was_visual else 0)
+            if was_visual and new_visual_pages > self.budget.max_visual_pages:
+                raise BudgetExceededError(
+                    f"Visual page limit exceeded: {new_visual_pages}"
+                )
+
+            new_llm_tokens = self.llm_tokens_used + llm_tokens
+            if llm_tokens > 0 and new_llm_tokens > self.budget.max_llm_tokens:
+                raise BudgetExceededError(f"LLM token limit exceeded: {new_llm_tokens}")
+
+            # Atomic commit of state mutations
+            self.pages_processed = new_pages
+            self.bytes_downloaded = new_bytes
+            self.browser_seconds_used = new_browser_sec
+            self.visual_pages_processed = new_visual_pages
+            self.llm_tokens_used = new_llm_tokens
 
     async def get_summary(self) -> Dict[str, Any]:
         async with self._lock:

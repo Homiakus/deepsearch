@@ -135,6 +135,11 @@
       "plan_fingerprint": "8df53f70fb9b26e0",
       "priority": "P0",
       "title": "Утвердить контракты, инварианты и реестр предположений top-10"
+    },
+    "DS-28": {
+      "plan_fingerprint": "d51d020be2a5ca81",
+      "priority": "P0",
+      "title": "Превратить начальный counterexample corpus в постоянные regression tests"
     }
   },
   "version": 1

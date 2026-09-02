@@ -46,19 +46,35 @@ class StructureAwareChunker:
         return max(int(words * 1.3), int(chars / 3.5), 1)
 
     def _split_oversized_text(self, text: str) -> List[str]:
-        """Splits an oversized paragraph into sentence-bounded chunks."""
+        """Splits an oversized paragraph into sentence/word-bounded chunks (§FRAG-006)."""
         import re
 
         sentences = [s.strip() for s in re.split(r"(?<=[.!?])\s+", text) if s.strip()]
         if not sentences:
-            return [text]
+            words = text.split()
+            if len(words) <= self.target_words:
+                return [text]
+            return [
+                " ".join(words[i : i + self.target_words])
+                for i in range(0, len(words), self.target_words)
+            ]
 
         sub_blocks = []
         cur_sentences = []
         cur_w = 0
 
         for s in sentences:
-            sw = len(s.split())
+            s_words = s.split()
+            if len(s_words) > self.target_words:
+                if cur_sentences:
+                    sub_blocks.append(" ".join(cur_sentences))
+                    cur_sentences = []
+                    cur_w = 0
+                for i in range(0, len(s_words), self.target_words):
+                    sub_blocks.append(" ".join(s_words[i : i + self.target_words]))
+                continue
+
+            sw = len(s_words)
             if cur_w + sw > self.target_words and cur_sentences:
                 sub_blocks.append(" ".join(cur_sentences))
                 cur_sentences = [s]
@@ -123,12 +139,9 @@ class StructureAwareChunker:
             is_table = combined_text.startswith("|") and combined_text.endswith("|")
             if current_words > self.target_words and not is_table:
                 sub_blocks = self._split_oversized_text(combined_text)
-                if len(sub_blocks) > 1:
-                    for sb in sub_blocks:
-                        if sb.strip():
-                            _emit_chunk(sb.strip())
-                else:
-                    _emit_chunk(combined_text)
+                for sb in sub_blocks:
+                    if sb.strip():
+                        _emit_chunk(sb.strip())
             else:
                 _emit_chunk(combined_text)
 

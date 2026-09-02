@@ -38,3 +38,30 @@ async def test_frontier_add_and_lease():
     assert leased is not None
     assert leased.id == req2.id
     assert leased.state == RequestState.LEASED
+
+
+@pytest.mark.asyncio
+async def test_retry_is_idempotent():
+    """FRAG-004: Multiple retries of a leased request must not place duplicate items into the queue."""
+    frontier = RequestFrontier(max_capacity=100)
+    req = CrawlRequest(
+        url="http://example.com/item",
+        canonical_url="http://example.com/item",
+        domain="example.com",
+    )
+    await frontier.add_request(req)
+    leased = await frontier.lease_request()
+    assert leased is not None
+
+    # Call retry twice
+    await frontier.retry_request(req.id)
+    await frontier.retry_request(req.id)
+
+    # First lease gets the retried request
+    l1 = await frontier.lease_request()
+    assert l1 is not None
+    assert l1.id == req.id
+
+    # Second lease must return None (not duplicate copy)
+    l2 = await frontier.lease_request()
+    assert l2 is None

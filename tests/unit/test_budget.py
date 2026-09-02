@@ -15,6 +15,22 @@ async def test_budget_exceeded():
         await tracker.record_page(bytes_size=100, depth=1)
 
 
+@pytest.mark.asyncio
+async def test_expired_deadline_is_atomic():
+    """FRAG-005: Usage event after expired deadline must fail atomically without mutating counters."""
+    import time
+
+    # Expired deadline in the past
+    tracker = BudgetTracker(
+        budget=JobBudget(max_pages=10, deadline_timestamp=time.time() - 10.0)
+    )
+    with pytest.raises(BudgetExceededError):
+        await tracker.record_page(bytes_size=500, depth=1)
+
+    assert tracker.pages_processed == 0
+    assert tracker.bytes_downloaded == 0
+
+
 def test_markdown_pipeline():
     html = """
     <html>

@@ -183,3 +183,42 @@ def test_extract_image_candidates_with_og_and_srcset():
     urls = [c["url"] for c in candidates]
     assert "https://example.com/og_hero.jpg" in urls
     assert "https://example.com/pic_large.webp" in urls
+
+
+def test_equal_score_has_deterministic_tie_break():
+    """FRAG-003: Equal relevance scores must resolve deterministically regardless of candidate input order."""
+    item_a = {
+        "url": "https://example.com/image_a.jpg",
+        "caption": "Laser cutting beam",
+        "source_domain": "example.com",
+        "width": 800,
+        "height": 600,
+    }
+    item_b = {
+        "url": "https://example.com/image_b.jpg",
+        "caption": "Laser cutting beam",
+        "source_domain": "example.com",
+        "width": 800,
+        "height": 600,
+    }
+    ranked1 = score_and_rank_images(
+        [item_a, item_b], query="laser", min_count=1, max_count=1
+    )
+    ranked2 = score_and_rank_images(
+        [item_b, item_a], query="laser", min_count=1, max_count=1
+    )
+
+    assert ranked1[0]["url"] == ranked2[0]["url"]
+
+
+def test_rejects_inverted_limits():
+    """FRAG-009: score_and_rank_images must reject min_count > max_count before ranking."""
+    import pytest
+
+    with pytest.raises(ValueError):
+        score_and_rank_images(
+            [{"url": "https://example.com/img.jpg", "caption": "test"}],
+            query="test",
+            min_count=8,
+            max_count=3,
+        )

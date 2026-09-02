@@ -30,3 +30,19 @@ def test_ssrf_allowed_public_protocol():
     """Verify valid public protocols do not raise SSRFError for valid URLs."""
     # Should not raise for valid scheme
     HTTPFetcher.validate_url_security("https://example.com/page")
+
+
+@pytest.mark.asyncio
+async def test_redirect_target_revalidated():
+    """FRAG-010: Redirect targets to private/loopback destinations must be revalidated and blocked before connection."""
+    from scraper.exceptions import SSRFBlockedError
+    from scraper.security.url_policy import url_security_policy
+
+    with pytest.raises(SSRFBlockedError):
+        url_security_policy.validate_url("http://127.0.0.1/admin")
+
+    with pytest.raises(SSRFBlockedError):
+        url_security_policy.validate_url("http://169.254.169.254/latest")
+
+    with pytest.raises(SSRFBlockedError):
+        url_security_policy.validate_url("http://10.0.0.1/internal")

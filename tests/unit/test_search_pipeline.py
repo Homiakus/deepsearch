@@ -235,3 +235,45 @@ async def test_archive_exporter_files_and_rag_structure(mock_acquisition_engine)
         assert os.path.exists(os.path.join(rag_folder, "dataset.jsonl"))
         assert os.path.exists(os.path.join(rag_folder, "rag_context.md"))
         assert not os.path.exists(os.path.join(rag_folder, "vector_index.json"))
+
+
+def test_archive_chunk_hard_limit():
+    """FRAG-006: Chunker must enforce target word bounds even on single oversized paragraphs."""
+    from scraper.domain.document import Document, DocumentProvenance
+    from scraper.retrieval.chunking import StructureAwareChunker
+
+    chunker = StructureAwareChunker(target_words=250)
+    oversized_text = "word " * 251
+    doc = Document(
+        id="doc_test",
+        title="Oversized Document",
+        source_url="https://example.com/oversized",
+        canonical_url="https://example.com/oversized",
+        clean_markdown=oversized_text,
+        provenance=DocumentProvenance(content_hash="mock_hash"),
+    )
+    chunks = chunker.chunk_document(doc)
+    assert len(chunks) >= 2
+    for c in chunks:
+        assert c.word_count <= 250
+
+
+@pytest.mark.asyncio
+async def test_single_failure_is_not_empty_success(tmp_path):
+    """FRAG-011: When all acquisition attempts fail, pipeline must report failure rather than empty success."""
+    failing_engine = AdaptiveAcquisitionEngine()
+    failing_engine.acquire_page = AsyncMock(
+        side_effect=TimeoutError("Connection timed out")
+    )
+
+    pipeline = DeepSearchPipeline(acquisition_engine=failing_engine)
+    opts = DeepSearchPipelineOptions(
+        query="laser optics",
+        preferred_sources=["https://example.com/timeout"],
+        output_dir_path=str(tmp_path / "out"),
+        max_pages=1,
+    )
+    result = await pipeline.execute(opts)
+    assert result.total_pages_processed == 0
+    assert result.quality_gate_passed is False
+    assert len(result.manifest.get("rejections", [])) >= 1

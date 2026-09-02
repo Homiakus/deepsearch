@@ -33,3 +33,12 @@ async def test_exponential_backoff_calculation():
     backoff3 = await limiter.calculate_backoff(attempt=3)
     assert backoff1 > 0
     assert backoff3 > backoff1
+
+
+def test_non_positive_rate_rejected():
+    """FRAG-007: Non-positive rate or capacity in TokenBucket must raise ValueError instead of ZeroDivisionError."""
+    with pytest.raises(ValueError):
+        TokenBucket(rate=0.0, capacity=0.0)
+
+    with pytest.raises(ValueError):
+        TokenBucket(rate=-5.0, capacity=10.0)

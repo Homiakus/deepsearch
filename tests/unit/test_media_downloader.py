@@ -86,6 +86,15 @@ def test_sanitize_media_filename():
     assert fn2.endswith(".jpg")
 
 
+def test_distinct_urls_have_distinct_targets():
+    """FRAG-008: Distinct URLs sharing the same base filename must yield distinct target filenames."""
+    url1 = "https://example1.com/reports/annual_report.pdf"
+    url2 = "https://example2.com/files/annual_report.pdf"
+    fn1 = sanitize_media_filename(url1, prefix="doc")
+    fn2 = sanitize_media_filename(url2, prefix="doc")
+    assert fn1 != fn2
+
+
 @pytest.mark.asyncio
 async def test_download_media_file_rejects_ssrf(tmp_path):
     target_dir = tmp_path / "downloads"

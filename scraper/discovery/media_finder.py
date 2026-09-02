@@ -447,6 +447,10 @@ def score_and_rank_images(
     max_count: int = 25,
 ) -> List[Dict[str, Any]]:
     """Scores candidate images by relevance to the query topic and ranks top min_count..max_count items."""
+    if min_count > max_count:
+        raise ValueError(
+            f"min_count ({min_count}) cannot be greater than max_count ({max_count})"
+        )
     if not candidates:
         return []
 
@@ -533,8 +537,10 @@ def score_and_rank_images(
         scored_item["relevance_score"] = final_score
         scored_images.append(scored_item)
 
-    # Sort descending by relevance score
-    scored_images.sort(key=lambda x: x["relevance_score"], reverse=True)
+    # Sort descending by relevance score with deterministic URL tie-break (§FRAG-003)
+    scored_images.sort(
+        key=lambda x: (x["relevance_score"], x.get("url", "")), reverse=True
+    )
 
     # Select target count in range [min_count, max_count]
     target_count = max(min_count, min(len(scored_images), max_count))

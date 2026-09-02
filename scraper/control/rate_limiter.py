@@ -11,6 +11,10 @@ class TokenBucket:
     """Token bucket algorithm per host."""
 
     def __init__(self, rate: float, capacity: float):
+        if rate <= 0 or capacity <= 0:
+            raise ValueError(
+                f"TokenBucket rate ({rate}) and capacity ({capacity}) must be positive (> 0)"
+            )
         self.rate = rate  # Tokens added per second
         self.capacity = capacity  # Maximum bucket capacity
         self.tokens = capacity

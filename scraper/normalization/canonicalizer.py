@@ -1,7 +1,6 @@
 """URL Canonicalization Engine (§16)."""
 
 import urllib.parse
-import re
 from typing import Set
 
 TRACKING_PARAMS: Set[str] = {
@@ -50,13 +49,26 @@ def canonicalize_url(raw_url: str, canonical_link_tag: str = None) -> str:
     elif scheme == "https" and netloc.endswith(":443"):
         netloc = netloc[:-4]
 
-    # 3. Path normalization (unquote and collapse slashes)
+    # 3. Path normalization (unquote and collapse slashes while preserving %2F)
     path = parsed.path
     if not path:
         path = "/"
     else:
-        path = urllib.parse.unquote(path)
-        path = re.sub(r"/+", "/", path)
+        # Preserve %2F (%2f) to avoid merging distinct path resources (§FRAG-001)
+        path = path.replace("%2f", "%2F")
+        segments = path.split("/")
+        norm_segments = []
+        for i, seg in enumerate(segments):
+            if not seg and i > 0 and i < len(segments) - 1:
+                # Collapse empty intermediate segments (e.g., //)
+                continue
+            seg_token = seg.replace("%2F", "__ENC_SLASH__")
+            seg_unquoted = urllib.parse.unquote(seg_token)
+            seg_restored = seg_unquoted.replace("__ENC_SLASH__", "%2F")
+            norm_segments.append(seg_restored)
+        path = "/".join(norm_segments)
+        if not path.startswith("/"):
+            path = "/" + path
 
     # 4. Filter and sort query parameters
     query_params = urllib.parse.parse_qsl(parsed.query, keep_blank_values=True)

@@ -34,3 +34,13 @@ def test_classify_bot_block():
     html = "<html><body>403 Forbidden - Cloudflare Captcha required</body></html>"
     pi = classify_page("https://blocked.com", 403, {"content-type": "text/html"}, html)
     assert pi.block_score >= 0.9
+
+
+def test_framework_detection_requires_marker():
+    """FRAG-002: Prose words like 'reaction' must not trigger React framework detection."""
+    html = "<html><body><p>Chemical reaction kinetics analysis</p></body></html>"
+    pi = classify_page(
+        "https://example.com/article", 200, {"content-type": "text/html"}, html
+    )
+    assert "React" not in pi.detected_frameworks
+    assert pi.js_dependency_score < 0.5

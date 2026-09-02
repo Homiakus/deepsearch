@@ -125,9 +125,11 @@ class RequestFrontier:
 
     async def retry_request(self, req_id: str, delay_sec: float = 2.0):
         """Schedule request retry with incremented attempt count (§24)."""
-        async with self._lock:
+        async with self._condition:
             if req_id in self._requests_by_id:
                 req = self._requests_by_id[req_id]
+                if req in self._queue:
+                    return
                 req.attempt += 1
                 if req.attempt > req.max_attempts:
                     req.state = RequestState.DEAD
@@ -137,8 +139,9 @@ class RequestFrontier:
                     req.priority = max(
                         0.0, req.priority - 5.0
                     )  # Lower priority on retry
-                    self._queue.append(req)
-                    self._queue.sort(key=lambda r: r.priority, reverse=True)
+                    if req not in self._queue:
+                        self._queue.append(req)
+                        self._queue.sort(key=lambda r: r.priority, reverse=True)
                     self._condition.notify_all()
 
     async def stats(self) -> Dict[str, int]:
