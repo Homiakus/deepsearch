@@ -120,6 +120,11 @@
       "plan_fingerprint": "ee66efd2e1edf35b",
       "priority": "P2",
       "title": "Укрепить контейнер и Compose"
+    },
+    "DS-25": {
+      "plan_fingerprint": "30030ede9f10cd44",
+      "priority": "P2",
+      "title": "Добавить проверяемые performance budgets"
     }
   },
   "version": 1

@@ -72,6 +72,9 @@ include = ["scraper*"]
 pythonpath = ["."]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+markers = [
+    "performance: performance and benchmark tests",
+]
 
 [tool.mutmut]
 source_paths = ["scraper/"]
