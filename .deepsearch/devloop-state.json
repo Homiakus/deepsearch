@@ -165,6 +165,11 @@
       "plan_fingerprint": "e87ace33bd3f6bc6",
       "priority": "P2",
       "title": "Найти complexity cliffs и худшие реалистичные входы"
+    },
+    "DS-34": {
+      "plan_fingerprint": "a60708b03c3839f5",
+      "priority": "P2",
+      "title": "Ввести targeted mutation gate и закрывать FRAG только после повторного индекса"
     }
   },
   "version": 1
