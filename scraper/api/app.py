@@ -44,8 +44,10 @@ def create_app() -> FastAPI:
 
     app.include_router(api_router)
 
-    # Web UI Dashboard endpoint (§58)
+    # Web UI Dashboard endpoint (§58, DS-22)
+    @app.get("/", response_class=HTMLResponse)
     @app.get("/ui", response_class=HTMLResponse)
+    @app.get("/dashboard", response_class=HTMLResponse)
     async def get_ui_dashboard():
         from scraper.ui.dashboard import render_dashboard_html
 

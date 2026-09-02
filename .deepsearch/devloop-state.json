@@ -105,6 +105,11 @@
       "plan_fingerprint": "dea85b2e243c1e12",
       "priority": "P2",
       "title": "Исправить MCP lifecycle и конфигурацию"
+    },
+    "DS-22": {
+      "plan_fingerprint": "bd4844b1c2c6bf30",
+      "priority": "P2",
+      "title": "Сделать Dashboard честным или временно убрать"
     }
   },
   "version": 1
