@@ -19,6 +19,7 @@ from scraper.application.models import (
     RunLifecycleState,
     FeatureAvailabilityState,
 )
+from scraper.application.job_service import JobRequest, JobLifecycleState
 from scraper.application.service import get_deepsearch_service
 
 app = typer.Typer(
@@ -32,9 +33,9 @@ console = Console(legacy_windows=False)
 @app.command()
 def crawl(
     url: str = typer.Argument(..., help="Target URL to crawl"),
-    depth: int = typer.Option(5, "--depth", "-d", help="Maximum crawl depth"),
+    depth: int = typer.Option(2, "--depth", "-d", help="Maximum crawl depth"),
     max_pages: int = typer.Option(
-        100, "--max-pages", "-m", help="Maximum pages to process"
+        20, "--max-pages", "-m", help="Maximum pages to process"
     ),
     mode: str = typer.Option(
         "balanced",
@@ -42,29 +43,53 @@ def crawl(
         help="Execution mode: fast|balanced|complete|research|archive",
     ),
 ):
-    """Crawl a URL or website using adaptive strategy selection (§56)."""
+    """Crawl a URL or website using adaptive strategy selection (§56, DS-20)."""
+    try:
+        exec_mode = ExecutionMode(mode.lower())
+    except ValueError:
+        console.print(
+            f"[bold red]Error:[/bold red] Invalid mode '{mode}'. Valid modes: {[m.value for m in ExecutionMode]}"
+        )
+        raise typer.Exit(code=2)
+
     console.print(
         Panel(
-            f"[bold green]Starting Adaptive Crawl[/bold green]\nTarget: {url}\nDepth: {depth}\nMax Pages: {max_pages}\nMode: {mode}",
+            f"[bold green]Starting Adaptive Crawl Job[/bold green]\nTarget: {url}\nDepth: {depth}\nMax Pages: {max_pages}\nMode: {exec_mode.value}",
             title="DeepSearch Scraper",
         )
     )
     service = get_deepsearch_service()
 
     async def _run():
-        c_url = (await service.inspect(url, mode=ExecutionMode(mode))).canonical_url
-        artifact = await service.acquisition_engine.acquire_page(
-            url, c_url, mode=ExecutionMode(mode)
+        job_req = JobRequest(
+            url=url,
+            max_depth=depth,
+            max_pages=max_pages,
+            mode=exec_mode,
         )
-        console.print(f"[bold cyan]Acquired URL:[/bold cyan] {artifact.url}")
-        console.print(f"[bold cyan]Strategy Used:[/bold cyan] {artifact.strategy_used}")
-        console.print(f"[bold cyan]Status Code:[/bold cyan] {artifact.status_code}")
-        console.print(
-            f"[bold cyan]Static Score:[/bold cyan] {artifact.page_intelligence.static_score * 100:.1f}%"
-        )
-        console.print(
-            f"[bold cyan]JS Dependency Score:[/bold cyan] {artifact.page_intelligence.js_dependency_score * 100:.1f}%"
-        )
+        handle = await service.submit_crawl_job(job_req)
+        console.print(f"[bold cyan]Submitted Job ID:[/bold cyan] {handle.job_id}")
+
+        while True:
+            await asyncio.sleep(0.5)
+            st = await service.get_crawl_status(handle.job_id)
+            if st.status in (
+                JobLifecycleState.SUCCEEDED,
+                JobLifecycleState.FAILED,
+                JobLifecycleState.CANCELLED,
+                JobLifecycleState.PARTIAL,
+            ):
+                break
+
+        res = await service.get_crawl_result(handle.job_id)
+        if res:
+            console.print(
+                f"[bold green]Crawl completed:[/bold green] status={res.status.value}, pages={res.pages_processed}, artifacts={res.artifacts_count}"
+            )
+        else:
+            console.print(
+                f"[bold yellow]Crawl ended with status:[/bold yellow] {st.status.value}"
+            )
 
     asyncio.run(_run())
 
@@ -105,11 +130,8 @@ def inspect(url: str = typer.Argument(..., help="URL to inspect (§57)")):
 @app.command()
 def extract(
     url: str = typer.Argument(..., help="Target URL"),
-    schema: Optional[str] = typer.Option(
-        None, "--schema", "-s", help="JSON schema file path"
-    ),
 ):
-    """Extract content and structured data from URL (§56)."""
+    """Extract content and structured data from URL (§56, DS-20)."""
     service = get_deepsearch_service()
 
     async def _run():

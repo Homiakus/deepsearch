@@ -95,6 +95,11 @@
       "plan_fingerprint": "36e555ce3df51e5a",
       "priority": "P2",
       "title": "Удалить предметные прототипы из product root"
+    },
+    "DS-20": {
+      "plan_fingerprint": "adfacba521f4c974",
+      "priority": "P2",
+      "title": "Выровнять CLI, REST и MCP"
     }
   },
   "version": 1

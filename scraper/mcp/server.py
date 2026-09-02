@@ -8,6 +8,7 @@ strict schema validation, and path confinement.
 
 import sys
 import re
+import uuid
 import asyncio
 import json
 import logging
@@ -33,14 +34,16 @@ MAX_PAGES = 500
 MAX_SEARCH_LIMIT = 100
 
 
-def sanitize_archive_path(archive_path: Optional[str], default_filename: str) -> str:
+def sanitize_archive_path(
+    archive_path: Optional[str], default_prefix: str = "deepsearch_mcp"
+) -> str:
     """Ensures archive path is safe, normalized, and confined to the current working directory or subfolders.
 
-    Prevents path traversal attacks (e.g., `../../etc/shadow` or absolute system overwrites).
+    Never constructs filenames from arbitrary user queries (§DS-20).
     """
     if not archive_path:
-        safe_name = re.sub(r"[^\w\-.]", "_", default_filename)
-        return safe_name if safe_name.endswith(".zip") else f"{safe_name}.zip"
+        default_filename = f"{default_prefix}_{uuid.uuid4().hex[:12]}.zip"
+        return str((Path.cwd() / default_filename).resolve())
 
     # Strip dangerous leading drive letters or traversal components
     clean_p = Path(archive_path)
@@ -48,7 +51,7 @@ def sanitize_archive_path(archive_path: Optional[str], default_filename: str) ->
     # Restrict filename to prevent directory traversal
     filename = clean_p.name
     if not filename or filename in (".", ".."):
-        filename = default_filename
+        filename = f"{default_prefix}_{uuid.uuid4().hex[:12]}.zip"
 
     safe_name = re.sub(r"[^\w\-.]", "_", filename)
     if not safe_name.endswith(".zip"):
@@ -103,9 +106,7 @@ async def deepsearch_research(
 
     bounded_depth = max(1, min(depth, MAX_DEPTH))
     bounded_max_pages = max(1, min(max_pages, MAX_PAGES))
-    safe_archive = sanitize_archive_path(
-        output_archive, f"deepsearch_mcp_{query.replace(' ', '_')[:20]}.zip"
-    )
+    safe_archive = sanitize_archive_path(output_archive)
 
     sources = preferred_sources or []
     req = ResearchRequest(
@@ -244,6 +245,83 @@ async def deepsearch_discover(
             indent=2,
             ensure_ascii=False,
         )
+
+
+@mcp.tool()
+async def deepsearch_crawl(
+    url: str,
+    depth: int = 2,
+    max_pages: int = 20,
+    mode: Literal["fast", "balanced", "complete", "research", "archive"] = "balanced",
+) -> str:
+    """Executes a bounded crawl job via JobService (§DS-11, DS-20)."""
+    if not url or not url.strip():
+        return json.dumps(
+            {"status": "failed", "error": "URL parameter cannot be empty."},
+            indent=2,
+            ensure_ascii=False,
+        )
+
+    if mode not in {"fast", "balanced", "complete", "research", "archive"}:
+        return json.dumps(
+            {
+                "status": "failed",
+                "error": f"Invalid mode '{mode}'. Allowed modes: ['fast', 'balanced', 'complete', 'research', 'archive']",
+            },
+            indent=2,
+            ensure_ascii=False,
+        )
+
+    bounded_depth = max(0, min(depth, MAX_DEPTH))
+    bounded_max_pages = max(1, min(max_pages, MAX_PAGES))
+
+    from scraper.application.job_service import JobRequest, JobLifecycleState
+
+    job_req = JobRequest(
+        url=url.strip(),
+        max_depth=bounded_depth,
+        max_pages=bounded_max_pages,
+        mode=ExecutionMode(mode),
+    )
+
+    service = get_deepsearch_service()
+    handle = await service.submit_crawl_job(job_req)
+
+    while True:
+        await asyncio.sleep(0.5)
+        st = await service.get_crawl_status(handle.job_id)
+        if st.status in (
+            JobLifecycleState.SUCCEEDED,
+            JobLifecycleState.FAILED,
+            JobLifecycleState.CANCELLED,
+            JobLifecycleState.PARTIAL,
+        ):
+            break
+
+    res = await service.get_crawl_result(handle.job_id)
+    if res:
+        return json.dumps(
+            {
+                "status": "success",
+                "job_id": res.job_id,
+                "lifecycle_state": res.status.value,
+                "pages_processed": res.pages_processed,
+                "artifacts_count": res.artifacts_count,
+                "errors": res.errors,
+            },
+            indent=2,
+            ensure_ascii=False,
+        )
+    return json.dumps(
+        {
+            "status": "failed",
+            "job_id": handle.job_id,
+            "lifecycle_state": st.status.value,
+            "errors": st.errors,
+        },
+        indent=2,
+        ensure_ascii=False,
+    )
 
 
 @mcp.tool()
