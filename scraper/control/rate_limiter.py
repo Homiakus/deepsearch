@@ -3,6 +3,7 @@
 import asyncio
 import random
 import time
+from collections.abc import Callable
 
 from scraper.config import settings
 
@@ -10,7 +11,12 @@ from scraper.config import settings
 class TokenBucket:
     """Token bucket algorithm per host."""
 
-    def __init__(self, rate: float, capacity: float):
+    def __init__(
+        self,
+        rate: float,
+        capacity: float,
+        now_monotonic: Callable[[], float] = time.monotonic,
+    ):
         if rate <= 0 or capacity <= 0:
             raise ValueError(
                 f"TokenBucket rate ({rate}) and capacity ({capacity}) must be positive (> 0)"
@@ -18,14 +24,15 @@ class TokenBucket:
         self.rate = rate  # Tokens added per second
         self.capacity = capacity  # Maximum bucket capacity
         self.tokens = capacity
-        self.last_update = time.monotonic()
+        self._now_monotonic = now_monotonic
+        self.last_update = self._now_monotonic()
         self._lock = asyncio.Lock()
 
     async def acquire(self, tokens: float = 1.0) -> float:
         """Acquire tokens from bucket. Returns wait time if tokens are unavailable."""
         async with self._lock:
-            now = time.monotonic()
-            elapsed = now - self.last_update
+            now = self._now_monotonic()
+            elapsed = max(0.0, now - self.last_update)
             self.last_update = now
             # Replenish tokens
             self.tokens = min(self.capacity, self.tokens + elapsed * self.rate)
@@ -36,19 +43,25 @@ class TokenBucket:
 
             # Calculate required wait time
             needed = tokens - self.tokens
-            wait_time = needed / self.rate
+            wait_time = max(0.0, needed / self.rate)
             return wait_time
 
 
 class HostStats:
     """Tracks per-host metrics for adaptive feedback (§12)."""
 
-    def __init__(self, host: str, rps: float, concurrency: int):
+    def __init__(
+        self,
+        host: str,
+        rps: float,
+        concurrency: int,
+        now_monotonic: Callable[[], float] = time.monotonic,
+    ):
         self.host = host
         self.current_rps = rps
         self.max_concurrency = concurrency
         self.active_concurrency = 0
-        self.bucket = TokenBucket(rps, rps * 2)
+        self.bucket = TokenBucket(rps, rps * 2, now_monotonic=now_monotonic)
 
         self.requests_total = 0
         self.requests_success = 0
@@ -84,8 +97,14 @@ class HostStats:
 class HostRateLimiter:
     """Host-aware adaptive rate limiting manager."""
 
-    def __init__(self):
+    def __init__(
+        self,
+        now_monotonic: Callable[[], float] = time.monotonic,
+        uniform_fn: Callable[[float, float], float] = random.uniform,
+    ):
         self._hosts: dict[str, HostStats] = {}
+        self._now_monotonic = now_monotonic
+        self._uniform_fn = uniform_fn
         self._lock = asyncio.Lock()
 
     async def _get_host_stats(self, host: str) -> HostStats:
@@ -95,6 +114,7 @@ class HostRateLimiter:
                     host=host,
                     rps=settings.limits.default_host_rps,
                     concurrency=settings.limits.max_host_concurrency,
+                    now_monotonic=self._now_monotonic,
                 )
             return self._hosts[host]
 
@@ -106,7 +126,7 @@ class HostRateLimiter:
             if wait_sec <= 0.0:
                 break
             # Add jitter to backoff (§23)
-            jitter = random.uniform(0.05, 0.2)
+            jitter = self._uniform_fn(0.05, 0.2)
             await asyncio.sleep(wait_sec + jitter)
 
     async def record_result(self, host: str, status: int, latency_sec: float):
@@ -116,5 +136,5 @@ class HostRateLimiter:
     async def calculate_backoff(self, attempt: int) -> float:
         """Exponential backoff with full jitter (§23)."""
         base_backoff = min(60.0, (2**attempt))
-        jitter = random.uniform(0.5, 1.5)
+        jitter = self._uniform_fn(0.5, 1.5)
         return base_backoff * jitter

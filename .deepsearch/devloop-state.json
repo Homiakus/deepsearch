@@ -145,6 +145,11 @@
       "plan_fingerprint": "491b960ca73bdb1f",
       "priority": "P1",
       "title": "Добавить property, metamorphic и differential проверки чистых алгоритмов"
+    },
+    "DS-30": {
+      "plan_fingerprint": "e42c881de29ff115",
+      "priority": "P1",
+      "title": "Проверить frontier, budget и limiter через stateful model и управляемое время"
     }
   },
   "version": 1

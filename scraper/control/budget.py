@@ -2,6 +2,7 @@
 
 import asyncio
 import time
+from collections.abc import Callable
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -25,14 +26,19 @@ class JobBudget(BaseModel):
 class BudgetTracker:
     """Tracks resource consumption against configured job budgets."""
 
-    def __init__(self, budget: JobBudget | None = None):
+    def __init__(
+        self,
+        budget: JobBudget | None = None,
+        now_wall: Callable[[], float] = time.time,
+    ):
         self.budget = budget or JobBudget()
+        self._now_wall = now_wall
         self.pages_processed = 0
         self.bytes_downloaded = 0
         self.browser_seconds_used = 0.0
         self.llm_tokens_used = 0
         self.visual_pages_processed = 0
-        self.start_time = time.time()
+        self.start_time = self._now_wall()
         self._lock = asyncio.Lock()
 
     async def record_page(
@@ -48,7 +54,7 @@ class BudgetTracker:
             # Pre-flight check: deadline and depth (§FRAG-005)
             if (
                 self.budget.deadline_timestamp
-                and time.time() > self.budget.deadline_timestamp
+                and self._now_wall() > self.budget.deadline_timestamp
             ):
                 raise BudgetExceededError("Job deadline reached")
 
@@ -105,5 +111,5 @@ class BudgetTracker:
                 "max_browser_seconds": self.budget.max_browser_seconds,
                 "visual_pages_processed": self.visual_pages_processed,
                 "llm_tokens_used": self.llm_tokens_used,
-                "elapsed_seconds": round(time.time() - self.start_time, 2),
+                "elapsed_seconds": round(self._now_wall() - self.start_time, 2),
             }

@@ -3,6 +3,7 @@
 import asyncio
 import time
 import uuid
+from collections.abc import Callable
 from enum import Enum
 
 from pydantic import BaseModel, Field
@@ -46,8 +47,13 @@ class CrawlRequest(BaseModel):
 class RequestFrontier:
     """In-memory & async bounded request queue frontier with lease semantics (§15)."""
 
-    def __init__(self, max_capacity: int = 100000):
+    def __init__(
+        self,
+        max_capacity: int = 100000,
+        now_wall: Callable[[], float] = time.time,
+    ):
         self.max_capacity = max_capacity
+        self._now_wall = now_wall
         self._queue: list[CrawlRequest] = []
         self._discovered_urls: set[str] = set()
         self._requests_by_id: dict[str, CrawlRequest] = {}
@@ -65,7 +71,7 @@ class RequestFrontier:
                 return False
 
             req.state = RequestState.QUEUED
-            req.updated_at = time.time()
+            req.updated_at = self._now_wall()
             self._discovered_urls.add(req.canonical_url)
             self._requests_by_id[req.id] = req
             self._queue.append(req)
@@ -79,13 +85,13 @@ class RequestFrontier:
     ) -> CrawlRequest | None:
         """Lease the highest priority available request (§15 at-least-once)."""
         async with self._condition:
-            now = time.time()
+            now = self._now_wall()
             # First clean up expired leases
             for req in self._requests_by_id.values():
                 if (
                     req.state == RequestState.LEASED
-                    and req.lease_expires_at
-                    and req.lease_expires_at < now
+                    and req.lease_expires_at is not None
+                    and req.lease_expires_at <= now
                 ):
                     req.state = RequestState.QUEUED
                     req.lease_expires_at = None
@@ -93,17 +99,20 @@ class RequestFrontier:
                         self._queue.append(req)
                         self._queue.sort(key=lambda r: r.priority, reverse=True)
 
-            while not self._queue:
-                try:
-                    await asyncio.wait_for(self._condition.wait(), timeout=1.0)
-                except TimeoutError:
-                    return None
+            while self._queue:
+                candidate = self._queue.pop(0)
+                if candidate.state in (
+                    RequestState.DONE,
+                    RequestState.DEAD,
+                    RequestState.SKIPPED,
+                ):
+                    continue
+                candidate.state = RequestState.LEASED
+                candidate.updated_at = now
+                candidate.lease_expires_at = now + lease_duration_sec
+                return candidate
 
-            req = self._queue.pop(0)
-            req.state = RequestState.LEASED
-            req.updated_at = now
-            req.lease_expires_at = now + lease_duration_sec
-            return req
+            return None
 
     async def update_state(
         self, req_id: str, state: RequestState, error: str | None = None
@@ -113,7 +122,7 @@ class RequestFrontier:
             if req_id in self._requests_by_id:
                 req = self._requests_by_id[req_id]
                 req.state = state
-                req.updated_at = time.time()
+                req.updated_at = self._now_wall()
                 if error:
                     req.error_message = error
                 if state in (
@@ -122,6 +131,8 @@ class RequestFrontier:
                     RequestState.SKIPPED,
                 ):
                     req.lease_expires_at = None
+                    if req in self._queue:
+                        self._queue.remove(req)
 
     async def retry_request(self, req_id: str, delay_sec: float = 2.0):
         """Schedule request retry with incremented attempt count (§24)."""
@@ -130,9 +141,17 @@ class RequestFrontier:
                 req = self._requests_by_id[req_id]
                 if req in self._queue:
                     return
+                if req.state in (
+                    RequestState.DONE,
+                    RequestState.DEAD,
+                    RequestState.SKIPPED,
+                ):
+                    return
                 req.attempt += 1
+                req.updated_at = self._now_wall()
                 if req.attempt > req.max_attempts:
                     req.state = RequestState.DEAD
+                    req.lease_expires_at = None
                 else:
                     req.state = RequestState.QUEUED
                     req.lease_expires_at = None
