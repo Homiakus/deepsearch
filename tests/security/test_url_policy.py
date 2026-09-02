@@ -98,14 +98,18 @@ def test_dns_rebinding_resolution_blocked():
 
 def test_allow_public_urls():
     policy = URLSecurityPolicy(block_private_ips=True)
-    assert (
-        policy.validate_url("https://example.com/dataset")
-        == "https://example.com/dataset"
-    )
-    assert (
-        policy.validate_url("https://arxiv.org/abs/2103.00020")
-        == "https://arxiv.org/abs/2103.00020"
-    )
+    with patch(
+        "socket.getaddrinfo",
+        return_value=[(2, 1, 0, "", ("93.184.216.34", 443))],
+    ):
+        assert (
+            policy.validate_url("https://example.com/dataset")
+            == "https://example.com/dataset"
+        )
+        assert (
+            policy.validate_url("https://arxiv.org/abs/2103.00020")
+            == "https://arxiv.org/abs/2103.00020"
+        )
 
 
 @pytest.mark.asyncio

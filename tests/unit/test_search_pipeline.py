@@ -274,10 +274,15 @@ async def test_single_failure_is_not_empty_success(tmp_path):
         output_dir_path=str(tmp_path / "out"),
         max_pages=1,
     )
-    result = await pipeline.execute(opts)
-    assert result.total_pages_processed == 0
-    assert result.quality_gate_passed is False
-    assert len(result.manifest.get("rejections", [])) >= 1
+    with patch(
+        "scraper.discovery.providers.registry.ProviderRegistry.search_parallel",
+        new_callable=AsyncMock,
+    ) as mock_search:
+        mock_search.return_value = []
+        result = await pipeline.execute(opts)
+        assert result.total_pages_processed == 0
+        assert result.quality_gate_passed is False
+        assert len(result.manifest.get("rejections", [])) >= 1
 
 
 @pytest.mark.asyncio

@@ -5,6 +5,18 @@ from typing import Any
 
 from pydantic import BaseModel
 
+# Calibration & Heuristic Constants (§7, DS-32)
+SCRIPT_COUNT_HEURISTIC_THRESHOLD = (
+    15  # >15 scripts signals complex SPA/script-heavy page
+)
+EMPTY_DOM_SHELL_MAX_BYTES = (
+    2000  # <2000 bytes with framework marker signals unrendered client-side shell
+)
+TABLE_COUNT_VISUAL_THRESHOLD = 2  # >2 tables signals dense tabular/visual data
+BOT_BLOCK_SCORE = 0.95  # Confidence score when bot block/challenge signals are present
+BOT_BLOCK_JS_SCORE_FLOOR = 0.85  # Minimum JS score to escalate challenge solving
+API_DISCOVERY_MULTIPLIER = 0.3  # Linear weight per detected API endpoint, capped at 1.0
+
 
 class PageIntelligence(BaseModel):
     content_type: str = "html"
@@ -99,15 +111,15 @@ def classify_page(
             if "json" in req_mime or "/api/" in req_url or "graphql" in req_url:
                 detected_apis.append(req_url)
 
-    api_score = min(1.0, len(detected_apis) * 0.3)
+    api_score = min(1.0, len(detected_apis) * API_DISCOVERY_MULTIPLIER)
 
     # Compute JS dependency score
     js_score = 0.1
     if frameworks:
         js_score += 0.4
-    if len(re.findall(r"<script", html_lower)) > 15:
+    if len(re.findall(r"<script", html_lower)) > SCRIPT_COUNT_HEURISTIC_THRESHOLD:
         js_score += 0.2
-    if len(html_lower) < 2000 and frameworks:
+    if len(html_lower) < EMPTY_DOM_SHELL_MAX_BYTES and frameworks:
         # Empty DOM shell requiring JS render
         js_score += 0.3
 
@@ -118,7 +130,7 @@ def classify_page(
     visual_score = 0.1
     if has_canvas:
         visual_score += 0.5
-    if tables_count > 2:
+    if tables_count > TABLE_COUNT_VISUAL_THRESHOLD:
         visual_score += 0.3
     if has_svg:
         visual_score += 0.2
@@ -135,9 +147,9 @@ def classify_page(
         or "checking your browser" in html_lower
         or "just a moment..." in html_lower
     ):
-        block_score = 0.95
+        block_score = BOT_BLOCK_SCORE
         js_score = max(
-            js_score, 0.85
+            js_score, BOT_BLOCK_JS_SCORE_FLOOR
         )  # Force JS dependency escalation for challenge pages
 
     static_score = round(1.0 - js_score, 2)

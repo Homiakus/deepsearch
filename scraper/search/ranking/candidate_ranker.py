@@ -135,7 +135,14 @@ class CandidateRanker:
                     metadata=rc.score_breakdown,
                 )
 
-        ranked.sort(key=lambda item: item.final_score, reverse=True)
+        # Deterministic tie-breaking on equal final_score (§FRAG-003, DS-32)
+        ranked.sort(
+            key=lambda item: (
+                item.final_score,
+                item.candidate.canonical_url or item.candidate.url or "",
+            ),
+            reverse=True,
+        )
         return ranked
 
 

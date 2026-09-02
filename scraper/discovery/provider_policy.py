@@ -12,6 +12,14 @@ from scraper.research.goals import ResearchGoal
 from scraper.research.intent import ResearchIntent
 from scraper.search.query_models import SearchQueryVariant
 
+# Provider Health Calibration Thresholds (DS-SI10, DS-32)
+HEALTH_FACTOR_HEALTHY = 1.0
+HEALTH_FACTOR_DEGRADED = 0.6
+HEALTH_FACTOR_UNHEALTHY = 0.2
+ERROR_RATE_DEGRADED_THRESHOLD = 0.5
+ERROR_RATE_UNHEALTHY_THRESHOLD = 0.8
+MIN_CALLS_FOR_UNHEALTHY = 3
+
 
 class ProviderYieldTracker:
     """Tracks historical success, latency, and candidate yield of discovery providers (DS-SI10)."""
@@ -37,13 +45,16 @@ class ProviderYieldTracker:
     def get_health_factor(self, provider_name: str) -> float:
         s = self._stats.get(provider_name)
         if not s or s["calls"] == 0:
-            return 1.0
+            return HEALTH_FACTOR_HEALTHY
         error_rate = s["errors"] / s["calls"]
-        if error_rate >= 0.8 and s["calls"] >= 3:
-            return 0.2
-        if error_rate >= 0.5:
-            return 0.6
-        return 1.0
+        if (
+            error_rate >= ERROR_RATE_UNHEALTHY_THRESHOLD
+            and s["calls"] >= MIN_CALLS_FOR_UNHEALTHY
+        ):
+            return HEALTH_FACTOR_UNHEALTHY
+        if error_rate >= ERROR_RATE_DEGRADED_THRESHOLD:
+            return HEALTH_FACTOR_DEGRADED
+        return HEALTH_FACTOR_HEALTHY
 
 
 provider_yield_tracker = ProviderYieldTracker()

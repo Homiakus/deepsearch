@@ -6,6 +6,16 @@ from pydantic import BaseModel
 
 from scraper.config import settings
 
+# Extraction Quality Calibration Weights (§52, DS-32)
+# Sum of canonical weights = 1.00
+QUALITY_WEIGHT_COMPLETENESS = 0.30  # Primary factor: ratio of required schema fields
+QUALITY_WEIGHT_VALIDITY = 0.20  # Data types and schema validity
+QUALITY_WEIGHT_CONSISTENCY = 0.20  # Cross-field logical consistency
+QUALITY_WEIGHT_SCHEMA_MATCH = 0.15  # Structural schema conformance
+QUALITY_WEIGHT_CONTENT_DENSITY = 0.15  # Text vs DOM size ratio
+CONTENT_DENSITY_MAX_HTML_LEN = 50000  # Normalization ceiling for DOM size
+DEFAULT_REQUIRED_QUALITY = 0.85  # Default threshold for triggering escalation
+
 
 class ExtractionQuality(BaseModel):
     completeness: float = 1.0  # Ratio of required schema fields populated
@@ -95,7 +105,11 @@ def evaluate_quality(
 
     # 1. Content density (text length / HTML length)
     text_len = len(raw_html)
-    content_density = min(1.0, max(0.1, text_len / 50000)) if text_len > 0 else 0.0
+    content_density = (
+        min(1.0, max(0.1, text_len / CONTENT_DENSITY_MAX_HTML_LEN))
+        if text_len > 0
+        else 0.0
+    )
 
     # 2. Completeness
     completeness = 1.0
@@ -108,11 +122,11 @@ def evaluate_quality(
     consistency = 1.0
 
     overall = (
-        0.3 * completeness
-        + 0.2 * validity
-        + 0.2 * consistency
-        + 0.15 * schema_match
-        + 0.15 * content_density
+        QUALITY_WEIGHT_COMPLETENESS * completeness
+        + QUALITY_WEIGHT_VALIDITY * validity
+        + QUALITY_WEIGHT_CONSISTENCY * consistency
+        + QUALITY_WEIGHT_SCHEMA_MATCH * schema_match
+        + QUALITY_WEIGHT_CONTENT_DENSITY * content_density
     )
 
     return ExtractionQuality(

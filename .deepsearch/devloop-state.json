@@ -155,6 +155,11 @@
       "plan_fingerprint": "6b0618371fd02e1d",
       "priority": "P1",
       "title": "Ввести fault injection и проверить graceful degradation всего рабочего пути"
+    },
+    "DS-32": {
+      "plan_fingerprint": "f918f1406fdcbfd6",
+      "priority": "P1",
+      "title": "Измерить чувствительность эвристик, порогов и tie-break"
     }
   },
   "version": 1
