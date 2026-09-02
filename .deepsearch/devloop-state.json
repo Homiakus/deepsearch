@@ -130,6 +130,11 @@
       "plan_fingerprint": "f8d4fc10a254a7e0",
       "priority": "P2",
       "title": "Провести release audit и синхронизацию документации"
+    },
+    "DS-27": {
+      "plan_fingerprint": "8df53f70fb9b26e0",
+      "priority": "P0",
+      "title": "Утвердить контракты, инварианты и реестр предположений top-10"
     }
   },
   "version": 1
