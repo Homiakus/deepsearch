@@ -115,6 +115,11 @@
       "plan_fingerprint": "b5a0adf10a778399",
       "priority": "P2",
       "title": "Подключить наблюдаемость к реальному пути"
+    },
+    "DS-24": {
+      "plan_fingerprint": "ee66efd2e1edf35b",
+      "priority": "P2",
+      "title": "Укрепить контейнер и Compose"
     }
   },
   "version": 1
